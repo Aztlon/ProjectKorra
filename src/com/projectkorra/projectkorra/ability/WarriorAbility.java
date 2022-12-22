@@ -4,9 +4,9 @@ import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.Element;
 
-public abstract class ChiAbility extends NonAbility implements SubAbility {
+public abstract class WarriorAbility extends NonAbility implements SubAbility {
 
-	public ChiAbility(final Player player) {
+	public WarriorAbility(final Player player) {
 		super(player);
 	}
 
@@ -17,7 +17,7 @@ public abstract class ChiAbility extends NonAbility implements SubAbility {
 
 	@Override
 	public Element getElement() {
-		return Element.CHI;
+		return Element.WARRIOR;
 	}
 
 }

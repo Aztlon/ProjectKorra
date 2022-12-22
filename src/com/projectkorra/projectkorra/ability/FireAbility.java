@@ -71,6 +71,18 @@ public abstract class FireAbility extends ElementalAbility {
 	public Material getFireType() {
 		return getBendingPlayer().canUseSubElement(SubElement.BLUE_FIRE) ? Material.SOUL_FIRE : Material.FIRE;
 	}
+
+	/**
+	 * Gets the fire particles the player is permitted to use
+	 * @return ParticleEffect of the fire the player can use
+	 */
+	public ParticleEffect getFirebendingParticles() {
+		if (this.getBendingPlayer().canUseSubElement(SubElement.BLUE_FIRE)) {
+			return ParticleEffect.SOUL_FIRE_FLAME;
+		} else {
+			return ParticleEffect.FLAME;
+		}
+	}
 	
 	/**
 	 * Returns if fire is allowed to completely replace blocks or if it should

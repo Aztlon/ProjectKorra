@@ -177,7 +177,7 @@ public class SurgeWave extends WaterAbility {
 			final Block oldBlock = block;
 			if (!isAir(block.getType()) && block.getType() != Material.SNOW && !isWater(block) && !isPlant(block)) {
 				continue;
-			} else if (isPlant(block)) {
+			} else if (isPlant(block) && !isDecayablePlant(block)) {
 				block.breakNaturally();
 			}
 
@@ -263,7 +263,9 @@ public class SurgeWave extends WaterAbility {
 	public boolean prepare() {
 		this.cancelPrevious();
 		final Block block = BlockSource.getWaterSourceBlock(this.player, this.selectRange, ClickType.SHIFT_DOWN, true, true, this.bPlayer.canPlantbend());
-		if (block != null && !GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+		if (block != null
+				&& !isDecayablePlant(block)
+				&& !GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
 			this.sourceBlock = block;
 			this.focusBlock();
 			return true;
@@ -309,7 +311,7 @@ public class SurgeWave extends WaterAbility {
 							final Vector vec = GeneralMethods.getOrthogonalVector(this.targetDirection, angle, i);
 							final Block block = this.location.clone().add(vec).getBlock();
 
-							if (!blocks.contains(block) && (isAir(block.getType()) || isFire(block.getType())) || this.isWaterbendable(block)) {
+							if (!blocks.contains(block) && (isAir(block.getType()) || isFire(block.getType())) || this.isWaterbendable(block) || TempBlock.isTempBlock(block)) {
 								blocks.add(block);
 								FireBlast.removeFireBlastsAroundPoint(block.getLocation(), 2);
 							}

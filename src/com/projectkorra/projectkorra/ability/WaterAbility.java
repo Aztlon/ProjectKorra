@@ -1,5 +1,6 @@
 package com.projectkorra.projectkorra.ability;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -30,8 +31,11 @@ import com.projectkorra.projectkorra.waterbending.Torrent;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
 import com.projectkorra.projectkorra.waterbending.ice.PhaseChange;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms;
+import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 
 public abstract class WaterAbility extends ElementalAbility {
+
+	private static final Set<TempBlock> WATERBENDABLE_TEMPBLOCKS = new HashSet<>();
 
 	public WaterAbility(final Player player) {
 		super(player);
@@ -55,11 +59,11 @@ public abstract class WaterAbility extends ElementalAbility {
 	}
 
 	public Block getPlantSourceBlock(final double range) {
-		return this.getPlantSourceBlock(range, false);
+		return this.getPlantSourceBlock(range, false, true);
 	}
 
-	public Block getPlantSourceBlock(final double range, final boolean onlyLeaves) {
-		return getPlantSourceBlock(this.player, range, onlyLeaves);
+	public Block getPlantSourceBlock(final double range, final boolean onlyLeaves, final boolean allowDecayBlocks) {
+		return getPlantSourceBlock(this.player, range, onlyLeaves, allowDecayBlocks);
 	}
 
 	@Override
@@ -84,12 +88,58 @@ public abstract class WaterAbility extends ElementalAbility {
 		return this.player != null ? value * getNightFactor(player.getWorld()) : 1;
 	}
 
-	public static boolean isBendableWaterTempBlock(final Block block) { // TODO: Will need to be done for earth as well.
+	public static boolean isBendableWaterTempBlock(final Block block) {
 		return isBendableWaterTempBlock(TempBlock.get(block));
 	}
 
 	public static boolean isBendableWaterTempBlock(final TempBlock tempBlock) {
-		return PhaseChange.getFrozenBlocksMap().containsKey(tempBlock) || HeatControl.getMeltedBlocks().contains(tempBlock) || SurgeWall.SOURCE_BLOCKS.contains(tempBlock) || Torrent.getFrozenBlocks().containsKey(tempBlock);
+		return WATERBENDABLE_TEMPBLOCKS.contains(tempBlock)
+				|| PhaseChange.getFrozenBlocksMap().containsKey(tempBlock)
+				|| HeatControl.getMeltedBlocks().contains(tempBlock)
+				|| SurgeWall.SOURCE_BLOCKS.contains(tempBlock)
+				|| Torrent.getFrozenBlocks().containsKey(tempBlock);
+	}
+
+	/**
+	 * Adds a TempBlock to the set of waterbendable TempBlocks.
+	 * <br><br> Make sure to {@link #removeWaterbendableTempBlock(TempBlock)} when the TempBlock reverts.
+	 * <br> tempBlock.setRevertTask(() -> removeEarthbendableTempBlock(tempBlock)) should do it.
+	 * @see TempBlock#setRevertTask(com.projectkorra.projectkorra.util.TempBlock.RevertTask)
+	 * @param tempBlock - the TempBlock to add
+	 * @author Aztl
+	 */
+	public static void addWaterbendableTempBlock(final TempBlock tempBlock) {
+		WATERBENDABLE_TEMPBLOCKS.add(tempBlock);
+	}
+
+	/**
+	 * Adds a collection of TempBlocks to the set of waterbendable TempBlocks.
+	 * <br><br> Make sure to {@link #removeWaterbendableTempBlocks(Collection)} when the TempBlocks revert.
+	 * <br> tempBlock.setRevertTask(() -> removeEarthbendableTempBlock(tempBlock)) should do it.
+	 * @see TempBlock#setRevertTask(com.projectkorra.projectkorra.util.TempBlock.RevertTask)
+	 * @param tempBlocks - the Collection of TempBlocks to add
+	 * @author Aztl
+	 */
+	public static void addWaterbendableTempBlocks(final Collection<TempBlock> tempBlocks) {
+		WATERBENDABLE_TEMPBLOCKS.addAll(tempBlocks);
+	}
+
+	/**
+	 * Removes a TempBlock from the set of waterbendable TempBlocks.
+	 * @param tempBlock - the TempBlock to remove
+	 * @author Aztl
+	 */
+	public static void removeWaterbendableTempBlock(final TempBlock tempBlock) {
+		WATERBENDABLE_TEMPBLOCKS.add(tempBlock);
+	}
+
+	/**
+	 * Removes a collection of TempBlocks from the set of waterbendable TempBlocks.
+	 * @param tempBlocks - the Collection of TempBlocks to remove
+	 * @author Aztl
+	 */
+	public static void removeWaterbendableTempBlocks(final Collection<TempBlock> tempBlocks) {
+		WATERBENDABLE_TEMPBLOCKS.removeAll(tempBlocks);
 	}
 
 	public boolean isIcebendable(final Block block) {
@@ -113,7 +163,7 @@ public abstract class WaterAbility extends ElementalAbility {
 	}
 
 	public boolean isPlantbendable(final Player player, final Material material) {
-		return isPlantbendable(player, material, false);
+		return isPlantbendable(player, material, false, true);
 	}
 
 	public boolean isWaterbendable(final Block block) {
@@ -166,7 +216,7 @@ public abstract class WaterAbility extends ElementalAbility {
 		return getNightFactor(1, world);
 	}
 
-	public static Block getPlantSourceBlock(final Player player, final double range, final boolean onlyLeaves) {
+	public static Block getPlantSourceBlock(final Player player, final double range, final boolean onlyLeaves, final boolean allowDecayBlocks) {
 		final Location location = player.getEyeLocation();
 		final Vector vector = location.getDirection().clone().normalize();
 
@@ -174,7 +224,7 @@ public abstract class WaterAbility extends ElementalAbility {
 			final Block block = location.clone().add(vector.clone().multiply(i)).getBlock();
 			if (RegionProtection.isRegionProtected(player, location, "PlantDisc")) {
 				continue;
-			} else if (isPlantbendable(player, block.getType(), onlyLeaves)) {
+			} else if (isPlantbendable(player, block.getType(), onlyLeaves, allowDecayBlocks)) {
 				if (TempBlock.isTempBlock(block) && !isBendableWaterTempBlock(block)) {
 					continue;
 				}
@@ -205,7 +255,7 @@ public abstract class WaterAbility extends ElementalAbility {
 		if (plantbending) {
 			final Set<Material> remove = new HashSet<>();
 			for (final Material m : trans) {
-				if (isPlant(m)) {
+				if (isPlant(m) || isDecayablePlant(m)) {
 					remove.add(m);
 				}
 			}
@@ -215,15 +265,16 @@ public abstract class WaterAbility extends ElementalAbility {
 		final Block testBlock = player.getTargetBlock(trans, Math.max(1, Math.min(3, (int)range)));
 		if (bPlayer == null) {
 			return null;
-		} else if (isWaterbendable(player, null, testBlock) && (!isPlant(testBlock) || plantbending)) {
+		} else if (isWaterbendable(player, null, testBlock) && ((!isPlant(testBlock) && !isDecayablePlant(testBlock)) || plantbending)) {
 			return testBlock;
 		}
 
 		for (double i = 0; i <= range; i++) {
 			final Block block = location.clone().add(vector.clone().multiply(i)).getBlock();
-			if ((!isTransparent(player, block) && !isIce(block) && !isPlant(block) && !isSnow(block) && !isCauldron(block)) || RegionProtection.isRegionProtected(player, location, "WaterManipulation")) {
+			if ((!isTransparent(player, block) && !isIce(block) && !isPlant(block) && !isDecayablePlant(block) && !isSnow(block)) || GeneralMethods.isRegionProtectedFromBuild(player, "WaterManipulation", location)) {
 				continue;
-			} else if (isWaterbendable(player, null, block) && (!isPlant(block) || plantbending)) {
+			}
+			if (isWaterbendable(player, null, block) && ((!isPlant(block) && !isDecayablePlant(block)) || plantbending)) {
 				if (TempBlock.isTempBlock(block) && !isBendableWaterTempBlock(block)) {
 					continue;
 				}
@@ -249,12 +300,15 @@ public abstract class WaterAbility extends ElementalAbility {
 		return bPlayer == null ? null : isIce(material) && bPlayer.canIcebend() && (!onlyIce || material == Material.ICE);
 	}
 
-	public static boolean isPlantbendable(final Player player, final Material material, final boolean onlyLeaves) {
+	public static boolean isPlantbendable(final Player player, final Material material, final boolean onlyLeaves, final boolean allowDecayBlocks) {
 		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
+		if (bPlayer == null) return false;
 		if (onlyLeaves) {
-			return bPlayer == null ? null : isPlant(material) && bPlayer.canPlantbend() && isLeaves(material);
+			return isPlant(material) && bPlayer.canPlantbend() && isLeaves(material);
+		} else if (allowDecayBlocks) {
+			return (isPlant(material) || isDecayablePlant(material)) && bPlayer.canPlantbend();
 		} else {
-			return bPlayer == null ? null : isPlant(material) && bPlayer.canPlantbend();
+			return isPlant(material) && bPlayer.canPlantbend();
 		}
 	}
 
@@ -293,14 +347,18 @@ public abstract class WaterAbility extends ElementalAbility {
 			return true;
 		} else if (isIce(block) && !bPlayer.canIcebend()) {
 			return false;
-		} else if (isPlant(block) && !bPlayer.canPlantbend()) {
+		} else if ((isPlant(block) || isDecayablePlant(block)) && !bPlayer.canPlantbend()) {
 			return false;
 		}
 		return true;
 	}
 
 	public static void playFocusWaterEffect(final Block block) {
-		ParticleEffect.SMOKE_NORMAL.display(block.getLocation().add(0.5, 0.5, 0.5), 4);
+		Location focusLoc = block.getLocation();
+		if (isDecayablePlant(block)) {
+			focusLoc = block.getRelative(BlockFace.UP).getLocation();
+		}
+		ParticleEffect.SMOKE_NORMAL.display(focusLoc.add(0.5, 0.5, 0.5), 4);
 	}
 
 	public static void playIcebendingSound(final Location loc) {
@@ -424,5 +482,6 @@ public abstract class WaterAbility extends ElementalAbility {
 		SurgeWall.removeAllCleanup();
 		SurgeWave.removeAllCleanup();
 		WaterArms.removeAllCleanup();
+		PlantRegrowth.removeAllCleanup();
 	}
 }

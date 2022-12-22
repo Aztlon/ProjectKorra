@@ -10,6 +10,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 
+import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
@@ -28,7 +29,7 @@ public class EarthDome extends EarthAbility {
 	public EarthDome(final Player player, final Location center) {
 		super(player);
 
-		if (this.bPlayer.isOnCooldown("EarthDome")) {
+		if (!bPlayer.isElementToggled(Element.EARTH) || this.bPlayer.isOnCooldown("EarthDome")) {
 			return;
 		}
 

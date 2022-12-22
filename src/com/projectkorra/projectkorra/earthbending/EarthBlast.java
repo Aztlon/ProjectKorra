@@ -28,6 +28,8 @@ public class EarthBlast extends EarthAbility {
 	private boolean isAtDestination;
 	private boolean isSettingUp;
 	private boolean canHitSelf;
+	private boolean tempBlockSource;
+	private boolean movedEarthSource;
 	private long time;
 	private long interval;
 	@Attribute(Attribute.COOLDOWN)
@@ -106,6 +108,10 @@ public class EarthBlast extends EarthAbility {
 	private void focusBlock() {
 		if (DensityShift.isPassiveSand(this.sourceBlock)) {
 			DensityShift.revertSand(this.sourceBlock);
+		} else if (isBendableEarthTempBlock(this.sourceBlock)) {
+			this.tempBlockSource = true;
+		} else if (getMovedEarth().containsKey(this.sourceBlock)) {
+			this.movedEarthSource = true;
 		}
 		if (this.sourceBlock.getType() == Material.SAND) {
 			this.sourceType = Material.SAND;
@@ -157,7 +163,7 @@ public class EarthBlast extends EarthAbility {
 		final Block block = BlockSource.getEarthSourceBlock(this.player, this.range, ClickType.SHIFT_DOWN);
 		if (block == null || !this.isEarthbendable(block)) {
 			return false;
-		} else if (TempBlock.isTempBlock(block) && !EarthAbility.isBendableEarthTempBlock(block)) {
+		} else if (TempBlock.isTempBlock(block) && !isBendableEarthTempBlock(block)) {
 			return false;
 		}
 
@@ -294,7 +300,7 @@ public class EarthBlast extends EarthAbility {
 					return;
 				}
 
-				if (isEarthRevertOn()) {
+				if (isEarthRevertOn() && !tempBlockSource && !movedEarthSource) {
 					this.sourceBlock.setType(this.sourceType);
 
 					moveEarthBlock(this.sourceBlock, block);
@@ -398,8 +404,14 @@ public class EarthBlast extends EarthAbility {
 
 			final Material currentType = this.sourceBlock.getType();
 			this.sourceBlock.setType(this.sourceType);
-			if (isEarthRevertOn()) {
+			if (isEarthRevertOn() && !getMovedEarth().containsKey(this.sourceBlock) && !isBendableEarthTempBlock(this.sourceBlock)) {
 				addTempAirBlock(this.sourceBlock);
+			} else if (getMovedEarth().containsKey(this.sourceBlock)) {
+				revertBlock(this.sourceBlock);
+			} else if (isBendableEarthTempBlock(this.sourceBlock)) {
+				TempBlock tb = TempBlock.get(this.sourceBlock);
+				tb.revertBlock();
+				removeEarthbendableTempBlock(tb);
 			} else {
 				this.sourceBlock.breakNaturally();
 			}

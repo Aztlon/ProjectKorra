@@ -1130,7 +1130,7 @@ public class GeneralMethods {
 			elements.add(Element.FIRE);
 		}
 		if (!plugin.getConfig().getBoolean("Properties.Chi.CanBendWithWeapons")) {
-			elements.add(Element.CHI);
+			elements.add(Element.NON);
 		}
 
 		return elements;
@@ -1334,45 +1334,53 @@ public class GeneralMethods {
 		}
 	}
 
-	public static boolean isWeapon(final Material mat) {
+	private static final List<String> WEAPONS = Arrays.asList("AXE", "HOE", "SHOVEL", "SWORD");
 
-		switch(mat) {
-			case BOW:
-			case CROSSBOW:
-			case DIAMOND_AXE:
-			case DIAMOND_HOE:
-			case DIAMOND_PICKAXE:
-			case DIAMOND_SHOVEL:
-			case DIAMOND_SWORD:
-			case GOLDEN_AXE:
-			case GOLDEN_HOE:
-			case GOLDEN_PICKAXE:
-			case GOLDEN_SHOVEL:
-			case GOLDEN_SWORD:
-			case IRON_AXE:
-			case IRON_HOE:
-			case IRON_PICKAXE:
-			case IRON_SHOVEL:
-			case IRON_SWORD:
-			case NETHERITE_AXE:
-			case NETHERITE_HOE:
-			case NETHERITE_PICKAXE:
-			case NETHERITE_SHOVEL:
-			case NETHERITE_SWORD:
-			case STONE_AXE:
-			case STONE_HOE:
-			case STONE_PICKAXE:
-			case STONE_SHOVEL:
-			case STONE_SWORD:
-			case TRIDENT:
-			case WOODEN_AXE:
-			case WOODEN_HOE:
-			case WOODEN_PICKAXE:
-			case WOODEN_SHOVEL:
-			case WOODEN_SWORD:
+	public static boolean isWeapon(final Material mat) {
+		String m = mat.toString();
+		for (String s : WEAPONS)
+			if (m.contains(s))
 				return true;
-			default:
-				return false;
+		return mat == Material.TRIDENT || m.endsWith("BOW");
+	}
+
+	public static void loadBendingPlayer(final BendingPlayer pl) {
+		final Player player = Bukkit.getPlayer(pl.getUUID());
+		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
+
+		if (bPlayer == null) {
+			return;
+		}
+
+		if (PKListener.getToggledOut().contains(player.getUniqueId())) {
+			bPlayer.toggleBending();
+			player.sendMessage(ChatColor.YELLOW + "Reminder, you toggled your bending before signing off. Enable it again with /bending toggle.");
+		}
+
+		Preset.loadPresets(player);
+		Element element = null;
+		String prefix = "";
+
+		final boolean chatEnabled = ConfigManager.languageConfig.get().getBoolean("Chat.Enable");
+
+		prefix = ChatColor.WHITE + ChatColor.translateAlternateColorCodes('&', ConfigManager.languageConfig.get().getString("Chat.Prefixes.Nonbender")) + " ";
+		if (player.hasPermission("bending.avatar") || (bPlayer.hasElement(Element.AIR) && bPlayer.hasElement(Element.EARTH) && bPlayer.hasElement(Element.FIRE) && bPlayer.hasElement(Element.WATER))) {
+			prefix = Element.AVATAR.getPrefix();
+		} else if (bPlayer.getElements().size() > 0) {
+			element = bPlayer.getElements().get(0);
+			prefix = element.getPrefix();
+		}
+
+		if (chatEnabled) {
+			player.setDisplayName(player.getName());
+			player.setDisplayName(prefix + ChatColor.RESET + player.getDisplayName());
+		}
+
+		// Handle the AirSpout/WaterSpout login glitches.
+		if (player.getGameMode() != GameMode.CREATIVE) {
+			final HashMap<Integer, String> bound = bPlayer.getAbilities();
+			for (final String str : bound.values()) {
+				if (str.equalsIgnoreCase("AirSpout") || str.equalsIgnoreCase("WaterSpout") || str.equalsIgnoreCase("SandSpout")) {
 		}
 	}
 

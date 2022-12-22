@@ -63,7 +63,7 @@ permissions:
       bending.water: true
       bending.earth: true
       bending.fire: true
-      bending.chi: true
+      bending.non: true
   bending.air:
     default: true
     description: Grants access to all airbending abilities.
@@ -162,12 +162,12 @@ permissions:
       bending.fire.passive: true
       bending.fire.lightningbending: true
       bending.fire.combustionbending: true
-  bending.chi:
+  bending.non:
     default: true
     description: Grants access to all ChiBlocking abilities.
     children:
-      bending.command.add.chi: true
-      bending.command.choose.chi: true
+      bending.command.add.non: true
+      bending.command.choose.non: true
       bending.ability.HighJump: true
       bending.ability.Paralyze: true
       bending.ability.RapidPunch: true
@@ -177,6 +177,10 @@ permissions:
       bending.ability.QuickStrike: true
       bending.ability.SwiftKick: true
       bending.ability.ChiCombo: true
+      bending.non.chiblocking: true
+      bending.non.archer: true
+      bending.non.warrior: true
+      bending.non.passive: true
       bending.chi.passive: true
   bending.avatar:
     default: op
@@ -232,32 +236,35 @@ permissions:
     children:
       bending.ability.Immobilize: true
   bending.air.passive:
-    default: false
+    default:  false
     description: Grants access to all air passives.
     children:
       bending.ability.AirAgility: true
       bending.ability.AirSaturation: true
       bending.ability.GracefulDescent: true
-  bending.chi.passive:
-    default: false
+  bending.non.passive:
+    default:  false
     description: Grants access to all chi passives.
     children:
       bending.ability.Acrobatics: true
       bending.ability.ChiAgility: true
       bending.ability.ChiSaturation: true
   bending.earth.passive:
-    default: false
+    default:  false
     description: Grants access to all earth passives.
     children:
       bending.ability.DensityShift: true
       bending.ability.SandAgility: true
   bending.fire.passive:
-    default: false
+    default:  false
     description: Grants access to all fire passives.
     children:
   bending.water.passive:
-    default: false
+    default:  false
     description: Grants access to all water passives.
     children:
       bending.ability.FastSwim: true
       bending.ability.HydroSink: true
+  bending.donor:
+    default: false
+    description: Grants the Donor tag.

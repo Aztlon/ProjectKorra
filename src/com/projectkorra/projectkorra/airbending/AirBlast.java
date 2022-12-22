@@ -42,9 +42,9 @@ public class AirBlast extends AirAbility {
 
 	private static final int MAX_TICKS = 10000;
 	private static final Map<Player, Location> ORIGINS = new ConcurrentHashMap<>();
-	public static final Material[] DOORS = { Material.ACACIA_DOOR, Material.BIRCH_DOOR, Material.DARK_OAK_DOOR, Material.JUNGLE_DOOR, Material.OAK_DOOR, Material.SPRUCE_DOOR };
-	public static final Material[] TDOORS = { Material.ACACIA_TRAPDOOR, Material.BIRCH_TRAPDOOR, Material.DARK_OAK_TRAPDOOR, Material.JUNGLE_TRAPDOOR, Material.OAK_TRAPDOOR, Material.SPRUCE_TRAPDOOR };
-	public static final Material[] BUTTONS = { Material.ACACIA_BUTTON, Material.BIRCH_BUTTON, Material.DARK_OAK_BUTTON, Material.JUNGLE_BUTTON, Material.OAK_BUTTON, Material.SPRUCE_BUTTON, Material.STONE_BUTTON };
+	public static final Material[] DOORS = { Material.ACACIA_DOOR, Material.BIRCH_DOOR, Material.CRIMSON_DOOR, Material.DARK_OAK_DOOR, Material.JUNGLE_DOOR, Material.OAK_DOOR, Material.SPRUCE_DOOR, Material.WARPED_DOOR };
+	public static final Material[] TDOORS = { Material.ACACIA_TRAPDOOR, Material.BIRCH_TRAPDOOR, Material.CRIMSON_TRAPDOOR, Material.DARK_OAK_TRAPDOOR, Material.JUNGLE_TRAPDOOR, Material.OAK_TRAPDOOR, Material.SPRUCE_TRAPDOOR, Material.WARPED_TRAPDOOR };
+	public static final Material[] BUTTONS = { Material.ACACIA_BUTTON, Material.BIRCH_BUTTON, Material.CRIMSON_BUTTON, Material.DARK_OAK_BUTTON, Material.JUNGLE_BUTTON, Material.OAK_BUTTON, Material.POLISHED_BLACKSTONE_BUTTON, Material.SPRUCE_BUTTON, Material.STONE_BUTTON, Material.WARPED_BUTTON };
 
 	private boolean canFlickLevers;
 	private boolean canOpenDoors;
@@ -242,7 +242,7 @@ public class AirBlast extends AirAbility {
 
 	private void affect(final Entity entity) {
 		if (entity instanceof Player) {
-			if (Commands.invincible.contains(((Player) entity).getName())) {
+			if (Commands.invincible.contains(entity.getName())) {
 				return;
 			}
 		}

@@ -61,7 +61,7 @@ public class FireBlastCharged extends FireAbility {
 	public FireBlastCharged(final Player player) {
 		super(player);
 
-		if (!this.bPlayer.canBend(this) || hasAbility(player, FireBlastCharged.class)) {
+		if (!this.bPlayer.canBend(this)) {
 			return;
 		}
 

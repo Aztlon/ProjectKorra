@@ -48,7 +48,7 @@ public class Element {
 	public static final Element WATER = new Element("Water");
 	public static final Element EARTH = new Element("Earth");
 	public static final Element FIRE = new Element("Fire");
-	public static final Element CHI = new Element("Chi", ElementType.BLOCKING);
+	public static final Element NON = new Element("Non");
 	public static final Element AVATAR = new Element("Avatar", null);
 	public static final SubElement FLIGHT = new SubElement("Flight", AIR, ElementType.NO_SUFFIX);
 	public static final SubElement SPIRITUAL = new SubElement("Spiritual", AIR, ElementType.NO_SUFFIX);
@@ -62,10 +62,13 @@ public class Element {
 	public static final SubElement LIGHTNING = new SubElement("Lightning", FIRE);
 	public static final SubElement COMBUSTION = new SubElement("Combustion", FIRE);
 	public static final SubElement BLUE_FIRE = new SubElement("BlueFire", FIRE);
+	public static final SubElement CHI = new SubElement("Chi", NON, ElementType.BLOCKING);
+	public static final SubElement WARRIOR = new SubElement("Warrior", NON, ElementType.NO_SUFFIX);
+	public static final SubElement ARCHER = new SubElement("Archer", NON, ElementType.NO_SUFFIX);
 
-	private static final Element[] ELEMENTS = { AIR, WATER, EARTH, FIRE, CHI, FLIGHT, SPIRITUAL, BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, LIGHTNING, COMBUSTION, BLUE_FIRE };
-	private static final Element[] MAIN_ELEMENTS = { AIR, WATER, EARTH, FIRE, CHI };
-	private static final SubElement[] SUB_ELEMENTS = { FLIGHT, SPIRITUAL, BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, LIGHTNING, COMBUSTION, BLUE_FIRE };
+	private static final Element[] ELEMENTS = { AIR, WATER, EARTH, FIRE, NON, FLIGHT, SPIRITUAL, BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, LIGHTNING, COMBUSTION, BLUE_FIRE, CHI, WARRIOR, ARCHER };
+	private static final Element[] MAIN_ELEMENTS = { AIR, WATER, EARTH, FIRE, NON };
+	private static final SubElement[] SUB_ELEMENTS = { FLIGHT, SPIRITUAL, BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, LIGHTNING, COMBUSTION, BLUE_FIRE, CHI, WARRIOR, ARCHER };
 
 	protected final String name;
 	protected final ElementType type;

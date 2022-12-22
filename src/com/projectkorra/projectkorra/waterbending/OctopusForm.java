@@ -173,7 +173,9 @@ public class OctopusForm extends WaterAbility {
 
 	private void form() {
 		this.incrementStep();
-		if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
+		if (isDecayablePlant(this.sourceBlock)) {
+			new PlantRegrowth(this.player, this.sourceBlock, 3);
+		} else if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
 			new PlantRegrowth(this.player, this.sourceBlock);
 			this.sourceBlock.setType(Material.AIR);
 		} else if (!GeneralMethods.isAdjacentToThreeOrMoreSources(this.sourceBlock) && this.sourceBlock != null && !isCauldron(this.sourceBlock)) {
@@ -181,7 +183,11 @@ public class OctopusForm extends WaterAbility {
 		} else if (isCauldron(this.sourceBlock)) {
 			GeneralMethods.setCauldronData(this.sourceBlock, ((Levelled) this.sourceBlock.getBlockData()).getLevel() - 1);
 		}
-		this.source = new TempBlock(this.sourceBlock, isCauldron(this.sourceBlock) ? this.sourceBlock.getBlockData() : GeneralMethods.getWaterData(0));
+		if (TempBlock.isTempBlock(this.sourceBlock) && PlantRegrowth.getDecayedBlocks().contains(TempBlock.get(this.sourceBlock))) {
+			this.source = new TempBlock(this.sourceBlock.getRelative(BlockFace.UP), GeneralMethods.getWaterData(0));
+		} else {
+			this.source = new TempBlock(this.sourceBlock, GeneralMethods.getWaterData(0));
+		}
 	}
 
 	private void attack() {

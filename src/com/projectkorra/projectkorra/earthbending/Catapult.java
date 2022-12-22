@@ -136,7 +136,9 @@ public class Catapult extends EarthAbility {
 		this.target = tar;
 		final Vector apply = this.target.clone().toVector().subtract(this.origin.clone().toVector());
 		GeneralMethods.setVelocity(this, this.player, apply);
-		this.moveEarth(apply, direction);
+		if (!isBendableEarthTempBlock(origin.getBlock().getRelative(BlockFace.DOWN))) {
+			this.moveEarth(apply, direction);
+		}
 		this.remove();
 	}
 

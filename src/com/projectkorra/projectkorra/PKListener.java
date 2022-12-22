@@ -277,7 +277,7 @@ public class PKListener implements Listener {
 				ability = CoreAbility.getAbility(abil);
 			}
 
-			if (ability instanceof WaterAbility && !((WaterAbility) ability).allowBreakPlants() && WaterAbility.isPlantbendable(player, block.getType(), false)) {
+			if (ability != null && ability instanceof WaterAbility && !((WaterAbility) ability).allowBreakPlants() && WaterAbility.isPlantbendable(player, block.getType(), false, true)) {
 				event.setCancelled(true);
 				return;
 			}
@@ -304,8 +304,12 @@ public class PKListener implements Listener {
 		} else if (EarthAbility.getMovedEarth().containsKey(block)) {
 			EarthAbility.removeRevertIndex(block);
 		} else if (TempBlock.isTempBlock(block)) {
-			event.setCancelled(true);
-			TempBlock.revertBlock(block, Material.AIR);
+			if (TempBlock.get(block).isDroppable())
+				TempBlock.removeBlock(block);
+			else {
+				event.setCancelled(true);
+				TempBlock.revertBlock(block, Material.AIR);
+			}
 		} else if (DensityShift.isPassiveSand(block)) {
 			DensityShift.revertSand(block);
 		} else if (WaterBubble.isAir(block)) {
@@ -927,10 +931,11 @@ public class PKListener implements Listener {
 			if (event.getCause() == DamageCause.FALL) {
 				event.setCancelled((gd != null && bPlayer.hasElement(Element.AIR) && bPlayer.canBendPassive(gd) && bPlayer.canUsePassive(gd) && gd.isEnabled() && PassiveManager.hasPassive(player, gd))
 						|| (ds != null && bPlayer.hasElement(Element.EARTH) && bPlayer.canBendPassive(ds) && bPlayer.canUsePassive(ds) && ds.isEnabled() && PassiveManager.hasPassive(player, ds) && DensityShift.softenLanding(player))
-						|| (hs != null && bPlayer.hasElement(Element.WATER) && bPlayer.canBendPassive(hs) && bPlayer.canUsePassive(hs) && hs.isEnabled() && PassiveManager.hasPassive(player, hs) && HydroSink.applyNoFall(player)));
+						|| (hs != null && bPlayer.hasElement(Element.WATER) && bPlayer.canBendPassive(hs) && bPlayer.canUsePassive(hs) && hs.isEnabled() && PassiveManager.hasPassive(player, hs) && HydroSink.applyNoFall(player))
+						|| (MultiAbilityManager.hasMultiAbilityBound(player, "WaterArms") && WaterArms.applyNoFall()));
 			}
 
-			if (ab != null && bPlayer.hasElement(Element.CHI) && event.getCause() == DamageCause.FALL && bPlayer.canBendPassive(ab) && bPlayer.canUsePassive(ab) && ab.isEnabled() && PassiveManager.hasPassive(player, ab)) {
+			if (ab != null && bPlayer.hasElement(Element.NON) && event.getCause() == DamageCause.FALL && bPlayer.canBendPassive(ab) && bPlayer.canUsePassive(ab) && ab.isEnabled() && PassiveManager.hasPassive(player, ab)) {
 				final double initdamage = event.getDamage();
 				final double newdamage = event.getDamage() * Acrobatics.getFallReductionFactor();
 				final double finaldamage = initdamage - newdamage;
@@ -1006,7 +1011,7 @@ public class PKListener implements Listener {
 						if (e.getCause() == DamageCause.ENTITY_ATTACK) {
 							if (sourceBPlayer.getBoundAbility() instanceof ChiAbility) {
 								if (sourceBPlayer.canCurrentlyBendWithWeapons()) {
-									if (sourceBPlayer.isElementToggled(Element.CHI)) {
+									if (sourceBPlayer.isElementToggled(Element.NON)) {
 										if (boundAbil.equals(CoreAbility.getAbility(Paralyze.class))) {
 											new Paralyze(sourcePlayer, entity);
 										} else if (boundAbil.equals(CoreAbility.getAbility(QuickStrike.class))) {
@@ -1028,7 +1033,7 @@ public class PKListener implements Listener {
 			} else {
 				if (e.getCause() == DamageCause.ENTITY_ATTACK) {
 					if (sourceBPlayer.canCurrentlyBendWithWeapons()) {
-						if (sourceBPlayer.isElementToggled(Element.CHI)) {
+						if (sourceBPlayer.isElementToggled(Element.NON)) {
 							if (entity instanceof Player) {
 								final Player targetPlayer = (Player) entity;
 								if (ChiPassive.willChiBlock(sourcePlayer, targetPlayer)) {

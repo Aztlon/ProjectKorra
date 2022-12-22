@@ -63,7 +63,7 @@ public class BlockSource {
 			final Block waterBlock = WaterAbility.getWaterSourceBlock(player, MAX_RANGE, true);
 			if (waterBlock != null) {
 				putSource(player, waterBlock, BlockSourceType.WATER, clickType);
-				if (ElementalAbility.isPlant(waterBlock)) {
+				if (ElementalAbility.isPlant(waterBlock) || ElementalAbility.isDecayablePlant(waterBlock)) {
 					putSource(player, waterBlock, BlockSourceType.PLANT, clickType);
 				}
 				if (ElementalAbility.isIce(waterBlock)) {

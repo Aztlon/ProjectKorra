@@ -12,7 +12,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.Levelled;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -80,7 +80,7 @@ public class Torrent extends WaterAbility {
 	private ArrayList<TempBlock> launchedBlocks;
 	private ArrayList<Entity> hurtEntities;
 
-	public Torrent(final Player player) {
+	public Torrent(final Player player, boolean needSource) {
 		super(player);
 
 		this.layer = 0;
@@ -115,7 +115,7 @@ public class Torrent extends WaterAbility {
 			}
 		}
 
-		if (this.bPlayer.isOnCooldown("Torrent")) {
+		if (this.bPlayer.isOnCooldown("Torrent") && needSource) {
 			return;
 		}
 
@@ -127,11 +127,20 @@ public class Torrent extends WaterAbility {
 		}
 
 		this.time = System.currentTimeMillis();
-		this.sourceBlock = BlockSource.getWaterSourceBlock(player, this.selectRange, ClickType.LEFT_CLICK, true, true, this.bPlayer.canPlantbend());
-		if (this.sourceBlock != null && !GeneralMethods.isRegionProtectedFromBuild(this, this.sourceBlock.getLocation())) {
-			this.sourceSelected = true;
-			this.start();
+		if (needSource) {
+			this.sourceBlock = BlockSource.getWaterSourceBlock(player, this.selectRange, ClickType.LEFT_CLICK, true, true, this.bPlayer.canPlantbend());
+			if (this.sourceBlock != null && !GeneralMethods.isRegionProtectedFromBuild(this, this.sourceBlock.getLocation())) {
+				this.sourceSelected = true;
+				this.start();
+			}
+		} else {
+			this.location = player.getEyeLocation().add(this.radius, 0, 0);
+			start();
 		}
+	}
+
+	public Torrent(Player player) {
+		this(player, true);
 	}
 
 	private void freeze() {
@@ -201,7 +210,9 @@ public class Torrent extends WaterAbility {
 						}
 					}
 
-					if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
+					if (isDecayablePlant(this.sourceBlock)) {
+						new PlantRegrowth(this.player, this.sourceBlock, 3);
+					} else if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
 						new PlantRegrowth(this.player, this.sourceBlock);
 						this.sourceBlock.setType(Material.AIR);
 					} else if (!GeneralMethods.isAdjacentToThreeOrMoreSources(this.sourceBlock) && !isCauldron(this.sourceBlock)) {
@@ -210,8 +221,8 @@ public class Torrent extends WaterAbility {
 						GeneralMethods.setCauldronData(this.sourceBlock, ((Levelled) this.sourceBlock.getBlockData()).getLevel() - 1);
 					}
 					
-					this.source = new TempBlock(this.sourceBlock, isCauldron(this.sourceBlock) ? this.sourceBlock.getBlockData() : Material.WATER.createBlockData());
-					this.location = this.sourceBlock.getLocation();
+					this.source = new TempBlock(this.sourceBlock.getRelative(BlockFace.UP), Material.WATER);
+					this.location = this.sourceBlock.getRelative(BlockFace.UP).getLocation();
 				} else {
 					playFocusWaterEffect(this.sourceBlock);
 					return;
@@ -260,9 +271,10 @@ public class Torrent extends WaterAbility {
 					this.source.revertBlock();
 					this.source = null;
 					final Block block = this.location.getBlock();
-					if (!isTransparent(this.player, block)) {
-						this.remove();
-						return;
+					if (!isTransparent(this.player, block) && !isDecayablePlant(block)) {
+						if (!(TempBlock.isTempBlock(block) && PlantRegrowth.getDecayedBlocks().contains(TempBlock.get(block)))) {
+							this.remove();
+							return;
 					}
 					this.source = new TempBlock(this.location.getBlock(), isCauldron(this.location.getBlock()) ? this.location.getBlock().getBlockData() : Material.WATER.createBlockData());
 				}

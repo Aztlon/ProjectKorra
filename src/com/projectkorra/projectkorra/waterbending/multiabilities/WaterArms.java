@@ -163,10 +163,10 @@ public class WaterArms extends WaterAbility {
 	private boolean prepare() {
 		final Block sourceBlock = getWaterSourceBlock(this.player, this.sourceGrabRange, this.canUsePlantSource);
 		if (sourceBlock != null) {
-
-			if (isPlant(sourceBlock) || isSnow(sourceBlock)) {
+			if (isDecayablePlant(sourceBlock)) {
+				new PlantRegrowth(this.player, sourceBlock, 3);
+			} else if (isPlant(sourceBlock) || isSnow(sourceBlock)) {
 				new PlantRegrowth(this.player, sourceBlock);
-				sourceBlock.setType(Material.AIR);
 				this.fullSource = false;
 			} else if (isCauldron(sourceBlock)) {
 				GeneralMethods.setCauldronData(sourceBlock, ((Levelled) sourceBlock.getBlockData()).getLevel() - 1);

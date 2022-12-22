@@ -187,7 +187,7 @@ public class IceSpikeBlast extends IceAbility {
 				return;
 			}
 
-			if (isTransparent(this.player, block) && !block.isLiquid()) {
+			if (isTransparent(this.player, block) && !block.isLiquid() && !isDecayablePlant(block)) {
 				GeneralMethods.breakBlock(block);
 			} else if (!isWater(block)) {
 				this.remove();
@@ -278,7 +278,9 @@ public class IceSpikeBlast extends IceAbility {
 		this.settingUp = true;
 		this.prepared = false;
 
-		if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
+		if (isDecayablePlant(this.sourceBlock)) {
+			new PlantRegrowth(this.player, this.sourceBlock, 2);
+		} else if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
 			new PlantRegrowth(this.player, this.sourceBlock);
 			this.sourceBlock.setType(Material.AIR);
 		} else if (isWater(this.sourceBlock)) {

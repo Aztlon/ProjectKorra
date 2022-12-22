@@ -34,12 +34,13 @@ public abstract class ElementalAbility extends CoreAbility {
 	private static final PotionEffectType[] NEGATIVE_EFFECTS = { PotionEffectType.POISON, PotionEffectType.BLINDNESS, PotionEffectType.CONFUSION, PotionEffectType.HARM, PotionEffectType.HUNGER, PotionEffectType.SLOW, PotionEffectType.SLOW_DIGGING, PotionEffectType.WEAKNESS, PotionEffectType.WITHER };
 	private static final Set<Material> TRANSPARENT = new HashSet<>();
 
-	private static final Set<String> EARTH_BLOCKS = new HashSet<String>();
-	private static final Set<String> ICE_BLOCKS = new HashSet<String>();
-	private static final Set<String> METAL_BLOCKS = new HashSet<String>();
-	private static final Set<String> PLANT_BLOCKS = new HashSet<String>();
-	private static final Set<String> SAND_BLOCKS = new HashSet<String>();
-	private static final Set<String> SNOW_BLOCKS = new HashSet<String>();
+	private static final Set<String> EARTH_BLOCKS = new HashSet<>();
+	private static final Set<String> ICE_BLOCKS = new HashSet<>();
+	private static final Set<String> METAL_BLOCKS = new HashSet<>();
+	private static final Set<String> PLANT_BLOCKS = new HashSet<>();
+	private static final Set<String> DECAYABLE_PLANT_BLOCKS = new HashSet<>();
+	private static final Set<String> SAND_BLOCKS = new HashSet<>();
+	private static final Set<String> SNOW_BLOCKS = new HashSet<>();
 
 	static {
 		TRANSPARENT.clear();
@@ -70,11 +71,11 @@ public abstract class ElementalAbility extends CoreAbility {
 	}
 
 	public static List<String> getEarthbendableBlocks() {
-		return new ArrayList<String>(EARTH_BLOCKS);
+		return new ArrayList<>(EARTH_BLOCKS);
 	}
 
 	public static void addTags(Set<String> outputSet, List<String> configList) {
-		ListIterator<String> iterator = new ArrayList<String>(configList).listIterator();
+		ListIterator<String> iterator = new ArrayList<>(configList).listIterator();
 		iterator.forEachRemaining(next -> {
 			if (next.startsWith("#")) {
 				NamespacedKey key = NamespacedKey.minecraft(next.replaceFirst("#", ""));
@@ -203,7 +204,15 @@ public abstract class ElementalAbility extends CoreAbility {
 	}
 
 	public static boolean isPlant(final Material material) {
-		return PLANT_BLOCKS.contains(material.toString());
+		return PLANT_BLOCKS.contains(material.toString()) || isDecayablePlant(material);
+	}
+
+	public static boolean isDecayablePlant(final Block block) {
+		return block != null && isDecayablePlant(block.getType());
+	}
+
+	public static boolean isDecayablePlant(final Material material) {
+		return DECAYABLE_PLANT_BLOCKS.contains(material.toString());
 	}
 
 	public static boolean isPositiveEffect(final PotionEffectType effect) {
@@ -259,6 +268,7 @@ public abstract class ElementalAbility extends CoreAbility {
 		addTags(ICE_BLOCKS, getConfig().getStringList("Properties.Water.IceBlocks"));
 		addTags(METAL_BLOCKS, getConfig().getStringList("Properties.Earth.MetalBlocks"));
 		addTags(PLANT_BLOCKS, getConfig().getStringList("Properties.Water.PlantBlocks"));
+		addTags(DECAYABLE_PLANT_BLOCKS, getConfig().getStringList("Properties.Water.DecayablePlantBlocks"));
 		addTags(SAND_BLOCKS, getConfig().getStringList("Properties.Earth.SandBlocks"));
 		addTags(SNOW_BLOCKS, getConfig().getStringList("Properties.Water.SnowBlocks"));
 	}

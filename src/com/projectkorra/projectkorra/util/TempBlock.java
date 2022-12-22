@@ -42,7 +42,7 @@ public class TempBlock {
 	private Set<TempBlock> attachedTempBlocks; //Temp Block states that should be reverted as well when the temp block expires (e.g. double blocks)
 	private long revertTime;
 	private boolean inRevertQueue;
-	private boolean reverted;
+	private boolean droppable;
 	private RevertTask revertTask = null;
 	private Optional<Ability> ability = Optional.empty(); // If we want this TempBlock to have an assigned ability created from it
 
@@ -172,6 +172,14 @@ public class TempBlock {
 				block.setType(defaulttype, applyPhysics(defaulttype));
 			}
 		}
+	}
+
+	public boolean isDroppable() {
+		return this.droppable;
+	}
+
+	public void setDroppable(final boolean droppable) {
+		this.droppable = droppable;
 	}
 
 	public Block getBlock() {

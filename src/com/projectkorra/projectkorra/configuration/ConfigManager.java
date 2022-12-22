@@ -69,11 +69,10 @@ public class ConfigManager {
 			config.addDefault("Chat.Colors.Sand", "#ffdc82");
 			config.addDefault("Chat.Colors.Fire", "RED");
 			config.addDefault("Chat.Colors.FireSub", "DARK_RED");
-			config.addDefault("Chat.Colors.BlueFire", "#1ac5fd");
-			config.addDefault("Chat.Colors.Combustion", "#690213");
+			config.addDefault("Chat.Colors.Non", "YELLOW");
+			config.addDefault("Chat.Colors.NonSub", "GOLD");
 			config.addDefault("Chat.Colors.Lightning", "#820d0d");
 			config.addDefault("Chat.Colors.Chi", "GOLD");
-			config.addDefault("Chat.Colors.ChiSub", "YELLOW");
 			config.addDefault("Chat.Branding.JoinMessage.Enabled", true);
 			config.addDefault("Chat.Branding.Color", "GOLD");
 			config.addDefault("Chat.Branding.Borders.TopBorder", "");
@@ -88,7 +87,7 @@ public class ConfigManager {
 			config.addDefault("Chat.Prefixes.Earth", "[Earth]");
 			config.addDefault("Chat.Prefixes.Fire", "[Fire]");
 			config.addDefault("Chat.Prefixes.Water", "[Water]");
-			config.addDefault("Chat.Prefixes.Chi", "[Chi]");
+			config.addDefault("Chat.Prefixes.Non", "[Nonbender]");
 			config.addDefault("Chat.Prefixes.Avatar", "[Avatar]");
 			config.addDefault("Chat.Prefixes.Nonbender", "[Nonbender]");
 
@@ -640,14 +639,26 @@ public class ConfigManager {
 			plantBlocks.add("WARPED_ROOTS");
 			plantBlocks.add("WEEPING_VINES_PLANT");
 
-			if (mcVersion >= 1170) {
-				plantBlocks.add("BIG_DRIPLEAF");
-				plantBlocks.add("HANGING_ROOTS");
-				plantBlocks.add("MOSS_BLOCK");
-				plantBlocks.add("MOSS_CARPET");
-				plantBlocks.add("SMALL_DRIPLEAF");
-				plantBlocks.add("SPORE_BLOSSOM");
-			}
+			final ArrayList<String> decayablePlantBlocks = new ArrayList<>();
+			decayablePlantBlocks.add(Material.GRASS_BLOCK.toString());
+			decayablePlantBlocks.add(Material.CRIMSON_NYLIUM.toString());
+			decayablePlantBlocks.add(Material.WARPED_NYLIUM.toString());
+			decayablePlantBlocks.add(Material.OAK_LOG.toString());
+			decayablePlantBlocks.add(Material.SPRUCE_LOG.toString());
+			decayablePlantBlocks.add(Material.BIRCH_LOG.toString());
+			decayablePlantBlocks.add(Material.JUNGLE_LOG.toString());
+			decayablePlantBlocks.add(Material.DARK_OAK_LOG.toString());
+			decayablePlantBlocks.add(Material.ACACIA_LOG.toString());
+			decayablePlantBlocks.add(Material.OAK_WOOD.toString());
+			decayablePlantBlocks.add(Material.SPRUCE_WOOD.toString());
+			decayablePlantBlocks.add(Material.BIRCH_WOOD.toString());
+			decayablePlantBlocks.add(Material.JUNGLE_WOOD.toString());
+			decayablePlantBlocks.add(Material.DARK_OAK_WOOD.toString());
+			decayablePlantBlocks.add(Material.ACACIA_WOOD.toString());
+			decayablePlantBlocks.add(Material.CRIMSON_STEM.toString());
+			decayablePlantBlocks.add(Material.WARPED_STEM.toString());
+			decayablePlantBlocks.add(Material.CRIMSON_HYPHAE.toString());
+			decayablePlantBlocks.add(Material.WARPED_HYPHAE.toString());
 
 			final ArrayList<String> snowBlocks = new ArrayList<>();
 			snowBlocks.add("#snow"); // added in 1.17
@@ -702,6 +713,7 @@ public class ConfigManager {
 			config.addDefault("Properties.Water.CanBendWithWeapons", true);
 			config.addDefault("Properties.Water.IceBlocks", iceBlocks);
 			config.addDefault("Properties.Water.PlantBlocks", plantBlocks);
+			config.addDefault("Properties.Water.DecayablePlantBlocks", decayablePlantBlocks);
 			config.addDefault("Properties.Water.SnowBlocks", snowBlocks);
 			config.addDefault("Properties.Water.NightFactor", 1.25);
 			config.addDefault("Properties.Water.PlaySound", true);
@@ -719,6 +731,7 @@ public class ConfigManager {
 			config.addDefault("Properties.Earth.RevertEarthbending", true);
 			config.addDefault("Properties.Earth.SafeRevert", true);
 			config.addDefault("Properties.Earth.RevertCheckTime", 300000);
+			config.addDefault("Properties.Earth.EarthPush", 0.75);
 			config.addDefault("Properties.Earth.CanBendWithWeapons", true);
 			config.addDefault("Properties.Earth.EarthBlocks", earthBlocks);
 			config.addDefault("Properties.Earth.MetalBlocks", metalBlocks);
@@ -1200,6 +1213,7 @@ public class ConfigManager {
 
 			config.addDefault("Abilities.Water.WaterArms.Enabled", true);
 			config.addDefault("Abilities.Water.WaterArms.DisplayBoundMsg", false);
+			config.addDefault("Abilities.Water.WaterArms.CancelFallDamage", true);
 
 			config.addDefault("Abilities.Water.WaterArms.Arms.InitialLength", 4);
 			config.addDefault("Abilities.Water.WaterArms.Arms.SourceGrabRange", 12);
@@ -1210,7 +1224,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Water.WaterArms.Arms.AllowPlantSource", true);
 
 			config.addDefault("Abilities.Water.WaterArms.Arms.Lightning.Enabled", true);
-			config.addDefault("Abilities.Water.WaterArms.Arms.Lightning.Damage", Double.valueOf(10.0));
+			config.addDefault("Abilities.Water.WaterArms.Arms.Lightning.Damage", 10.0);
 			config.addDefault("Abilities.Water.WaterArms.Arms.Lightning.KillUser", false);
 
 			config.addDefault("Abilities.Water.WaterArms.Arms.Cooldowns.UsageCooldown.Enabled", false);

@@ -14,6 +14,7 @@ import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
+import com.projectkorra.projectkorra.util.TempBlock;
 
 public class Collapse extends EarthAbility {
 
@@ -44,6 +45,11 @@ public class Collapse extends EarthAbility {
 		this.block = BlockSource.getEarthSourceBlock(player, this.selectRange, ClickType.LEFT_CLICK);
 		if (this.block == null) {
 			return;
+		} else if (TempBlock.isTempBlock(this.block) && isBendableEarthTempBlock(this.block)) {
+			TempBlock tb = TempBlock.get(this.block);
+			removeEarthbendableTempBlock(tb);
+			tb.revertBlock();
+			return;
 		}
 
 		this.origin = this.block.getLocation();
@@ -69,6 +75,12 @@ public class Collapse extends EarthAbility {
 		this.origin = origin;
 		this.player = player;
 		this.block = origin.getBlock();
+		if (TempBlock.isTempBlock(this.block) && isBendableEarthTempBlock(this.block)) {
+			TempBlock tb = TempBlock.get(this.block);
+			removeEarthbendableTempBlock(tb);
+			tb.revertBlock();
+			return;
+		}
 		this.location = origin.clone();
 		this.distance = this.getEarthbendableBlocksLength(this.block, this.direction.clone().multiply(-1), this.height);
 		this.loadAffectedBlocks();

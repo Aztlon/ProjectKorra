@@ -58,7 +58,7 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 	 */
 	private static void paralyze(final Entity target, final Long duration) {
 		final MovementHandler mh = new MovementHandler((LivingEntity) target, CoreAbility.getAbility(Immobilize.class));
-		mh.stopWithDuration(duration / 1000 * 20, Element.CHI.getColor() + "* Immobilized *");
+		mh.stopWithDuration(duration / 1000 * 20, Element.NON.getColor() + "* Immobilized *");
 	}
 
 	@Override

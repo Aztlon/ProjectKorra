@@ -118,10 +118,10 @@ public class FireWheel extends FireAbility implements ComboAbility {
 			return;
 		} else if (topBlock.getType() == Material.FIRE) {
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
-		} else if (ElementalAbility.isPlant(topBlock)) {
+		} else if (isPlant(topBlock) && !isDecayablePlant(topBlock)) {
 			topBlock.breakNaturally();
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
-		} else if (ElementalAbility.isAir(topBlock.getType())) {
+		} else if (isAir(topBlock.getType())) {
 			this.remove();
 			return;
 		} else if (GeneralMethods.isSolid(topBlock.getRelative(BlockFace.UP)) || isWater(topBlock.getRelative(BlockFace.UP))) {

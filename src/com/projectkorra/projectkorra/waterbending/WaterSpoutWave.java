@@ -209,7 +209,9 @@ public class WaterSpoutWave extends WaterAbility {
 				this.animation = AnimateState.RISE;
 				this.location = this.origin.clone();
 
-				if (isPlant(this.origin.getBlock()) || isSnow(this.origin.getBlock())) {
+				if (isDecayablePlant(this.origin.getBlock())) {
+					new PlantRegrowth(this.player, this.origin.getBlock(), 3);
+				} else if (isPlant(this.origin.getBlock()) || isSnow(this.origin.getBlock())) {
 					new PlantRegrowth(this.player, this.origin.getBlock());
 					this.origin.getBlock().setType(Material.AIR);
 				} else if (isCauldron(this.origin.getBlock())) {
@@ -221,7 +223,7 @@ public class WaterSpoutWave extends WaterAbility {
 
 					if (Torrent.getFrozenBlocks().containsKey(tb)) {
 						Torrent.massThaw(tb);
-					} else if (!isBendableWaterTempBlock(tb)) {
+					} else if (!isBendableWaterTempBlock(tb) && !PlantRegrowth.getDecayedBlocks().contains(tb)) {
 						this.remove();
 						return;
 					}

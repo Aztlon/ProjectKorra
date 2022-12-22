@@ -151,7 +151,7 @@ public class HelpCommand extends PKCommand {
 			sender.sendMessage(Element.FIRE.getColor() + this.fire.replace("/b display Fire", Element.FIRE.getSubColor() + "/b display Fire" + Element.FIRE.getColor()));
 			sender.sendMessage(ChatColor.YELLOW + this.learnMore + ChatColor.DARK_AQUA + "http://projectkorra.com/");
 		} else if (Arrays.asList(Commands.chialiases).contains(arg)) {
-			sender.sendMessage(Element.CHI.getColor() + this.chi.replace("/b display Chi", Element.CHI.getSubColor() + "/b display Chi" + Element.CHI.getColor()));
+			sender.sendMessage(Element.NON.getColor() + this.chi.replace("/b display Chi", Element.NON.getSubColor() + "/b display Chi" + Element.NON.getColor()));
 			sender.sendMessage(ChatColor.YELLOW + this.learnMore + ChatColor.DARK_AQUA + "http://projectkorra.com/");
 		} else if (Arrays.asList(Commands.avataraliases).contains(arg)) {
 			sender.sendMessage(Element.AVATAR.getColor() + this.avatar.replace("/b display Avatar", Element.AVATAR.getSubColor() + "/b display Avatar" + Element.AVATAR.getColor()));

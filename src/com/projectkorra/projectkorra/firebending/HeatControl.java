@@ -27,6 +27,7 @@ import com.projectkorra.projectkorra.Element.SubElement;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.FireAbility;
+import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.earthbending.lava.LavaFlow;
 import com.projectkorra.projectkorra.util.ParticleEffect;
@@ -108,7 +109,7 @@ public class HeatControl extends FireAbility {
 			this.meltLocation = GeneralMethods.getTargetedLocation(player, this.meltRange);
 			for (final Block block : GeneralMethods.getBlocksAroundPoint(this.meltLocation, this.meltRadius)) {
 
-				if (isMeltable(block)) {
+				if (isMeltable(block) && TempBlock.isTempBlock(block)) {
 					melt(player, block);
 				}
 			}
@@ -327,6 +328,8 @@ public class HeatControl extends FireAbility {
 			final TempBlock tb = TempBlock.get(block);
 			if (PhaseChange.getFrozenBlocksMap().containsKey(tb)) {
 				new PhaseChange(player, PhaseChange.PhaseChangeType.MELT).melt(tb.getBlock());
+			} else if (WaterAbility.isBendableWaterTempBlock(block)) {
+				tb.revertBlock();
 			}
 		}
 

@@ -132,6 +132,12 @@ public class FireBlast extends FireAbility {
 			playFirebendingParticles(this.location, 6, this.flameRadius, this.flameRadius, this.flameRadius);
 		}
 
+		if (GeneralMethods.checkDiagonalWall(this.location, this.direction)) {
+			this.remove();
+			return;
+		}
+
+		
 		BlockIterator blocks = new BlockIterator(this.getLocation().getWorld(), this.location.toVector(), this.direction, 0, (int) Math.ceil(this.direction.clone().multiply(speedFactor).length()));
 
 		while (blocks.hasNext() && checkLocation(blocks.next()));

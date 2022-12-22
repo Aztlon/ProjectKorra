@@ -10,7 +10,7 @@ import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.Levelled;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -162,7 +162,9 @@ public class WaterManipulation extends WaterAbility {
 					this.targetDestination = GeneralMethods.getPointOnLine(this.firstDestination, this.targetDestination, this.range);
 					this.targetDirection = GeneralMethods.getDirection(this.firstDestination, this.targetDestination).normalize();
 					
-					if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
+					if (isDecayablePlant(this.sourceBlock)) {
+						new PlantRegrowth(this.player, this.sourceBlock, 2);
+					} else if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
 						new PlantRegrowth(this.player, this.sourceBlock);
 						this.sourceBlock.setType(Material.AIR);
 					} else if (!isIce(this.sourceBlock) && !isCauldron(this.sourceBlock)) {
@@ -312,7 +314,11 @@ public class WaterManipulation extends WaterAbility {
 					this.trail2 = this.trail;
 					this.trail2.setType(GeneralMethods.getWaterData(6));
 				}
-				this.trail = new TempBlock(this.sourceBlock, GeneralMethods.getWaterData(7));
+				if (TempBlock.isTempBlock(this.sourceBlock) && PlantRegrowth.getDecayedBlocks().contains(TempBlock.get(this.sourceBlock))) {
+					this.trail = new TempBlock(this.sourceBlock.getRelative(BlockFace.UP), GeneralMethods.getWaterData(7));
+				} else {
+					this.trail = new TempBlock(this.sourceBlock, GeneralMethods.getWaterData(7));
+				}
 				this.sourceBlock = block;
 
 				if (this.location.distanceSquared(this.targetDestination) <= 1 || this.location.distanceSquared(this.firstDestination) > this.range * this.range) {
@@ -363,9 +369,13 @@ public class WaterManipulation extends WaterAbility {
 				AFFECTED_BLOCKS.put(block, block);
 			}
 			if (PhaseChange.getFrozenBlocksAsBlock().contains(block)) {
-				PhaseChange.thaw(block);
+				PhaseChange.getFrozenBlocksAsBlock().remove(block);
 			}
-			new TempBlock(block, Material.WATER);
+			if (TempBlock.isTempBlock(block) && PlantRegrowth.getDecayedBlocks().contains(TempBlock.get(block))) {
+				new TempBlock(block.getRelative(BlockFace.UP), Material.WATER);
+			} else {
+				new TempBlock(block, Material.WATER);
+			}
 		} else {
 			if (isWater(block) && !AFFECTED_BLOCKS.containsKey(block)) {
 				ParticleEffect.WATER_BUBBLE.display(block.getLocation().clone().add(.5, .5, .5), 5, Math.random(), Math.random(), Math.random(), 0);
