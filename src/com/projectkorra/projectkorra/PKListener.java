@@ -245,15 +245,6 @@ public class PKListener implements Listener {
 		final String abil = bPlayer.getBoundAbilityName();
 		CoreAbility ability;
 
-		if (Illumination.isIlluminationTorch(block.getRelative(BlockFace.UP))) {
-			TempBlock torch = TempBlock.get(block.getRelative(BlockFace.UP));
-			Player user = Illumination.getBlocks().get(torch);
-			Illumination illumination = CoreAbility.getAbility(user, Illumination.class);
-			if (illumination != null) {
-				illumination.remove();
-			}
-		}
-
 		if (bPlayer.isElementToggled(Element.EARTH) && bPlayer.isPassiveToggled(Element.EARTH)) {
 			Tremorsense tremorsense = CoreAbility.getAbility(player, Tremorsense.class);
 			if (tremorsense != null) {
@@ -294,8 +285,6 @@ public class PKListener implements Listener {
 			}
 		} else if (SurgeWall.getWallBlocks().containsKey(block)) {
 			event.setCancelled(true);
-		} else if (Illumination.isIlluminationTorch(block)) {
-			event.setCancelled(true);
 		} else if (!SurgeWave.canThaw(block)) {
 			SurgeWave.thaw(block);
 			event.setCancelled(true);
@@ -331,12 +320,6 @@ public class PKListener implements Listener {
 				event.setCancelled(WaterBubble.isAir(toblock));
 				if (!event.isCancelled()) {
 					event.setCancelled(!WaterManipulation.canFlowFromTo(fromblock, toblock));
-				}
-
-				if (!event.isCancelled()) {
-					if (Illumination.isIlluminationTorch(toblock)) {
-						toblock.setType(Material.AIR);
-					}
 				}
 			}
 		}
@@ -392,7 +375,6 @@ public class PKListener implements Listener {
 			return;
 		}
 
-		event.setCancelled(Illumination.isIlluminationTorch(block));
 		if (!event.isCancelled()) {
 			event.setCancelled(!WaterManipulation.canPhysicsChange(block));
 		}
@@ -427,13 +409,6 @@ public class PKListener implements Listener {
 
 		try (MCTiming timing = TimingPhysicsEarthPassiveCheck.startTiming()) {
 			if (!EarthPassive.canPhysicsChange(block)) {
-				event.setCancelled(true);
-				return;
-			}
-		}
-
-		try (MCTiming timing = TimingPhysicsIlluminationTorchCheck.startTiming()) {
-			if (Illumination.isIlluminationTorch(block) || Illumination.isIlluminationTorch(block.getRelative(BlockFace.UP))) {
 				event.setCancelled(true);
 				return;
 			}
@@ -555,6 +530,8 @@ public class PKListener implements Listener {
 				TempBlock.get(block).getAbility().ifPresent(ability -> new FireDamageTimer(event.getEntity(), ability.getPlayer(), ability, true));
 				event.setCancelled(true);
 				FireDamageTimer.dealFlameDamage(event.getEntity(), event.getDamage());
+			} else if (!TempBlock.get(block).canSuffocate() && event.getCause() == DamageCause.SUFFOCATION) {
+				event.setCancelled(true);
 			}
 		}
 	}
@@ -626,6 +603,9 @@ public class PKListener implements Listener {
 		if (BENDING_ENTITY_DEATH.containsKey(event.getEntity())) {
 			final CoreAbility coreAbility = (CoreAbility) BENDING_ENTITY_DEATH.get(event.getEntity());
 			for (final CoreAbility fireCombo : cookingFireCombos) {
+				if (fireCombo == null) {
+					continue;
+				}
 				if (coreAbility.getName().equalsIgnoreCase(fireCombo.getName())) {
 					final List<ItemStack> drops = event.getDrops();
 					final List<ItemStack> newDrops = new ArrayList<>();
@@ -845,10 +825,6 @@ public class PKListener implements Listener {
 	public void onPlayerBucketEmpty(final PlayerBucketEmptyEvent event) {
 		final Block block = event.getBlockClicked().getRelative(event.getBlockFace());
 
-		if (Illumination.isIlluminationTorch(block)) {
-			final Player player = Illumination.getBlocks().get(TempBlock.get(block));
-			CoreAbility.getAbility(player, Illumination.class).remove();
-		}
 	}
 
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -859,7 +835,7 @@ public class PKListener implements Listener {
 		String e = "Nonbender";
 		ChatColor c = ChatColor.WHITE;
 		if (bPlayer != null) {
-			if (player.hasPermission("bending.avatar") || bPlayer.getElements().size() > 1) {
+			if (player.hasPermission("bending.avatar") || bPlayer.getElements().stream().filter(Element::doesCountTowardsAvatar).count() > 1) {
 				c = Element.AVATAR.getColor();
 				e = Element.AVATAR.getName();
 			} else if (bPlayer.getElements().size() > 0) {
@@ -868,27 +844,19 @@ public class PKListener implements Listener {
 			}
 		}
 		final String element = ConfigManager.languageConfig.get().getString("Chat.Prefixes." + e);
-		event.setFormat(event.getFormat().replace("{element}", c + element + ChatColor.RESET).replace("{ELEMENT}", c + element + ChatColor.RESET).replace("{elementcolor}", c + "").replace("{ELEMENTCOLOR}", c + ""));
+		event.setFormat(event.getFormat().replaceAll("(?i)\\{element}", c + element + ChatColor.RESET).replaceAll("(?i)\\{element_?color}", c + ""));
 
 		if (!ConfigManager.languageConfig.get().getBoolean("Chat.Enable")) {
 			return;
 		}
 
-		ChatColor color = ChatColor.WHITE;
-
 		if (bPlayer == null) {
 			return;
 		}
 
-		if (player.hasPermission("bending.avatar") || (bPlayer.hasElement(Element.AIR) && bPlayer.hasElement(Element.EARTH) && bPlayer.hasElement(Element.FIRE) && bPlayer.hasElement(Element.WATER))) {
-			color = ChatColor.valueOf(ConfigManager.languageConfig.get().getString("Chat.Colors.Avatar"));
-		} else if (bPlayer.getElements().size() > 0) {
-			color = bPlayer.getElements().get(0).getColor();
-		}
-
 		String format = ConfigManager.languageConfig.get().getString("Chat.Format");
 		format = format.replace("<message>", "%2$s");
-		format = format.replace("<name>", color + player.getDisplayName() + ChatColor.RESET);
+		format = format.replace("<name>", c + player.getDisplayName() + ChatColor.RESET);
 		event.setFormat(format);
 	}
 
@@ -996,6 +964,9 @@ public class PKListener implements Listener {
 			Suffocate.remove((Player) entity);
 		}
 
+		//Stop DamageHandler causing this event to fire infinitely
+		if (entity instanceof LivingEntity && DamageHandler.isReceivingDamage((LivingEntity) e.getEntity())) return;
+
 		if (source instanceof Player) { // This is the player hitting someone.
 			final Player sourcePlayer = (Player) source;
 			final BendingPlayer sourceBPlayer = BendingPlayer.getBendingPlayer(sourcePlayer);
@@ -1042,6 +1013,15 @@ public class PKListener implements Listener {
 							}
 						}
 					}
+				}
+			}
+
+			if (e.getCause() == DamageCause.ENTITY_ATTACK) {
+				PlayerSwingEvent swingEvent = new PlayerSwingEvent((Player)e.getDamager()); //Allow addons to handle a swing without
+				Bukkit.getPluginManager().callEvent(swingEvent);                       		//needing to repeat the checks above themselves
+				if (swingEvent.isCancelled()) {
+					e.setCancelled(true);
+					return;
 				}
 			}
 		}
@@ -1398,7 +1378,7 @@ public class PKListener implements Listener {
 		}
 
 		Bukkit.getScheduler().runTaskLater(ProjectKorra.plugin, //Run 1 tick later so they actually are offline
-				() -> OfflineBendingPlayer.convertToOffline(bPlayer).uncacheAfter(5 * 60 * 1000), 1L);
+				() -> OfflineBendingPlayer.convertToOffline(bPlayer).uncacheAfter(ConfigManager.defaultConfig.get().getLong("Properties.PlayerDataUnloadTime", 5 * 60 * 1000)), 1L);
 	}
 
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -1443,8 +1423,6 @@ public class PKListener implements Listener {
 		if (!player.isSneaking()) {
 			BlockSource.update(player, ClickType.SHIFT_DOWN);
 		}
-
-		AirScooter.check(player);
 
 		final CoreAbility coreAbil = bPlayer.getBoundAbility();
 		final String abil = bPlayer.getBoundAbilityName();
@@ -1636,7 +1614,7 @@ public class PKListener implements Listener {
 	}
 
 	@EventHandler(priority = EventPriority.NORMAL)
-	public void onPlayerSwing(final PlayerInteractEvent event) {
+	public void onPlayerInteract(final PlayerInteractEvent event) {
 		final Player player = event.getPlayer();
 
 		if (PLAYER_DROPPED_ITEM.contains(player)) {
@@ -1696,7 +1674,12 @@ public class PKListener implements Listener {
 		}
 
 		BlockSource.update(player, ClickType.LEFT_CLICK);
-		AirScooter.check(player);
+	}
+
+	@EventHandler
+	public void onPlayerInteract(PlayerSwingEvent event) {
+		Player player = event.getPlayer();
+		BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 
 		String abil = bPlayer.getBoundAbilityName();
 		final CoreAbility coreAbil = bPlayer.getBoundAbility();
