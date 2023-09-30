@@ -89,7 +89,7 @@ public abstract class ElementalAbility extends CoreAbility {
 	}
 
 	public static Material[] getTransparentMaterials() {
-		return TRANSPARENT.toArray(new Material[TRANSPARENT.size()]);
+		return TRANSPARENT.toArray(new Material[0]);
 	}
 
 	public static HashSet<Material> getTransparentMaterialSet() {

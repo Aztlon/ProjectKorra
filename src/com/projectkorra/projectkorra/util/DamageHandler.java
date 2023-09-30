@@ -30,7 +30,7 @@ public class DamageHandler {
 	// Armor percentage
 	private static final HashMap<Integer, Double> ARMOR_PERCENTAGE_BY_ENTITY_ID = new HashMap<>();
 	private static final String IGNORE_ARMOR_PREFIX = "Properties.IgnoreArmorPercentage.";
-	private static final Set<LivingEntity> BEING_DAMAGED = new HashSet<>();
+	public static final Set<LivingEntity> BEING_DAMAGED = new HashSet<>();
 
 	private static boolean checkTicks(LivingEntity entity, double damage) {
 		return entity.getNoDamageTicks() > entity.getMaximumNoDamageTicks() / 2.0f && damage <= entity.getLastDamage();
@@ -171,8 +171,7 @@ public class DamageHandler {
 		
 		Bukkit.getServer().getPluginManager().callEvent(damageEvent);
 		
-		if (entity instanceof LivingEntity && !damageEvent.isCancelled()) {
-			LivingEntity lent = (LivingEntity) entity;
+		if (entity instanceof LivingEntity lent && !damageEvent.isCancelled()) {
 			damage = Math.max(0, damageEvent.getDamage());
 			
 			if (Bukkit.getPluginManager().isPluginEnabled("NoCheatPlus") && source != null) {
@@ -190,7 +189,7 @@ public class DamageHandler {
 			}
 
 			// Preparing the event call back
-			if (damage > 0) {
+			if (damage > 0 && entity instanceof Player) {
 				if (damageEvent.doesIgnoreArmor()) {
 					ignoreArmorDamage(lent);
 				} else {

@@ -252,8 +252,8 @@ public class GeneralMethods {
 		return getArmorTier(first) - getArmorTier(second);
 	}
 
-	@Deprecated
-	public static void displayColoredParticle(final Location loc, ParticleEffect type, final String hexVal, final float xOffset, final float yOffset, final float zOffset) {
+	public static void displayColoredParticle(final Location loc, ParticleEffect type, final String hexVal, final int amount, final double xOffset, final double yOffset, final double zOffset) {
+		Location clone = loc.clone();
 		int r = 0;
 		int g = 0;
 		int b = 0;
@@ -261,7 +261,7 @@ public class GeneralMethods {
 			r = Integer.valueOf(hexVal.substring(0, 2), 16);
 			g = Integer.valueOf(hexVal.substring(2, 4), 16);
 			b = Integer.valueOf(hexVal.substring(4, 6), 16);
-		} else if (hexVal.length() <= 7 && hexVal.charAt(0) == '#') {
+		} else if (hexVal.length() == 7 && hexVal.charAt(0) == '#') {
 			r = Integer.valueOf(hexVal.substring(1, 3), 16);
 			g = Integer.valueOf(hexVal.substring(3, 5), 16);
 			b = Integer.valueOf(hexVal.substring(5, 7), 16);
@@ -272,24 +272,26 @@ public class GeneralMethods {
 		if (red <= 0) {
 			red = 1 / 255.0F;
 		}
-		loc.setX(loc.getX() + (Math.random() * 2 - 1) * xOffset);
-		loc.setY(loc.getY() + (Math.random() * 2 - 1) * yOffset);
-		loc.setZ(loc.getZ() + (Math.random() * 2 - 1) * zOffset);
+		clone.setX(loc.getX() + (Math.random() * 2 - 1) * xOffset);
+		clone.setY(loc.getY() + (Math.random() * 2 - 1) * yOffset);
+		clone.setZ(loc.getZ() + (Math.random() * 2 - 1) * zOffset);
 
 		if (type != ParticleEffect.RED_DUST && type != ParticleEffect.REDSTONE && type != ParticleEffect.SPELL_MOB && type != ParticleEffect.MOB_SPELL && type != ParticleEffect.SPELL_MOB_AMBIENT && type != ParticleEffect.MOB_SPELL_AMBIENT) {
 			type = ParticleEffect.RED_DUST;
 		}
-		type.display(loc, 0, red, green, blue);
+		for (int i = 0; i < amount; i++) {
+			clone.getWorld().spawnParticle(type.getParticle(), clone, 0, red, green, blue);
+		}
 	}
 
-	@Deprecated
+		@Deprecated
 	public static void displayColoredParticle(final Location loc, final String hexVal) {
-		displayColoredParticle(loc, ParticleEffect.RED_DUST, hexVal, 0, 0, 0);
+		displayColoredParticle(loc, ParticleEffect.RED_DUST, hexVal, 1, 0, 0, 0);
 	}
 
 	@Deprecated
 	public static void displayColoredParticle(final Location loc, final String hexVal, final float xOffset, final float yOffset, final float zOffset) {
-		displayColoredParticle(loc, ParticleEffect.RED_DUST, hexVal, xOffset, yOffset, zOffset);
+		displayColoredParticle(loc, ParticleEffect.RED_DUST, hexVal, 1, xOffset, yOffset, zOffset);
 	}
 
 	public static void displayColoredParticle(String hexVal, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ) {
@@ -1276,24 +1278,11 @@ public class GeneralMethods {
 			return false;
 		}
 
-		switch (entity.getType()) {
-			case SKELETON:
-			case STRAY:
-			case WITHER_SKELETON:
-			case WITHER:
-			case ZOMBIE:
-			case HUSK:
-			case ZOMBIE_VILLAGER:
-			case ZOMBIFIED_PIGLIN:
-			case ZOGLIN:
-			case DROWNED:
-			case ZOMBIE_HORSE:
-			case SKELETON_HORSE:
-			case PHANTOM:
-				return true;
-			default:
-				return false;
-		}
+        return switch (entity.getType()) {
+            case SKELETON, STRAY, WITHER_SKELETON, WITHER, ZOMBIE, HUSK, ZOMBIE_VILLAGER, ZOMBIFIED_PIGLIN, ZOGLIN, DROWNED, ZOMBIE_HORSE, SKELETON_HORSE, PHANTOM ->
+                    true;
+            default -> false;
+        };
 	}
 
 	private static final List<String> WEAPONS = Arrays.asList("AXE", "HOE", "SHOVEL", "SWORD");
@@ -1336,13 +1325,6 @@ public class GeneralMethods {
 		if (chatEnabled) {
 			player.setDisplayName(player.getName());
 			player.setDisplayName(prefix + ChatColor.RESET + player.getDisplayName());
-		}
-
-		// Handle the AirSpout/WaterSpout login glitches.
-		if (player.getGameMode() != GameMode.CREATIVE) {
-			final HashMap<Integer, String> bound = bPlayer.getAbilities();
-			for (final String str : bound.values()) {
-				if (str.equalsIgnoreCase("AirSpout") || str.equalsIgnoreCase("WaterSpout") || str.equalsIgnoreCase("SandSpout")) {
 		}
 	}
 

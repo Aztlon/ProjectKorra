@@ -17,6 +17,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Levelled;
+import org.bukkit.block.data.Lightable;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -180,23 +181,25 @@ public class HeatControl extends FireAbility {
 			this.displayCookParticles();
 
 		} else if (this.heatControlType == HeatControlType.EXTINGUISH) {
-
 			if (!this.player.isSneaking()) {
 				this.bPlayer.addCooldown(this.getName() + "Extinguish", this.extinguishCooldown);
 				this.remove();
 				return;
 			}
 
-			final Set<Material> blocks = new HashSet<>();
-			for (final Material material : getTransparentMaterials()) {
-				blocks.add(material);
-			}
-
 			for (final Block block : GeneralMethods.getBlocksAroundPoint(this.player.getLocation(), this.extinguishRadius)) {
+				if (RegionProtection.isRegionProtected(this, block.getLocation())) continue;
 				final Material material = block.getType();
-				if (isFire(material) && !GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
-
-					block.setType(Material.AIR);
+				if (isFire(material)) {
+					TempBlock tb = TempBlock.get(block);
+					if (tb != null)
+						tb.revertBlock();
+					else
+						block.setType(Material.AIR);
+					block.getWorld().playEffect(block.getLocation(), Effect.EXTINGUISH, 0);
+				} else if (block.getBlockData() instanceof Lightable lightable && lightable.isLit()) {
+					lightable.setLit(false);
+					block.setBlockData(lightable);
 					block.getWorld().playEffect(block.getLocation(), Effect.EXTINGUISH, 0);
 				}
 			}

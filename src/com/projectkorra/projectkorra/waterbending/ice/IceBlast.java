@@ -20,6 +20,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.IceAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
@@ -84,7 +85,7 @@ public class IceBlast extends IceAbility {
 
 		if (sourceBlock == null) {
 			return;
-		} else if (GeneralMethods.isRegionProtectedFromBuild(this, sourceBlock.getLocation())) {
+		} else if (RegionProtection.isRegionProtected(this, sourceBlock.getLocation())) {
 			return;
 		} else {
 			this.prepare(sourceBlock);
@@ -115,7 +116,7 @@ public class IceBlast extends IceAbility {
 				continue;
 			} else if (iceBlast.getPlayer().equals(player)) {
 				continue;
-			} else if (GeneralMethods.isRegionProtectedFromBuild(iceBlast, iceBlast.location)) {
+			} else if (RegionProtection.isRegionProtected(iceBlast, iceBlast.location)) {
 				continue;
 			}
 
@@ -188,7 +189,7 @@ public class IceBlast extends IceAbility {
 			return;
 		}
 
-		final LivingEntity target = (LivingEntity) GeneralMethods.getTargetedEntity(this.player, this.range, new ArrayList<Entity>());
+		final LivingEntity target = (LivingEntity) GeneralMethods.getTargetedEntity(this.player, this.range, new ArrayList<>());
 		if (target == null) {
 			this.destination = GeneralMethods.getTargetedLocation(this.player, this.range, getTransparentMaterials());
 		} else {
@@ -216,7 +217,7 @@ public class IceBlast extends IceAbility {
 			TempBlock.get(this.sourceBlock).setType(Material.PACKED_ICE);
 			this.source = TempBlock.get(this.sourceBlock);
 		} else {
-			new TempBlock(this.sourceBlock, Material.AIR);
+			new TempBlock(this.sourceBlock, Material.AIR.createBlockData(), 10_000L);
 			this.source = new TempBlock(this.sourceBlock, Material.PACKED_ICE);
 		}
 	}

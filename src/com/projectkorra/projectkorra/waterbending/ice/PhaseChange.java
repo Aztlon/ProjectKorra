@@ -312,7 +312,7 @@ public class PhaseChange extends IceAbility {
 	}
 
 	public void meltArea(final Location center, final int radius) {
-		final List<Block> ice = new ArrayList<Block>();
+		final List<Block> ice = new ArrayList<>();
 		for (final Location l : GeneralMethods.getCircle(center, radius, 3, true, true, 0)) {
 			if (isIce(l.getBlock()) || isSnow(l.getBlock())) {
 				ice.add(l.getBlock());
@@ -381,8 +381,7 @@ public class PhaseChange extends IceAbility {
 			}
 
 			if (b.getType() == Material.SNOW) {
-				if (b.getBlockData() instanceof Snow) {
-					final Snow snow = (Snow) b.getBlockData();
+				if (b.getBlockData() instanceof final Snow snow) {
 					if (snow.getLayers() == snow.getMinimumLayers()) {
 						tb.revertBlock();
 						new TempBlock(b, Material.AIR.createBlockData(), 120 * 1000L);
@@ -411,14 +410,13 @@ public class PhaseChange extends IceAbility {
 					b.setType(Material.WATER);
 					b.setBlockData(GeneralMethods.getWaterData(0));
 				} else {
-					new TempBlock(b, Material.WATER);
+					new TempBlock(b, Material.WATER.createBlockData(), 120_000L);
 				}
 			}
 
 			this.melted_blocks.add(b);
 		} else if (b.getType() == Material.SNOW_BLOCK || b.getType() == Material.SNOW) {
-			if (b.getBlockData() instanceof Snow) {
-				final Snow snow = (Snow) b.getBlockData();
+			if (b.getBlockData() instanceof final Snow snow) {
 				if (snow.getLayers() == snow.getMinimumLayers()) {
 					new TempBlock(b, Material.AIR.createBlockData(), 120 * 1000L);
 				} else {

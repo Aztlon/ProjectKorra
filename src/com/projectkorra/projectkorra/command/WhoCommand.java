@@ -261,11 +261,20 @@ public class WhoCommand extends PKCommand {
 
 			if (bPlayer.hasElement(Element.NON)) {
 				if (bPlayer.isElementToggled(Element.NON)) {
-					sender.sendMessage(Element.NON.getColor() + "- Chiblocker");
+					sender.sendMessage(Element.NON.getColor() + "- Nonbender");
 				} else {
-					sender.sendMessage(Element.NON.getColor() + "" + ChatColor.STRIKETHROUGH + "- Chiblocker");
+					sender.sendMessage(Element.NON.getColor() + "" + ChatColor.STRIKETHROUGH + "- Nonbender");
 				}
 
+				if (bPlayer.canUseSubElement(Element.CHI)) {
+					sender.sendMessage(Element.CHI.getColor() + "    Chiblocker");
+				}
+				if (bPlayer.canUseSubElement(Element.WARRIOR)) {
+					sender.sendMessage(Element.WARRIOR.getColor() + "    Warrior");
+				}
+				if (bPlayer.canUseSubElement(Element.ARCHER)) {
+					sender.sendMessage(Element.ARCHER.getColor() + "    Archer");
+				}
 				for (final SubElement se : Element.getAddonSubElements(Element.CHI)) {
 					if (bPlayer.canUseSubElement(se)) {
 						sender.sendMessage(se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend());

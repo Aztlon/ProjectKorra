@@ -181,7 +181,7 @@ public class StatisticsMethods {
 				e.printStackTrace();
 			}
 		}
-		return Manager.getManager(StatisticsManager.class).getKeysByName().containsKey(statName) ? Manager.getManager(StatisticsManager.class).getKeysByName().get(statName) : -1;
+		return Manager.getManager(StatisticsManager.class).getKeysByName().getOrDefault(statName, -1);
 	}
 
 	/**

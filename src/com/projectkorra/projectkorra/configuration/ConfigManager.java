@@ -718,6 +718,7 @@ public class ConfigManager {
 
 			config.addDefault("Properties.Air.CanBendWithWeapons", false);
 			config.addDefault("Properties.Air.Particles", "spell");
+			config.addDefault("Properties.Air.ParticlesColor", "daeaff");
 			config.addDefault("Properties.Air.PlaySound", true);
 			config.addDefault("Properties.Air.Sound.Sound", "ENTITY_CREEPER_HURT");
 			config.addDefault("Properties.Air.Sound.Volume", 1);
@@ -1321,6 +1322,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Water.WaterSpout.Wave.FlightDuration", 2500);
 			config.addDefault("Abilities.Water.WaterSpout.Wave.Speed", 1.3);
 			config.addDefault("Abilities.Water.WaterSpout.Wave.Cooldown", 6000);
+			config.addDefault("Abilities.Water.WaterSpout.Wave.TrailRevertTime", 1000);
 
 			config.addDefault("Abilities.Water.IceWave.Enabled", true);
 			config.addDefault("Abilities.Water.IceWave.Damage", 3);
@@ -1659,6 +1661,17 @@ public class ConfigManager {
 			config.addDefault("Abilities.Fire.Lightning.TransformMobs", true);
 			config.addDefault("Abilities.Fire.Lightning.ChargeCreeper", true);
 			config.addDefault("Abilities.Fire.Lightning.ChainLightningRods", true);
+			config.addDefault("Abilities.Fire.Lightning.Impact.Radius", 2);
+			config.addDefault("Abilities.Fire.Lightning.Impact.RevertTime", 6000);
+			config.addDefault("Abilities.Fire.Lightning.ChargingDamage", 0.75);
+
+			config.addDefault("Abilities.Fire.Lightning.ThunderSplice.Enabled", true);
+			config.addDefault("Abilities.Fire.Lightning.ThunderSplice.Cooldown", 10000);
+			config.addDefault("Abilities.Fire.Lightning.ThunderSplice.Damage", 2);
+			config.addDefault("Abilities.Fire.Lightning.ThunderSplice.Range", 20);
+			config.addDefault("Abilities.Fire.Lightning.ThunderSplice.ChargeTime", 2000);
+			config.addDefault("Abilities.Fire.Lightning.ThunderSplice.AngleTheta", 11);
+			config.addDefault("Abilities.Fire.Lightning.ThunderSplice.AnglePhi", 11);
 
 			config.addDefault("Abilities.Fire.WallOfFire.Enabled", true);
 			config.addDefault("Abilities.Fire.WallOfFire.Range", 3);

@@ -47,6 +47,7 @@ import com.projectkorra.projectkorra.earthbending.metal.MetalClips;
 import com.projectkorra.projectkorra.event.PlayerCooldownChangeEvent;
 import com.projectkorra.projectkorra.event.PlayerCooldownChangeEvent.Result;
 import com.projectkorra.projectkorra.util.Cooldown;
+import com.projectkorra.projectkorra.util.MovementHandler;
 import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -171,13 +172,9 @@ public class BendingPlayer extends OfflineBendingPlayer {
 			this.cooldowns.remove(ability.getName());
 		}
 
-		if (this.isChiBlocked() || this.isParalyzed() || (this.isBloodbent() && !ability.getName().equalsIgnoreCase("AvatarState")) || this.isControlledByMetalClips()) {
+		if (!isAvatarState() && (this.isChiBlocked() || this.isParalyzed() || (this.isBloodbent() && !ability.getName().equalsIgnoreCase("AvatarState")) || this.isControlledByMetalClips())) {
 			return false;
-		} else if (RegionProtection.isRegionProtected(this.player, playerLoc, ability)) {
-			return false;
-		}
-
-		return true;
+		} else return !RegionProtection.isRegionProtected(this.player, playerLoc, ability);
 	}
 
 	public boolean canBendIgnoreBinds(final CoreAbility ability) {
@@ -479,7 +476,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	}
 
 	public boolean isParalyzed() {
-		return this.player.hasMetadata("movement:stop");
+		return MovementHandler.isStopped(this.player);
 	}
 
 	/**

@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.type.Snow;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 
@@ -17,13 +18,14 @@ import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
 
 public class WaterSpout extends WaterAbility {
 
-	private static final Map<Block, Block> AFFECTED_BLOCKS = new ConcurrentHashMap<Block, Block>();
-	private final List<TempBlock> blocks = new ArrayList<TempBlock>();
+	private static final Map<Block, Block> AFFECTED_BLOCKS = new ConcurrentHashMap<>();
+	private final List<TempBlock> blocks = new ArrayList<>();
 
 	@Attribute("CanBendOnPackedIce")
 	private boolean canBendOnPackedIce;
@@ -130,56 +132,55 @@ public class WaterSpout extends WaterAbility {
 			this.bPlayer.addCooldown(this);
 			this.remove();
 			return;
-		} else {
-			this.blocks.clear();
-			this.player.setFallDistance(0);
-			this.player.setSprinting(false);
-			if ((new Random()).nextInt(10) == 0) {
-				playWaterbendingSound(this.player.getLocation());
-			}
+		}
 
-			this.player.removePotionEffect(PotionEffectType.SPEED);
+		this.blocks.clear();
+		this.player.setFallDistance(0);
+		this.player.setSprinting(false);
+		if ((new Random()).nextInt(10) == 0) {
+			playWaterbendingSound(this.player.getLocation());
+		}
 
-			Location location = this.player.getLocation().clone().add(0, .2, 0);
-			Block block = location.clone().getBlock();
-			final double height = this.spoutableWaterHeight(location);
+		this.player.removePotionEffect(PotionEffectType.SPEED);
 
-			if (height != -1) {
-				location = this.base.getLocation();
-				final double heightRemoveThreshold = 2;
-				if (!this.isWithinMaxSpoutHeight(location, heightRemoveThreshold)) {
-					this.bPlayer.addCooldown(this);
-					this.remove();
-					return;
-				}
-				for (int i = 1; i <= height; i++) {
+		Location location = this.player.getLocation().clone().add(0, .2, 0);
+		Block block = location.clone().getBlock();
+		final double height = this.spoutableWaterHeight(location);
 
-					block = location.clone().add(0, i, 0).getBlock();
-
-					if (!TempBlock.isTempBlock(block)) {
-						this.blocks.add(new TempBlock(block, Material.WATER));
-						AFFECTED_BLOCKS.put(block, block);
-					}
-					this.rotateParticles(block);
-				}
-
-				this.displayWaterSpiral(location.clone().add(.5, 0, .5));
-				if (this.player.getLocation().getBlockY() > block.getY()) {
-					if (this.player.isFlying()) {
-						this.player.setFlying(false);
-					}
-				} else {
-					if (!this.player.isFlying()) {
-						this.player.setAllowFlight(true);
-						this.player.setFlying(true);
-					}
-				}
-			} else {
+		if (height != -1) {
+			location = this.base.getLocation();
+			final double heightRemoveThreshold = 2;
+			if (!this.isWithinMaxSpoutHeight(location, heightRemoveThreshold)) {
 				this.bPlayer.addCooldown(this);
 				this.remove();
 				return;
 			}
-		}
+			for (int i = 1; i <= height; i++) {
+
+				block = location.clone().add(0, i, 0).getBlock();
+
+				if (!TempBlock.isTempBlock(block)) {
+					this.blocks.add(new TempBlock(block, Material.WATER));
+					AFFECTED_BLOCKS.put(block, block);
+				}
+				this.rotateParticles(block);
+			}
+
+			this.displayWaterSpiral(location.clone().add(.5, 0, .5));
+			if (this.player.getLocation().getBlockY() > block.getY()) {
+				if (this.player.isFlying()) {
+					this.player.setFlying(false);
+				}
+			} else {
+				if (!this.player.isFlying()) {
+					this.player.setAllowFlight(true);
+					this.player.setFlying(true);
+				}
+			}
+		} else {
+			this.bPlayer.addCooldown(this);
+			this.remove();
+        }
 	}
 
 	@Override
@@ -259,7 +260,7 @@ public class WaterSpout extends WaterAbility {
 		for (int i = 0; i < this.maxHeight; i++) {
 
 			blocki = location.clone().add(0, -i, 0).getBlock();
-			if (GeneralMethods.isRegionProtectedFromBuild(this, blocki.getLocation())) {
+			if (RegionProtection.isRegionProtected(this, blocki.getLocation())) {
 				return -1;
 			}
 
@@ -284,10 +285,10 @@ public class WaterSpout extends WaterAbility {
 						}
 					}
 
-					if (!TempBlock.isTempBlock(blocki)) {
+//					if (!TempBlock.isTempBlock(blocki)) {
 						this.revertBaseBlock();
 						this.baseBlock = new TempBlock(blocki, Material.WATER);
-					}
+//					}
 
 					this.base = blocki;
 					if (i > newHeight) {

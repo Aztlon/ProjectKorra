@@ -6,12 +6,23 @@ import java.util.logging.Logger;
 import co.aikar.timings.lib.MCTiming;
 import co.aikar.timings.lib.TimingManager;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.ListenerPriority;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.reflect.StructureModifier;
+import com.comphenix.protocol.wrappers.WrappedParticle;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Bukkit;
+import org.bukkit.Particle;
 import org.bukkit.Statistic;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.geysermc.floodgate.api.FloodgateApi;
 
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.util.CollisionInitializer;
@@ -45,7 +56,7 @@ public class ProjectKorra extends JavaPlugin {
 	public static long time_step = 1;
 	public Updater updater;
 	BukkitTask revertChecker;
-	private static TimingManager timingManager;
+//	private static TimingManager timingManager;
 	private static PlaceholderAPIHook papiHook;
 
 	@Override
@@ -53,7 +64,7 @@ public class ProjectKorra extends JavaPlugin {
 		plugin = this;
 		ProjectKorra.log = this.getLogger();
 
-		timingManager = TimingManager.of(this);
+//		timingManager = TimingManager.of(this);
 
 		new ConfigManager();
 		new GeneralMethods(this);
@@ -130,6 +141,25 @@ public class ProjectKorra extends JavaPlugin {
 			papiHook = new PlaceholderAPIHook(this);
 			papiHook.register();
 		}
+
+//		if (Bukkit.getPluginManager().getPlugin("ProtocolLib") != null) {
+//			ProtocolManager manager = ProtocolLibrary.getProtocolManager();
+//			manager.addPacketListener(new PacketAdapter(this, ListenerPriority.HIGHEST, PacketType.Play.Server.WORLD_PARTICLES) {
+//				@Override
+//				public void onPacketSending(PacketEvent event) {
+//					Player player = event.getPlayer();
+//					FloodgateApi api = FloodgateApi.getInstance();
+//					if (api.isFloodgatePlayer(player.getUniqueId())) { // player is a bedrock player
+//						PacketContainer packet = event.getPacket();
+//						if (packet.getNewParticles().read(0).getParticle() == Particle.SPELL) {
+//							PacketContainer clone = packet.shallowClone();
+//							clone.getNewParticles().write(0, WrappedParticle.create(Particle.CLOUD, 0));
+//							event.setPacket(clone);
+//						}
+//					}
+//				}
+//			});
+//		}
 	}
 
 	@Override
@@ -186,7 +216,7 @@ public class ProjectKorra extends JavaPlugin {
 		return ConfigManager.getConfig().getBoolean("Properties.DatabaseCooldowns");
 	}
 
-	public static MCTiming timing(final String name) {
-		return timingManager.of(name);
-	}
+//	public static MCTiming timing(final String name) {
+//		return timingManager.of(name);
+//	}
 }

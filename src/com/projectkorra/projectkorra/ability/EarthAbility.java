@@ -103,7 +103,7 @@ public abstract class EarthAbility extends ElementalAbility {
 
 	/**
 	 * Checks whether a block is an earthbendable TempBlock
-	 * @see {@link #isBendableEarthTempBlock(TempBlock)}
+	 * @see #isBendableEarthTempBlock(TempBlock)
 	 * @param block - the Block to check
 	 * @author Aztl
 	 */
@@ -127,7 +127,7 @@ public abstract class EarthAbility extends ElementalAbility {
 	 * Adds a TempBlock to the set of earthbendable TempBlocks.
 	 * <br><br> Make sure to {@link #removeEarthbendableTempBlock(TempBlock)} when the TempBlock reverts.
 	 * <br> tempBlock.setRevertTask(() -> removeEarthbendableTempBlock(tempBlock)) should do it.
-	 * @see {@link TempBlock#setRevertTask(com.projectkorra.projectkorra.util.TempBlock.RevertTask)}
+	 * @see TempBlock#setRevertTask(Runnable)
 	 * @param tempBlock - the TempBlock to add
 	 * @author Aztl
 	 */
@@ -138,7 +138,7 @@ public abstract class EarthAbility extends ElementalAbility {
 	/**
 	 * Adds a collection of TempBlocks to the set of earthbendable TempBlocks.
 	 * <br><br> Make sure to {@link #removeEarthbendableTempBlocks(Collection)} when the TempBlocks revert.
-	 * @see {@link TempBlock#setRevertTask(com.projectkorra.projectkorra.util.TempBlock.RevertTask)}
+	 * @see TempBlock#setRevertTask(Runnable)
 	 * @param tempBlocks - the Collection of TempBlocks to add
 	 * @author Aztl
 	 */

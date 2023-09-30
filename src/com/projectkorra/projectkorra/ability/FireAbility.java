@@ -212,12 +212,16 @@ public abstract class FireAbility extends ElementalAbility {
 		}
 	}
 
-	public void playFirebendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
+	public void playFirebendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset, final double extra) {
 		if (this.getBendingPlayer().canUseSubElement(SubElement.BLUE_FIRE)) {
-			ParticleEffect.SOUL_FIRE_FLAME.display(loc, amount, xOffset, yOffset, zOffset);
+			ParticleEffect.SOUL_FIRE_FLAME.display(loc, amount, xOffset, yOffset, zOffset, extra);
 		} else {
-			ParticleEffect.FLAME.display(loc, amount, xOffset, yOffset, zOffset);
+			ParticleEffect.FLAME.display(loc, amount, xOffset, yOffset, zOffset, extra);
 		}
+	}
+
+	public void playFirebendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
+		playFirebendingParticles(loc, amount, xOffset, yOffset, zOffset, 0.1);
 	}
 
 	public static void playFirebendingSound(final Location loc) {
@@ -241,7 +245,9 @@ public abstract class FireAbility extends ElementalAbility {
 	}
 
 	public static void playLightningbendingParticle(final Location loc, final double xOffset, final double yOffset, final double zOffset) {
-		GeneralMethods.displayColoredParticle("#01E1FF", loc, 1, xOffset, yOffset, zOffset);
+		ParticleEffect.END_ROD.display(loc, 1, xOffset, yOffset, zOffset, 0);
+		ParticleEffect.CRIT_MAGIC.display(loc, 1, xOffset, yOffset, zOffset, 0);
+		ParticleEffect.ELECTRIC_SPARK.display(loc, 1, xOffset, yOffset, zOffset, 0);
 	}
 
 	public static void playLightningbendingSound(final Location loc) {

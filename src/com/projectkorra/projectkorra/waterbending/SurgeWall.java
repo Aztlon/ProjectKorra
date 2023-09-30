@@ -261,7 +261,7 @@ public class SurgeWall extends WaterAbility {
 				this.remove();
 				return;
 			} else if (!this.progressing) {
-				ParticleEffect.SMOKE_NORMAL.display(this.sourceBlock.getLocation().add(0.5, 0.5, 0.5), 1);
+				ParticleEffect.SMOKE_NORMAL.display(this.sourceBlock.getLocation().add(0.5, 1.5, 0.5), 1);
 				return;
 			}
 

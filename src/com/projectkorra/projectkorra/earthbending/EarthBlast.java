@@ -133,7 +133,7 @@ public class EarthBlast extends EarthAbility {
 	}
 
 	private Location getTargetLocation() {
-		final Entity target = GeneralMethods.getTargetedEntity(this.player, this.range, new ArrayList<Entity>());
+		final Entity target = GeneralMethods.getTargetedEntity(this.player, this.range, new ArrayList<>());
 		Location location;
 		final Material[] trans = new Material[getTransparentMaterials().length + this.getEarthbendableBlocks().size()];
 		int i = 0;
@@ -171,7 +171,7 @@ public class EarthBlast extends EarthAbility {
 		for (final EarthBlast blast : getAbilities(this.player, EarthBlast.class)) {
 			if (!blast.isProgressing) {
 				blast.remove();
-			} else if (blast.isProgressing && block.equals(blast.sourceBlock)) {
+			} else if (block.equals(blast.sourceBlock)) {
 				selectedABlockInUse = true;
 			}
 		}

@@ -61,10 +61,10 @@ public class TempBlock {
 		this(block, newtype.createBlockData(), 0);
 	}
 
-	@Deprecated
 	/**
 	 * Deprecated. Using the newType here is pointless.
 	 */
+	@Deprecated
 	public TempBlock(final Block block, final Material newtype, final BlockData newData) {
 		this(block, newData, 0);
 	}
@@ -91,8 +91,8 @@ public class TempBlock {
 		if (!FireAbility.canFireGrief() && (newData.getMaterial() == Material.FIRE || newData.getMaterial() == Material.SOUL_FIRE)) {
 			newData = FireAbility.createFireState(block, newData.getMaterial() == Material.SOUL_FIRE); //Fix the blockstate looking incorrect
 		}
-		if (block.getType() == Material.SNOW){
-			if (newData.getMaterial() == Material.AIR){
+		if (block.getType() == Material.SNOW) {
+			if (newData.getMaterial() == Material.AIR) {
 				updateSnowableBlock(block.getRelative(BlockFace.DOWN),false);
 			}
 		}
@@ -100,20 +100,16 @@ public class TempBlock {
 		if (instances_.containsKey(block)) {
 			final TempBlock temp = instances_.get(block).getFirst();
 			this.state = temp.state; //Set the original blockstate of the tempblock
-			put(block, this);
-			block.setBlockData(newData, applyPhysics(newData.getMaterial()));
 		} else {
 			this.state = block.getState();
 
 			if (this.state instanceof Container || this.state.getType() == Material.JUKEBOX) {
 				return;
 			}
-
-			put(block, this);
-
-			block.setBlockData(newData, applyPhysics(newData.getMaterial()));
 		}
-		
+		put(block, this);
+		block.setBlockData(newData, applyPhysics(newData.getMaterial()));
+
 		this.setRevertTime(revertTime);
 	}
 

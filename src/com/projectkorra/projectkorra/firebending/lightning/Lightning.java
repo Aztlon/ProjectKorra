@@ -1,20 +1,8 @@
 package com.projectkorra.projectkorra.firebending.lightning;
 
-import com.projectkorra.projectkorra.Element;
-import com.projectkorra.projectkorra.GeneralMethods;
-import com.projectkorra.projectkorra.ProjectKorra;
-import com.projectkorra.projectkorra.ability.Ability;
-import com.projectkorra.projectkorra.ability.CoreAbility;
-import com.projectkorra.projectkorra.ability.ElementalAbility;
-import com.projectkorra.projectkorra.ability.FireAbility;
-import com.projectkorra.projectkorra.ability.LightningAbility;
-import com.projectkorra.projectkorra.attribute.Attribute;
-import com.projectkorra.projectkorra.firebending.FireJet;
-import com.projectkorra.projectkorra.util.DamageHandler;
-import com.projectkorra.projectkorra.util.MovementHandler;
-import com.projectkorra.projectkorra.util.ParticleEffect;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Location;
@@ -23,9 +11,21 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+
+import com.projectkorra.projectkorra.Element;
+import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.ProjectKorra;
+import com.projectkorra.projectkorra.ability.CoreAbility;
+import com.projectkorra.projectkorra.ability.ElementalAbility;
+import com.projectkorra.projectkorra.ability.LightningAbility;
+import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.firebending.FireJet;
+import com.projectkorra.projectkorra.util.ActionBar;
+import com.projectkorra.projectkorra.util.DamageHandler;
+import com.projectkorra.projectkorra.util.MovementHandler;
+import com.projectkorra.projectkorra.util.ParticleEffect;
 
 public class Lightning extends LightningAbility {
 	private static final int POINT_GENERATION = 5;
@@ -99,6 +99,9 @@ public class Lightning extends LightningAbility {
 	public int helixes = 4;
 	protected int step = 0;
 	private int currPoint;
+	private Random random;
+	private Location loc;
+	private Vector direction;
 
 	public enum State {
 		START, STRIKE, MAINBOLT;
@@ -106,10 +109,10 @@ public class Lightning extends LightningAbility {
 
 	public Lightning(Player player) {
 		super(player);
-		if (!this.bPlayer.canBend((CoreAbility)this))
+		if (!this.bPlayer.canBend(this))
 			return;
 		if (hasAbility(player, Lightning.class) &&
-				!((Lightning)getAbility(player, Lightning.class)).isCharged())
+				!getAbility(player, Lightning.class).isCharged())
 			return;
 		this.charged = false;
 		this.hitWater = false;
@@ -137,20 +140,16 @@ public class Lightning extends LightningAbility {
 		this.chargeTime = getConfig().getLong("Abilities.Fire.Lightning.ChargeTime");
 		this.cooldown = getConfig().getLong("Abilities.Fire.Lightning.Cooldown");
 		this.allowOnFireJet = getConfig().getBoolean("Abilities.Fire.Lightning.AllowOnFireJet");
-		this.range = getDayFactor(this.range);
-		this.subArcChance = getDayFactor(this.subArcChance);
-		this.damage = getDayFactor(this.damage);
-		this.maxChainArcs = getDayFactor(this.maxChainArcs);
-		this.chainArcChance = getDayFactor(this.chainArcChance);
-		this.chainRange = getDayFactor(this.chainRange);
-		this.waterArcRange = getDayFactor(this.waterArcRange);
-		this.stunChance = getDayFactor(this.stunChance);
-		this.stunDuration = getDayFactor(this.stunDuration);
+
 		if (this.bPlayer.isAvatarState()) {
 			this.chargeTime = getConfig().getLong("Abilities.Avatar.AvatarState.Fire.Lightning.ChargeTime");
 			this.cooldown = getConfig().getLong("Abilities.Avatar.AvatarState.Fire.Lightning.Cooldown");
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.Lightning.Damage");
 		}
+
+		this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.25F);
+		this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 5.0F, 0.75F);
+		ParticleEffect.FLASH.display(this.player.getLocation(), 1, 0, 0, 0, 0);
 		start();
 	}
 
@@ -163,17 +162,17 @@ public class Lightning extends LightningAbility {
 		this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
 		ParticleEffect.FLASH.display(lent.getLocation(), 2, 1.0D, 1.0D, 1.0D);
 		ParticleEffect.CRIT_MAGIC.display(lent.getLocation(), 10, 1.0D, 1.0D, 1.0D, 0.11999999731779099D);
-		DamageHandler.damageEntity((Entity)lent, this.damage, (Ability)this);
+
+		DamageHandler.damageEntity(lent, this.damage, this);
+
 		if (Math.random() <= this.stunChance) {
-			MovementHandler mh = new MovementHandler(lent, (CoreAbility)this);
+			MovementHandler mh = new MovementHandler(lent, this);
 			mh.stopWithDuration((long)this.stunDuration, Element.LIGHTNING.getColor() + "* Struck by Lightning *");
 		}
 	}
 
-	private boolean isTransparentForLightning(Player player, Block block) {
-		if (isTransparent(block)) {
-			if (GeneralMethods.isRegionProtectedFromBuild((Ability)this, block.getLocation()))
-				return false;
+	private boolean isTransparentForLightning(Block block) {
+		if (GeneralMethods.isTransparent(block)) {
 			if (isIce(block))
 				return this.arcOnIce;
 			return true;
@@ -186,8 +185,9 @@ public class Lightning extends LightningAbility {
 			removeWithTasks();
 			return;
 		}
-		if (!this.bPlayer.canBendIgnoreCooldowns((CoreAbility)this)) {
+		if (!this.bPlayer.canBendIgnoreCooldowns(this)) {
 			remove();
+			this.bPlayer.addCooldown(this);
 			return;
 		}
 		if (CoreAbility.hasAbility(this.player, FireJet.class) && !this.allowOnFireJet) {
@@ -196,7 +196,7 @@ public class Lightning extends LightningAbility {
 		}
 		this.locations.clear();
 		if (this.state == State.START) {
-			if (this.bPlayer.isOnCooldown((Ability)this)) {
+			if (this.bPlayer.isOnCooldown(this)) {
 				remove();
 				return;
 			}
@@ -207,13 +207,13 @@ public class Lightning extends LightningAbility {
 					Location loc = this.player.getEyeLocation().add(this.player.getEyeLocation().getDirection().normalize().multiply(1.2D));
 					loc.add(0.0D, 0.45D, 0.0D);
 
-					playLightningbendingParticle(loc, 0.75, 0.75, 0.75);
+					ParticleEffect.END_ROD.display(loc, 2, 0.5, 0.5, 0.5, 0.04);
 					thundergrid();
 
-					loc.getWorld().playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.65F, 1.35F);
+					loc.getWorld().playSound(loc, Sound.ENTITY_CREEPER_PRIMED, 0.65F, 1.35F);
 				} else {
 					this.state = State.MAINBOLT;
-					this.bPlayer.addCooldown((Ability)this);
+					this.bPlayer.addCooldown(this);
 					Entity target = GeneralMethods.getTargetedEntity(this.player, this.range);
 					this.origin = this.player.getEyeLocation();
 					if (target != null) {
@@ -225,28 +225,30 @@ public class Lightning extends LightningAbility {
 			} else {
 				if (!this.player.isSneaking()) {
 					remove();
+					this.bPlayer.addCooldown(this);
 					return;
 				}
 				Location localLocation1 = this.player.getLocation();
-				double d1 = 0.44D;
-				double d2 = 0.35D;
-				double d3 = 2.1D;
-				double d4 = 2.1D;
+				double d1 = 0.34D;
+				double d2 = 0.25D;
+				double d3 = 1.0D;
+				double d4 = 1.0D;
 				double d5 = -0.22D * this.particleRotation;
 				double d6 = -0.13D * this.particleRotation;
 				double d7 = localLocation1.getX() + 1.3D * Math.cos(d5);
 				double d8 = localLocation1.getZ() + 1.3D * Math.sin(d5);
-				double newY = localLocation1.getY() + 1.0D + 1.0D * Math.cos(d6);
+				double newY = localLocation1.getY() + 1.2D + 1.2D * Math.cos(d6);
 				Location localLocation2 = new Location(this.player.getWorld(), d7, newY, d8);
 
-				playLightningbendingParticle(localLocation2);
-				ParticleEffect.END_ROD.display(localLocation2, 3, 0, 0, 0, 0.04);
-				ParticleEffect.CRIT_MAGIC.display(localLocation2, 3, 0, 0, 0, 0.04);
-				thunderingcharge(60, 2.35f, 2);
+				grid();
+				ParticleEffect.END_ROD.display(localLocation2, 4, 0.2, 0.2, 0.2);
+				ParticleEffect.END_ROD.display(localLocation2, 4, 0, 0, 0, 0.04);
+
+
 
 				playLightningbendingSound(localLocation2);
-				this.particleRotation += 1.5D;
-
+				playLightningbendingChargingSound(localLocation2);
+				this.particleRotation += 1.0D;
 			}
 
 		} else if (this.state == State.MAINBOLT) {
@@ -260,16 +262,16 @@ public class Lightning extends LightningAbility {
 			for (int i = 0; i < this.arcs.size(); i++) {
 				Arc arc = this.arcs.get(i);
 				for (int j = 0; j < arc.getAnimationLocations().size() - 1; j++) {
-					Location iterLoc = ((AnimationLocation)arc.getAnimationLocations().get(j)).getLocation().clone();
-					Location dest = ((AnimationLocation)arc.getAnimationLocations().get(j + 1)).getLocation().clone();
-					if (this.selfHitClose && this.player.getLocation().distanceSquared(iterLoc) < 9.0D && !isTransparentForLightning(this.player, iterLoc.getBlock()) && !this.affectedEntities.contains(this.player)) {
+					Location iterLoc = arc.getAnimationLocations().get(j).getLocation().clone();
+					Location dest = arc.getAnimationLocations().get(j + 1).getLocation().clone();
+					if (this.selfHitClose && this.player.getLocation().distanceSquared(iterLoc) < 9.0D && !isTransparentForLightning(iterLoc.getBlock()) && !this.affectedEntities.contains(this.player)) {
 						this.affectedEntities.add(this.player);
-						electrocute((LivingEntity)this.player);
+						electrocute(this.player);
 					}
 					while (iterLoc.distanceSquared(dest) > 0.0225D) {
 						BukkitRunnable task = new LightningParticle(arc, iterLoc.clone(), this.selfHitWater, this.waterArcs);
-						double timer = (((AnimationLocation)arc.getAnimationLocations().get(j)).getAnimCounter() / 2);
-						task.runTaskTimer((Plugin)ProjectKorra.plugin, (long)timer, 1L);
+						double timer = (arc.getAnimationLocations().get(j).getAnimCounter() / 2D);
+						task.runTaskTimer(ProjectKorra.plugin, (long)timer, 1L);
 						this.tasks.add(task);
 						iterLoc.add(GeneralMethods.getDirection(iterLoc, dest).normalize().multiply(0.15D));
 					}
@@ -284,24 +286,32 @@ public class Lightning extends LightningAbility {
 		}
 	}
 
-	private void thunderingcharge(int points, float size, int speed) {
-		for (int i = 0; i < speed; ++i) {
-			currPoint += 360 / points;
+	private void grid() {
+		Location localLocation1 = this.player.getLocation();
+		double d1 = 0.2970796326794897D;
+		double d2 = 0.20283185307179587D;
+		double d3 = 1.0D;
+		double d4 = 1.0D;
+		double d5 = 0.2970796326794897D * this.particleRotation;
+		double d6 = 0.20283185307179587D * this.particleRotation;
+		double d7 = localLocation1.getX() + 2.0D * Math.cos(d5);
+		double d8 = localLocation1.getZ() + 2.0D * Math.sin(d5);
+		double newY = localLocation1.getY() + 1.8D + 1.8D * Math.cos(d6);
+		Location localLocation2 = new Location(this.player.getWorld(), d7, newY, d8);
+		ParticleEffect.END_ROD.display(localLocation2, 4, 0.2, 0.2, 0.2);
+		ParticleEffect.END_ROD.display(localLocation2, 4, 0, 0, 0, 0.04);
 
-			if (currPoint > 360) {
-				currPoint = 0;
-			}
+		double xd7 = localLocation1.getX() + 2.0D * -Math.cos(d5);
+		double xd8 = localLocation1.getZ() + 2.0D * -Math.sin(d5);
+		double xnewY = localLocation1.getY() + 1.8D + 1.8D * Math.cos(d6);
+		Location localLocation3 = new Location(this.player.getWorld(), xd7, xnewY, xd8);
+		ParticleEffect.END_ROD.display(localLocation3, 2, 0, 0, 0, 0.01);
+		this.particleRotation++;
+		this.loc = this.player.getLocation().add(0.0D, -1.0D, 0.0D).clone();
 
-			double angle = currPoint * 3.141592653589793D / 180.0D;
-			double x = size * Math.cos(angle);
-			double z = size * Math.sin(angle);
-
-			Location loc = player.getLocation().add(x, 1.0D, z);
-			ParticleEffect.END_ROD.display(loc, 3, 0, 0, 0, 0.04);
-			ParticleEffect.CRIT_MAGIC.display(loc, 4, 0.3, 0.3, 0.3, 0.01);
-
-		}
+		ActionBar.sendActionBar(Element.LIGHTNING.getColor() + "* Charging *", this.player);
 	}
+
 
 	public void thundergrid() {
 		Location location = this.player.getEyeLocation().add(this.player.getEyeLocation().getDirection().normalize().multiply(1.2D));
@@ -321,7 +331,7 @@ public class Lightning extends LightningAbility {
 		}
 	}
 
-	public static final Vector rotateAroundAxisY(Vector v, double angle) {
+	public static Vector rotateAroundAxisY(Vector v, double angle) {
 		double cos = Math.cos(angle);
 		double sin = Math.sin(angle);
 		double x = v.getX() * cos + v.getZ() * sin;
@@ -329,7 +339,7 @@ public class Lightning extends LightningAbility {
 		return v.setX(x).setZ(z);
 	}
 
-	public static final Vector rotateAroundAxisX(Vector v, double angle) {
+	public static Vector rotateAroundAxisX(Vector v, double angle) {
 		double cos = Math.cos(angle);
 		double sin = Math.sin(angle);
 		double y = v.getY() * cos - v.getZ() * sin;
@@ -339,13 +349,13 @@ public class Lightning extends LightningAbility {
 
 	public void removeWithTasks() {
 		for (int i = 0; i < this.tasks.size(); i++) {
-			((BukkitRunnable)this.tasks.get(i)).cancel();
+			this.tasks.get(i).cancel();
 			i--;
 		}
 		remove();
 	}
 
-	public class AnimationLocation {
+	public static class AnimationLocation {
 		private Location location;
 
 		private int animationCounter;
@@ -398,7 +408,7 @@ public class Lightning extends LightningAbility {
 
 		public void cancel() {
 			for (int i = 0; i < this.particles.size(); i++)
-				((Lightning.LightningParticle)this.particles.get(i)).cancel();
+				this.particles.get(i).cancel();
 			for (Arc subArc : this.subArcs)
 				subArc.cancel();
 		}
@@ -407,14 +417,14 @@ public class Lightning extends LightningAbility {
 			ArrayList<Arc> arcs = new ArrayList<>();
 			for (int i = 0; i < this.animationLocations.size(); i++) {
 				if (Math.random() < chance) {
-					Location loc = ((Lightning.AnimationLocation)this.animationLocations.get(i)).getLocation();
+					Location loc = this.animationLocations.get(i).getLocation();
 					double angle = (Math.random() - 0.5D) * maxArcAngle * 2.0D;
 					Vector dir = GeneralMethods.rotateXZ(this.direction.clone(), angle);
 					double randRange = Math.random() * range + range / 3.0D;
 					Location loc2 = loc.clone().add(dir.normalize().multiply(randRange));
 					Arc arc = new Arc(loc, loc2);
 					this.subArcs.add(arc);
-					arc.setAnimationCounter(((Lightning.AnimationLocation)this.animationLocations.get(i)).getAnimCounter());
+					arc.setAnimationCounter(this.animationLocations.get(i).getAnimCounter());
 					arc.generatePoints(5);
 					arcs.add(arc);
 					arcs.addAll(arc.generateArcs(chance / 2.0D, range / 2.0D, maxArcAngle));
@@ -443,7 +453,7 @@ public class Lightning extends LightningAbility {
 				}
 			}
 			for (i = 0; i < this.points.size(); i++) {
-				this.animationLocations.add(new Lightning.AnimationLocation(this.points.get(i), this.animationCounter));
+				this.animationLocations.add(new AnimationLocation(this.points.get(i), this.animationCounter));
 				this.animationCounter++;
 			}
 		}
@@ -507,10 +517,27 @@ public class Lightning extends LightningAbility {
 			Lightning.this.tasks.remove(this);
 		}
 
+		private void StaticField(int points, float size, int speed) {
+			for (int i = 0; i < speed; ++i) {
+				currPoint += 360 / points;
+
+				if (currPoint > 360) {
+					currPoint = 0;
+				}
+
+				double angle = currPoint * 3.141592653589793D / 180.0D;
+				double x = size * Math.cos(angle);
+				double z = size * Math.sin(angle);
+
+				Location loc = player.getLocation().add(x, 1.0D, z);
+				playLightningbendingParticle(loc, 0.7, 1.7, 0.7);
+			}
+		}
+
 		public void run() {
 
-			ParticleEffect.END_ROD.display(this.location, 1, 0, 0, 0, 0.005);
-			ParticleEffect.CRIT_MAGIC.display(this.location, 1, 0, 0, 0);
+			ParticleEffect.END_ROD.display(this.location, 2, 0.05, 0.05, 0.05, 0.01);
+			ParticleEffect.CRIT_MAGIC.display(this.location, 2, 0.05, 0.05, 0.05, 0.01);
 
 			this.count++;
 			if (this.count > 5) {
@@ -519,15 +546,22 @@ public class Lightning extends LightningAbility {
 				if (ThreadLocalRandom.current().nextDouble() < .1) {
 					playLightningbendingSound(location);
 					location.getWorld().playSound(location, Sound.BLOCK_BEEHIVE_WORK, 1, 0);
+					playLightningbendingHitSound(location);
+					location.getWorld().playSound(location, Sound.ENTITY_GENERIC_EXPLODE, 1.0F, 0.65F);
+					ParticleEffect.FLASH.display(location, 1, 0, 0, 0);
+					StaticField(60, 3.0f, 6);
 				}
-				if (!Lightning.this.isTransparentForLightning(Lightning.this.player, this.location.getBlock())) {
+				if (!Lightning.this.isTransparentForLightning(this.location.getBlock())) {
 					this.arc.cancel();
+
 					ParticleEffect.EXPLOSION_LARGE.display(this.location.getBlock().getLocation(), 20, 2.0D, 2.0D, 2.0D);
-					ParticleEffect.FLAME.display(this.location.getBlock().getLocation(), 30, 1.0D, 1.0D, 1.0D, 0.14000000059604645D);
-					ParticleEffect.LAVA.display(this.location.getBlock().getLocation(), 15, 1.0D, 1.0D, 1.0D, 0.14000000059604645D);
+					ParticleEffect.SMOKE_LARGE.display(this.location.getBlock().getLocation(), 20, 2.0D, 2.0D, 2.0D);
+					ParticleEffect.CRIT_MAGIC.display(this.location.getBlock().getLocation(), 30, 1.0D, 1.0D, 1.0D, 0.14000000059604645D);
+					ParticleEffect.END_ROD.display(this.location.getBlock().getLocation(), 30, 1.0D, 1.0D, 1.0D, 0.14000000059604645D);
 					this.location.getBlock().getWorld().playSound(this.location.getBlock().getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 10.0F, 1.0F);
 					this.location.getBlock().getWorld().playSound(this.location.getBlock().getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 10.0F, 0.0F);
 					this.location.getBlock().getWorld().playSound(this.location.getBlock().getLocation(), Sound.ENTITY_CREEPER_HURT, 10.0F, 0.0F);
+
 				}
 
 				Block block = this.location.getBlock();
@@ -548,12 +582,11 @@ public class Lightning extends LightningAbility {
 				for (Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, 2.5D)) {
 					if (entity.equals(Lightning.this.player) && (!this.selfHitWater || !Lightning.this.hitWater || !ElementalAbility.isWater(Lightning.this.player.getLocation().getBlock())) && (!this.selfHitWater || !Lightning.this.hitIce))
 						continue;
-					if (entity instanceof LivingEntity && !Lightning.this.affectedEntities.contains(entity)) {
+					if (entity instanceof LivingEntity lent && !Lightning.this.affectedEntities.contains(entity)) {
 						Lightning.this.affectedEntities.add(entity);
-						LivingEntity lent = (LivingEntity)entity;
 						if (lent instanceof Player) {
-							FireAbility.playLightningbendingSound(lent.getLocation());
-							FireAbility.playLightningbendingSound(Lightning.this.player.getLocation());
+							playLightningbendingSound(lent.getLocation());
+							playLightningbendingSound(Lightning.this.player.getLocation());
 							lent.getWorld().playSound(lent.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.35F);
 							lent.getWorld().playSound(lent.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
 							lent.getWorld().playSound(lent.getLocation(), Sound.ENTITY_CREEPER_HURT, 5.0F, 0F);
@@ -648,6 +681,16 @@ public class Lightning extends LightningAbility {
 	}
 
 	public boolean isHarmlessAbility() {
+		return false;
+	}
+
+	@Override
+	public boolean isIgniteAbility() {
+		return false;
+	}
+
+	@Override
+	public boolean isExplosiveAbility() {
 		return false;
 	}
 

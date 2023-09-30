@@ -152,11 +152,14 @@ public class AirSweep extends AirAbility implements ComboAbility {
 				}
 				final Vector vec = GeneralMethods.getDirection(hand, endLoc);
 
+				String hexVal = getConfig().getString("Properties.Air.ParticlesColor");
 				final FireComboStream fs = new FireComboStream(this.player, this, vec, hand, this.range, this.speed);
 				fs.setDensity(1);
-				fs.setSpread(0F);
-				fs.setUseNewParticles(true);
-				fs.setParticleEffect(getAirbendingParticles());
+				fs.setAir(true);
+				fs.setXSpread(Integer.valueOf(hexVal.substring(0, 2), 16) / 255D);
+				fs.setYSpread(Integer.valueOf(hexVal.substring(2, 4), 16) / 255D);
+				fs.setZSpread(Integer.valueOf(hexVal.substring(4, 6), 16) / 255D);
+				fs.setParticleAmount(1);
 				fs.setCollides(false);
 				fs.runTaskTimer(ProjectKorra.plugin, (long) (i / 2.5), 1L);
 				this.tasks.add(fs);

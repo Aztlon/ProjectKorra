@@ -1,5 +1,7 @@
 package com.projectkorra.projectkorra.firebending.combo;
 
+import com.projectkorra.projectkorra.ability.AirAbility;
+import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -31,14 +33,16 @@ import com.projectkorra.projectkorra.util.ParticleEffect;
  * they can use this ability instead.
  */
 public class FireComboStream extends BukkitRunnable {
+	private int particleAmount;
 	private boolean useNewParticles;
+	private boolean air;
 	private boolean cancelled;
 	private boolean collides;
 	private boolean singlePoint;
 	private int density;
 	private int checkCollisionDelay;
 	private int checkCollisionCounter;
-	private float spread;
+	private double xSpread, ySpread, zSpread;
 	private double collisionRadius;
 	private final double speed;
 	private final double distance;
@@ -55,13 +59,13 @@ public class FireComboStream extends BukkitRunnable {
 
 	public FireComboStream(final Player player, final CoreAbility coreAbility, final Vector direction, final Location location, final double distance, final double speed) {
 		this.useNewParticles = false;
+		this.particleAmount = 1;
 		this.cancelled = false;
 		this.collides = true;
 		this.singlePoint = false;
 		this.density = 1;
 		this.checkCollisionDelay = 1;
 		this.checkCollisionCounter = 0;
-		this.spread = 0;
 		this.collisionRadius = 2;
 		this.player = player;
 		this.bPlayer = BendingPlayer.getBendingPlayer(player);
@@ -88,8 +92,11 @@ public class FireComboStream extends BukkitRunnable {
 			return;
 		}
 		for (int i = 0; i < this.density; i++) {
-			if (this.useNewParticles) {
-				this.particleEffect.display(this.location, 1, this.spread, this.spread, this.spread);
+			if (this.air) {
+				final String color = ConfigManager.getConfig().getString("Properties.Air.ParticlesColor");
+				GeneralMethods.displayColoredParticle(this.location, ParticleEffect.SPELL_MOB, color, this.particleAmount, 0, 0, 0);
+			} else if (this.useNewParticles) {
+				this.particleEffect.display(this.location, this.particleAmount, this.xSpread, this.ySpread, this.zSpread, 0.1);
 			} else {
 				this.location.getWorld().playEffect(this.location, Effect.MOBSPAWNER_FLAMES, 0, 15);
 			}
@@ -231,16 +238,38 @@ public class FireComboStream extends BukkitRunnable {
 		this.particleEffect = effect;
 	}
 
+	public void setAir(final boolean air) {
+		this.air = air;
+	}
+
 	public void setSinglePoint(final boolean b) {
 		this.singlePoint = b;
 	}
 
 	public void setSpread(final float spread) {
-		this.spread = spread;
+		this.xSpread = spread;
+		this.ySpread = spread;
+		this.zSpread = spread;
+	}
+
+	public void setXSpread(final double spread) {
+		this.xSpread = spread;
+	}
+
+	public void setYSpread(final double spread) {
+		this.ySpread = spread;
+	}
+
+	public void setZSpread(final double spread) {
+		this.zSpread = spread;
 	}
 
 	public void setUseNewParticles(final boolean b) {
 		this.useNewParticles = b;
+	}
+
+	public void setParticleAmount(final int amount) {
+		this.particleAmount = amount;
 	}
 
 	@Override

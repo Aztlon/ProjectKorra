@@ -52,65 +52,26 @@ public class PlantRegrowth extends PlantAbility {
 						continue;
 					}
 
-					Material newMaterial;
-
-					switch (b.getType()) {
-					case CRIMSON_NYLIUM:
-					case WARPED_NYLIUM:
-						newMaterial = Material.NETHERRACK;
-						break;
-					case OAK_LOG:
-						newMaterial = Material.STRIPPED_OAK_LOG;
-						break;
-					case SPRUCE_LOG:
-						newMaterial = Material.STRIPPED_SPRUCE_LOG;
-						break;
-					case BIRCH_LOG:
-						newMaterial = Material.STRIPPED_BIRCH_LOG;
-						break;
-					case JUNGLE_LOG:
-						newMaterial = Material.STRIPPED_JUNGLE_LOG;
-						break;
-					case DARK_OAK_LOG:
-						newMaterial = Material.STRIPPED_DARK_OAK_LOG;
-						break;
-					case ACACIA_LOG:
-						newMaterial = Material.STRIPPED_ACACIA_LOG;
-						break;
-					case OAK_WOOD:
-						newMaterial = Material.STRIPPED_OAK_WOOD;
-						break;
-					case SPRUCE_WOOD:
-						newMaterial = Material.STRIPPED_SPRUCE_WOOD;
-						break;
-					case BIRCH_WOOD:
-						newMaterial = Material.STRIPPED_BIRCH_WOOD;
-						break;
-					case JUNGLE_WOOD:
-						newMaterial = Material.STRIPPED_JUNGLE_WOOD;
-						break;
-					case DARK_OAK_WOOD:
-						newMaterial = Material.STRIPPED_DARK_OAK_WOOD;
-						break;
-					case ACACIA_WOOD:
-						newMaterial = Material.STRIPPED_ACACIA_WOOD;
-						break;
-					case CRIMSON_STEM:
-						newMaterial = Material.STRIPPED_CRIMSON_STEM;
-						break;
-					case WARPED_STEM:
-						newMaterial = Material.STRIPPED_WARPED_STEM;
-						break;
-					case CRIMSON_HYPHAE:
-						newMaterial = Material.STRIPPED_CRIMSON_HYPHAE;
-						break;
-					case WARPED_HYPHAE:
-						newMaterial = Material.STRIPPED_WARPED_HYPHAE;
-						break;
-					default:
-						newMaterial = Material.PODZOL;
-						break;
-					}
+					Material newMaterial = switch (b.getType()) {
+						case CRIMSON_NYLIUM, WARPED_NYLIUM -> Material.NETHERRACK;
+						case OAK_LOG -> Material.STRIPPED_OAK_LOG;
+						case SPRUCE_LOG -> Material.STRIPPED_SPRUCE_LOG;
+						case BIRCH_LOG -> Material.STRIPPED_BIRCH_LOG;
+						case JUNGLE_LOG -> Material.STRIPPED_JUNGLE_LOG;
+						case DARK_OAK_LOG -> Material.STRIPPED_DARK_OAK_LOG;
+						case ACACIA_LOG -> Material.STRIPPED_ACACIA_LOG;
+						case OAK_WOOD -> Material.STRIPPED_OAK_WOOD;
+						case SPRUCE_WOOD -> Material.STRIPPED_SPRUCE_WOOD;
+						case BIRCH_WOOD -> Material.STRIPPED_BIRCH_WOOD;
+						case JUNGLE_WOOD -> Material.STRIPPED_JUNGLE_WOOD;
+						case DARK_OAK_WOOD -> Material.STRIPPED_DARK_OAK_WOOD;
+						case ACACIA_WOOD -> Material.STRIPPED_ACACIA_WOOD;
+						case CRIMSON_STEM -> Material.STRIPPED_CRIMSON_STEM;
+						case WARPED_STEM -> Material.STRIPPED_WARPED_STEM;
+						case CRIMSON_HYPHAE -> Material.STRIPPED_CRIMSON_HYPHAE;
+						case WARPED_HYPHAE -> Material.STRIPPED_WARPED_HYPHAE;
+						default -> Material.COARSE_DIRT;
+					};
 
 					TempBlock tb = new TempBlock(b, newMaterial);
 					affectedBlocks.put(b, tb);

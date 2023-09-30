@@ -155,12 +155,11 @@ public class FireShield extends FireAbility {
 
 			for (double theta = 0; theta < 360; theta += 20) {
 				final Vector vector = GeneralMethods.getOrthogonalVector(direction, theta, this.discRadius / 1.5);
-				final Location display = this.location.add(vector);
+				final Location display = this.location.clone().add(vector);
 				playFirebendingParticles(display, 2, 0.3, 0.2, 0.3);
 				if (this.random.nextInt(4) == 0) {
 					playFirebendingSound(display);
 				}
-				this.location.subtract(vector);
 			}
 
 			for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, this.discRadius + 1)) {

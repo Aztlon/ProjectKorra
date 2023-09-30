@@ -401,8 +401,8 @@ public class DisplayCommand extends PKCommand {
 		abbreviations.put("ap", "airpassive");
 		abbreviations.put("avc", "avatarcombo");
 		abbreviations.put("avp", "avatarpassive");
-		abbreviations.put("cc", "chicombo");
-		abbreviations.put("cp", "chipassive");
+		abbreviations.put("nc", "noncombo");
+		abbreviations.put("np", "nonpassive");
 		abbreviations.put("ec", "earthcombo");
 		abbreviations.put("ep", "earthpassive");
 		abbreviations.put("fc", "firecombo");

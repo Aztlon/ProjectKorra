@@ -10,6 +10,8 @@ import org.bukkit.Material;
 import org.bukkit.block.BlastFurnace;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.Lightable;
+import org.bukkit.block.data.Waterlogged;
 import org.bukkit.block.data.type.Campfire;
 import org.bukkit.block.Furnace;
 import org.bukkit.block.Smoker;
@@ -167,12 +169,10 @@ public class FireBlast extends FireAbility {
 				final BlastFurnace blastF = (BlastFurnace) block.getState();
 				blastF.setBurnTime((short) 800);
 				blastF.update();
-			} else if (block instanceof Campfire) {
-				final Campfire campfire = (Campfire) block.getBlockData();
-				if(!campfire.isLit()) {
-					if(block.getType() != Material.SOUL_CAMPFIRE || bPlayer.canUseSubElement(SubElement.BLUE_FIRE)) {
-						campfire.setLit(true);
-					}
+			} else if (block.getBlockData() instanceof final Lightable lightable) {
+				if (!lightable.isLit() && !(block.getBlockData() instanceof final Waterlogged wl && wl.isWaterlogged()) && (block.getType() != Material.SOUL_CAMPFIRE || bPlayer.canUseSubElement(SubElement.BLUE_FIRE))) {
+					lightable.setLit(true);
+					block.setBlockData(lightable);
 				}
 			} else if (isIgnitable(this.location.getBlock())) {
 				if (!this.isFireBurst || this.fireBurstIgnite) {
@@ -184,6 +184,7 @@ public class FireBlast extends FireAbility {
 		}
 		return true;
 	}
+
 	private void affect(final Entity entity) {
 		if (entity.getUniqueId() != this.player.getUniqueId() && !RegionProtection.isRegionProtected(this, entity.getLocation()) && !((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 			if (this.bPlayer.isAvatarState()) {

@@ -76,8 +76,8 @@ public class ChooseCommand extends PKCommand {
 				element = "fire";
 			} else if (element.equalsIgnoreCase("w")) {
 				element = "water";
-			} else if (element.equalsIgnoreCase("c")) {
-				element = "chi";
+			} else if (element.equalsIgnoreCase("n") || element.equalsIgnoreCase("c") || element.equalsIgnoreCase("chi")) {
+				element = "non";
 			}
 			final Element targetElement = Element.getElement(element);
 			if (Arrays.asList(Element.getAllElements()).contains(targetElement)) {
@@ -122,8 +122,8 @@ public class ChooseCommand extends PKCommand {
 				element = "fire";
 			} else if (element.equalsIgnoreCase("w")) {
 				element = "water";
-			} else if (element.equalsIgnoreCase("c")) {
-				element = "chi";
+			} else if (element.equalsIgnoreCase("n") || element.equalsIgnoreCase("c") || element.equalsIgnoreCase("chi")) {
+				element = "non";
 			}
 			final Element targetElement = Element.getElement(element);
 			if (Arrays.asList(Element.getAllElements()).contains(targetElement) && targetElement != Element.AVATAR) {
@@ -159,7 +159,7 @@ public class ChooseCommand extends PKCommand {
 				final SubElement sub = (SubElement) element;
 				bPlayer.addSubElement(sub);
 				final ChatColor color = sub.getColor();
-				if (!(sender instanceof Player) || !((Player) sender).equals(target)) {
+				if (!(sender instanceof Player) || !sender.equals(target)) {
 					ChatUtil.sendBrandingMessage(sender, color + this.chosenOtherCFW.replace("{target}", ChatColor.DARK_AQUA + target.getName() + color).replace("{element}", sub.getName() + sub.getType().getBender()));
 				} else {
 					if (online) ChatUtil.sendBrandingMessage((Player) target, color + this.chosenCFW.replace("{element}", sub.getName() + sub.getType().getBender()));
@@ -175,29 +175,29 @@ public class ChooseCommand extends PKCommand {
 					for (Element e : new Element[] {Element.AIR, Element.EARTH, Element.FIRE, Element.WATER}) {
 						bPlayer.addElement(e);
 
-						if (online) {
-							for (final SubElement sub : Element.getSubElements(element)) {
-								if (((BendingPlayer) bPlayer).hasSubElementPermission(sub)) {
-									bPlayer.addSubElement(sub);
-								}
-							}
-						}
+//						if (online) {
+//							for (final SubElement sub : Element.getSubElements(element)) {
+//								if (((BendingPlayer) bPlayer).hasSubElementPermission(sub)) {
+//									bPlayer.addSubElement(sub);
+//								}
+//							}
+//						}
 					}
 				} else {
 					bPlayer.setElement(element);
-					bPlayer.getSubElements().clear();
-
-					if (online) {
-						for (final SubElement sub : Element.getSubElements(element)) {
-							if (((BendingPlayer) bPlayer).hasSubElementPermission(sub)) {
-								bPlayer.addSubElement(sub);
-							}
-						}
-					}
+//					bPlayer.getSubElements().clear();
+//
+//					if (online) {
+//						for (final SubElement sub : Element.getSubElements(element)) {
+//							if (((BendingPlayer) bPlayer).hasSubElementPermission(sub)) {
+//								bPlayer.addSubElement(sub);
+//							}
+//						}
+//					}
 				}
 
 				final ChatColor color = element.getColor();
-				if (!(sender instanceof Player) || !((Player) sender).equals(target)) {
+				if (!(sender instanceof Player) || !sender.equals(target)) {
 					if (element != Element.AIR && element != Element.EARTH) {
 						ChatUtil.sendBrandingMessage(sender, color + this.chosenOtherCFW.replace("{target}", ChatColor.DARK_AQUA + target.getName() + color).replace("{element}", element.getName() + element.getType().getBender()));
 					} else {
@@ -232,13 +232,13 @@ public class ChooseCommand extends PKCommand {
 		}
 
 		final List<String> l = new ArrayList<String>();
-		if (args.size() == 0) {
+		if (args.isEmpty()) {
 
 			l.add("Air");
 			l.add("Earth");
 			l.add("Fire");
 			l.add("Water");
-			l.add("Chi");
+			l.add("Non");
 			for (final Element e : Element.getAddonElements()) {
 				l.add(e.getName());
 			}

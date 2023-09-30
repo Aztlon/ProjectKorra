@@ -160,7 +160,7 @@ public class OfflineBendingPlayer {
                                 bPlayer.elements.add(Element.FIRE);
                             }
                             if (split[0].contains("c")) {
-                                bPlayer.elements.add(Element.CHI);
+                                bPlayer.elements.add(Element.NON);
                             }
                         }
                         if (hasAddon) {
@@ -216,7 +216,7 @@ public class OfflineBendingPlayer {
                         final String[] split = subelementField.split(";");
 
                         //If the subelements aren't defined, we give them now
-                        if (subelementField.equals("-")) {
+                        /*if (subelementField.equals("-")) {
                             boolean shouldSave = false;
                             if (offlinePlayer instanceof Player) { //Only if the player is online though
                                 subloop:
@@ -236,7 +236,7 @@ public class OfflineBendingPlayer {
                                 }
                                 if (shouldSave) bPlayer.saveSubElements();
                             }
-                        } else if (split.length > 0 && !split[0].equals("")) {
+                        } else*/ if (split.length > 0 && !split[0].equals("")) {
                             if (split[0].contains("m")) {
                                 bPlayer.subelements.add(Element.METAL);
                             }
@@ -273,9 +273,18 @@ public class OfflineBendingPlayer {
                             if (split[0].contains("r")) {
                                 bPlayer.subelements.add(Element.BLUE_FIRE);
                             }
+                            if (split[0].contains("k")) {
+                                bPlayer.subelements.add(Element.CHI);
+                            }
+                            if (split[0].contains("j")) {
+                                bPlayer.subelements.add(Element.ARCHER);
+                            }
+                            if (split[0].contains("w")) {
+                                bPlayer.subelements.add(Element.WARRIOR);
+                            }
                         }
                         if (hasAddon) {
-                            final CopyOnWriteArrayList<String> addonClone = new CopyOnWriteArrayList<String>(Arrays.asList(split[split.length - 1].split(",")));
+                            final CopyOnWriteArrayList<String> addonClone = new CopyOnWriteArrayList<>(Arrays.asList(split[split.length - 1].split(",")));
                             final long startTime = System.currentTimeMillis();
                             final long timeoutLength = 5_000; // How long until it should time out attempting to load addons in.
                             OfflineBendingPlayer finalBPlayer1 = bPlayer;
@@ -360,7 +369,7 @@ public class OfflineBendingPlayer {
 
                     //Load cooldowns
                     if (ProjectKorra.isDatabaseCooldownsEnabled()) {
-                        try (ResultSet rs = DBConnection.sql.readQuery("SELECT * FROM pk_cooldowns WHERE uuid = '" + uuid.toString() + "'")) {
+                        try (ResultSet rs = DBConnection.sql.readQuery("SELECT * FROM pk_cooldowns WHERE uuid = '" + uuid + "'")) {
                             while (rs.next()) {
                                 final String name = rs.getString("cooldown");
                                 final long value = rs.getLong("value");
@@ -373,8 +382,7 @@ public class OfflineBendingPlayer {
 
                     bPlayer.loading = false;
                     //Call postLoad() on the main thread and wait for it to complete
-                    if (bPlayer instanceof BendingPlayer) {
-                        BendingPlayer finalBPlayer3 = (BendingPlayer) bPlayer;
+                    if (bPlayer instanceof BendingPlayer finalBPlayer3) {
                         Bukkit.getScheduler().callSyncMethod(ProjectKorra.plugin, () -> {
                             finalBPlayer3.postLoad();
                             return true;
@@ -438,6 +446,15 @@ public class OfflineBendingPlayer {
         if (this.hasSubElement(Element.BLUE_FIRE)) {
             subs.append("r");
         }
+        if (this.hasSubElement(Element.CHI)) {
+            subs.append("k");
+        }
+        if (this.hasSubElement(Element.ARCHER)) {
+            subs.append("j");
+        }
+        if (this.hasSubElement(Element.WARRIOR)) {
+            subs.append("w");
+        }
         boolean hasAddon = false;
         List<SubElement> addonSubs = Arrays.asList(Element.getAddonSubElements());
         for (final Element element : this.getSubElements()) {
@@ -474,7 +491,7 @@ public class OfflineBendingPlayer {
         if (this.hasElement(Element.FIRE)) {
             elements.append("f");
         }
-        if (this.hasElement(Element.CHI)) {
+        if (this.hasElement(Element.NON)) {
             elements.append("c");
         }
         boolean hasAddon = false;

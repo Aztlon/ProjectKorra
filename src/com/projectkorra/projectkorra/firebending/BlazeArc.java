@@ -11,6 +11,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.BlueFireAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 
 public class BlazeArc extends FireAbility {
@@ -79,7 +80,7 @@ public class BlazeArc extends FireAbility {
 			if (this.location.distanceSquared(this.origin) > this.range * this.range) {
 				this.remove();
 				return;
-			} else if (GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
+			} else if (RegionProtection.isRegionProtected(this, this.location)) {
 				return;
 			}
 

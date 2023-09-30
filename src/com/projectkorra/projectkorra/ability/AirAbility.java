@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -73,17 +74,9 @@ public abstract class AirAbility extends ElementalAbility {
 	 */
 	public static ParticleEffect getAirbendingParticles() {
 		final String particle = getConfig().getString("Properties.Air.Particles");
-		if (particle == null) {
-			return ParticleEffect.CLOUD;
-		} else if (particle.equalsIgnoreCase("spell")) {
-			return ParticleEffect.SPELL;
-		} else if (particle.equalsIgnoreCase("blacksmoke")) {
-			return ParticleEffect.SMOKE_NORMAL;
-		} else if (particle.equalsIgnoreCase("smoke")) {
-			return ParticleEffect.CLOUD;
-		} else if (particle.equalsIgnoreCase("smallsmoke")) {
-			return ParticleEffect.SNOW_SHOVEL;
-		} else {
+		try {
+			return ParticleEffect.valueOf(particle);
+		} catch (final IllegalArgumentException exception) {
 			return ParticleEffect.CLOUD;
 		}
 	}
@@ -125,7 +118,10 @@ public abstract class AirAbility extends ElementalAbility {
 	 * @param zOffset The zOffset to use
 	 */
 	public static void playAirbendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
-		getAirbendingParticles().display(loc, amount, xOffset, yOffset, zOffset);
+		final String color = getConfig().getString("Properties.Air.ParticlesColor");
+		GeneralMethods.displayColoredParticle(loc, ParticleEffect.SPELL_MOB, color, amount, xOffset, yOffset, zOffset);
+//		ParticleEffect.SPELL_MOB.display(loc, 0, 181, 213, 255);
+//		loc.getWorld().spawnParticle(Particle.SPELL_MOB, loc, 0, 181D / 255D, 213D / 255D, 1.0);
 	}
 
 	/**

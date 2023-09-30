@@ -167,8 +167,7 @@ public class HelpCommand extends PKCommand {
 		} else if (Arrays.asList(Commands.firealiases).contains(arg)) {
 			sender.sendMessage(Element.FIRE.getColor() + this.elementHelp.get(Element.FIRE).replaceAll("(?i)/b display fire", Element.FIRE.getSubColor() + "/b display fire" + Element.FIRE.getColor()));
 		} else if (Arrays.asList(Commands.chialiases).contains(arg)) {
-			sender.sendMessage(Element.NON.getColor() + this.chi.replace("/b display Chi", Element.NON.getSubColor() + "/b display Chi" + Element.NON.getColor()));
-			sender.sendMessage(ChatColor.YELLOW + this.learnMore + ChatColor.DARK_AQUA + "http://projectkorra.com/");
+			sender.sendMessage(Element.NON.getColor() + this.elementHelp.get(Element.NON).replaceAll("(?i)/b display non", Element.NON.getSubColor() + "/b display fire" + Element.NON.getColor()));
 		} else if (Arrays.asList(Commands.avataraliases).contains(arg)) {
 			sender.sendMessage(Element.AVATAR.getColor() + this.elementHelp.get(Element.AVATAR).replaceAll("(?i)/b display avatar", Element.AVATAR.getSubColor() + "/b display avatar" + Element.AVATAR.getColor()));
 		} else if (Element.getElement(arg) != null && elementHelp.containsKey(Element.getElement(arg))) {

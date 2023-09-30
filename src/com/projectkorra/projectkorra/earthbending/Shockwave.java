@@ -75,13 +75,9 @@ public class Shockwave extends EarthAbility {
 		if (!this.player.isSneaking()) {
 			if (this.charged) {
 				this.areaShockwave();
-				this.remove();
-				return;
-			} else {
-				this.remove();
-				return;
-			}
-		} else if (this.charged) {
+            }
+            this.remove();
+        } else if (this.charged) {
 			final Location location = this.player.getEyeLocation().add(this.player.getEyeLocation().getDirection());
 			ParticleEffect.SMOKE_NORMAL.display(location, 1);
 		}

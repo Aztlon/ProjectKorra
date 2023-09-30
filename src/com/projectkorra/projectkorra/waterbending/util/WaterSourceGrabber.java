@@ -24,7 +24,7 @@ public class WaterSourceGrabber {
 	 * Using an initial WaterSource block, this class animates the block up to a
 	 * specific height and then toward the players location.
 	 */
-	public static enum AnimationState {
+	public enum AnimationState {
 		RISING, TOWARD, FINISHED, FAILED
 	}
 

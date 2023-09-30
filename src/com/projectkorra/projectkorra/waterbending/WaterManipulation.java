@@ -219,7 +219,7 @@ public class WaterManipulation extends WaterAbility {
 						this.remove();
 						return;
 					}
-					ParticleEffect.SMOKE_NORMAL.display(this.sourceBlock.getLocation().clone().add(0.5, 0.5, 0.5), 4, 0, 0, 0);
+					ParticleEffect.SMOKE_NORMAL.display(this.sourceBlock.getLocation().clone().add(0.5, 1.5, 0.5), 4, 0, 0, 0);
 					return;
 				}
 
@@ -236,7 +236,7 @@ public class WaterManipulation extends WaterAbility {
 
 				Block block = this.location.getBlock();
 				if (this.displacing) {
-					final Block targetBlock = this.player.getTargetBlock((HashSet<Material>) null, this.dispelRange);
+					final Block targetBlock = this.player.getTargetBlock(null, this.dispelRange);
 					direction = GeneralMethods.getDirection(this.location, targetBlock.getLocation()).normalize();
 					if (!this.location.getBlock().equals(targetBlock)) {
 						this.location = this.location.clone().add(direction);
