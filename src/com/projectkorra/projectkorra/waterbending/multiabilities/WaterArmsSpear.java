@@ -204,7 +204,7 @@ public class WaterArmsSpear extends WaterAbility {
 						getIceBlocks().remove(block);
 					}
 
-					iceBlocks.add(new TempBlock(block, Material.ICE));
+					iceBlocks.add(new TempBlock(block, iceMaterial(this.player)));
 
 					getIceBlocks().put(block, System.currentTimeMillis() + this.spearDuration + (long) (Math.random() * 500));
 				}
@@ -213,7 +213,7 @@ public class WaterArmsSpear extends WaterAbility {
 	}
 
 	public static boolean canThaw(final Block block) {
-		return getIceBlocks().containsKey(block) && block.getType() == Material.ICE;
+		return getIceBlocks().containsKey(block) && isIce(block);
 	}
 
 	public static void thaw(final Block block) {
@@ -236,7 +236,7 @@ public class WaterArmsSpear extends WaterAbility {
 		}
 		final List<Entity> trapped = GeneralMethods.getEntitiesAroundPoint(this.location, this.spearSphereRadius);
 		ICE_SETTING: for (final Block block : GeneralMethods.getBlocksAroundPoint(this.location, this.spearSphereRadius)) {
-			if (isTransparent(this.player, block) && block.getType() != Material.ICE && !WaterArms.isUnbreakable(block)) {
+			if (isTransparent(this.player, block) && !isIce(block) && !WaterArms.isUnbreakable(block)) {
 				for (final Entity entity : trapped) {
 					if (entity instanceof Player) {
 						if (Commands.invincible.contains(((Player) entity).getName())) {
@@ -251,7 +251,7 @@ public class WaterArmsSpear extends WaterAbility {
 					}
 				}
 				playIcebendingSound(block.getLocation());
-				new TempBlock(block, Material.ICE);
+				new TempBlock(block, iceMaterial(this.player));
 				getIceBlocks().put(block, System.currentTimeMillis() + this.spearDuration + (long) (Math.random() * 500));
 			}
 		}

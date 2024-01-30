@@ -142,7 +142,7 @@ public class SurgeWall extends WaterAbility {
 		this.frozen = true;
 		for (final Block block : WALL_BLOCKS.keySet()) {
 			if (WALL_BLOCKS.get(block) == this.player) {
-				new TempBlock(block, Material.ICE);
+				new TempBlock(block, iceMaterial(this.player));
 				playIcebendingSound(block.getLocation());
 			}
 		}
@@ -271,7 +271,7 @@ public class SurgeWall extends WaterAbility {
 				}
 
 				final ArrayList<Block> blocks = new ArrayList<Block>();
-				final Location targetLoc = GeneralMethods.getTargetedLocation(this.player, (int) this.range, false, false, Material.WATER, Material.ICE);
+				final Location targetLoc = GeneralMethods.getTargetedLocation(this.player, (int) this.range, false, false, Material.WATER, iceMaterial(this.player));
 				this.location = targetLoc.clone();
 				final Vector eyeDir = this.player.getEyeLocation().getDirection();
 				Vector vector;
@@ -366,7 +366,7 @@ public class SurgeWall extends WaterAbility {
 		}
 
 		if (this.frozen) {
-			new TempBlock(block, Material.ICE);
+			new TempBlock(block, iceMaterial(this.player));
 		} else {
 			new TempBlock(block, Material.WATER);
 		}

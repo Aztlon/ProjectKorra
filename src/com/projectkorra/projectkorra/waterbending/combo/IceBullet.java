@@ -259,8 +259,9 @@ public class IceBullet extends IceAbility implements ComboAbility {
 				} else if (timeDiff < 2500 * this.animationSpeed) {
 					this.revertBlocks();
 					for (double i = 0; i < this.radius; i++) {
-						this.drawWaterCircle(this.player.getEyeLocation().clone().add(0, i, 0), 360, 5, this.radius - i, Material.ICE, Material.ICE.createBlockData());
-						this.drawWaterCircle(this.player.getEyeLocation().clone().add(0, -i, 0), 360, 5, this.radius - i, Material.ICE, Material.ICE.createBlockData());
+						Material ice = iceMaterial(this.player);
+						this.drawWaterCircle(this.player.getEyeLocation().clone().add(0, i, 0), 360, 5, this.radius - i, ice, ice.createBlockData());
+						this.drawWaterCircle(this.player.getEyeLocation().clone().add(0, -i, 0), 360, 5, this.radius - i, ice, ice.createBlockData());
 					}
 				}
 

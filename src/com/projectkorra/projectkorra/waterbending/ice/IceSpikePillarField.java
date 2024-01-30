@@ -117,7 +117,7 @@ public class IceSpikePillarField extends IceAbility {
 				targetBlock = iceBlocks.get(random.nextInt(iceBlocks.size()));
 			}
 
-			if (targetBlock.getRelative(BlockFace.UP).getType() != Material.ICE) {
+			if (!isIce(targetBlock.getRelative(BlockFace.UP))) {
 				final IceSpikePillar pillar = new IceSpikePillar(this.player, targetBlock.getLocation(), (int) this.damage, this.thrownForce, this.cooldown);
 				pillar.inField = true;
 				iceBlocks.remove(targetBlock);

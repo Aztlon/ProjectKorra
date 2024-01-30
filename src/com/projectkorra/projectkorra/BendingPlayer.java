@@ -698,7 +698,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		}
 
 		this.removeUnusableAbilities();
-		this.fixSubelements(); //Grant all subelements for an element if they have 0 subs for that element (that they are allowed)
+//		this.fixSubelements(); //Grant all subelements for an element if they have 0 subs for that element (that they are allowed)
 		this.removeOldCooldowns();
 		PassiveManager.registerPassives(this.player);
 		FirePassive.handle(player);

@@ -299,11 +299,11 @@ public class PhaseChange extends IceAbility {
 			if (this.melted_blocks.contains(tb.getBlock())) {
 				this.melted_blocks.remove(tb.getBlock());
 				tb.revertBlock();
-				tb.setType(Material.ICE);
+				tb.setType(iceMaterial(this.player));
 			}
 		}
 		if (tb == null) {
-			tb = new TempBlock(b, Material.ICE);
+			tb = new TempBlock(b, iceMaterial(this.player));
 		}
 		this.blocks.add(tb);
 		PLAYER_BY_BLOCK.put(tb, this.player);

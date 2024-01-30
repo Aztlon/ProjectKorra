@@ -303,7 +303,7 @@ public class EarthBlast extends EarthAbility {
 				if (isEarthRevertOn() && !tempBlockSource && !movedEarthSource) {
 					this.sourceBlock.setType(this.sourceType);
 
-					moveEarthBlock(this.sourceBlock, block);
+					moveEarthBlock(this.sourceBlock, block, player);
 
 					if (block.getType() == Material.SAND) {
 						block.setType(Material.SANDSTONE);

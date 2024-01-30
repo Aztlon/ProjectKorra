@@ -33,6 +33,8 @@ import com.projectkorra.projectkorra.waterbending.ice.PhaseChange;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 
+import me.clip.placeholderapi.PlaceholderAPI;
+
 public abstract class WaterAbility extends ElementalAbility {
 
 	private static final Set<TempBlock> WATERBENDABLE_TEMPBLOCKS = new HashSet<>();
@@ -143,7 +145,7 @@ public abstract class WaterAbility extends ElementalAbility {
 	}
 
 	public boolean isIcebendable(final Block block) {
-		return this.isIcebendable(block.getType());
+		return this.isIcebendable(block.getType()) || (block.getType().name().endsWith("STAINED_GLASS") && TempBlock.isTempBlock(block));
 	}
 
 	public boolean isIcebendable(final Material material) {
@@ -338,7 +340,8 @@ public abstract class WaterAbility extends ElementalAbility {
 
 	public static boolean isWaterbendable(final Player player, final String abilityName, final Block block) {
 		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null || !isWaterbendable(block.getType())) {
+		boolean waterbendable = isWater(block) || isIce(block) || isPlant(block) || isSnow(block) || isCauldron(block);
+		if (bPlayer == null || !waterbendable) {
 			return false;
 		}
 		if (TempBlock.isTempBlock(block) && !isBendableWaterTempBlock(block)) {
@@ -359,6 +362,18 @@ public abstract class WaterAbility extends ElementalAbility {
 			focusLoc = block.getRelative(BlockFace.UP).getLocation();
 		}
 		ParticleEffect.SMOKE_NORMAL.display(focusLoc.add(0.5, 0.5, 0.5), 4);
+	}
+
+	public static Material iceMaterial(Player player) {
+		Material mat = Material.ICE;
+		String cosmeticIceMaterial = PlaceholderAPI.setPlaceholders(player, "%avatarverse_icematerial%");
+		if (!cosmeticIceMaterial.isEmpty()) {
+			mat = Material.getMaterial(cosmeticIceMaterial);
+			if (mat == null) {
+				mat = Material.ICE;
+			}
+		}
+		return mat;
 	}
 
 	public static void playIcebendingSound(final Location loc) {

@@ -93,7 +93,7 @@ public class FireComboStream extends BukkitRunnable {
 		}
 		for (int i = 0; i < this.density; i++) {
 			if (this.air) {
-				final String color = ConfigManager.getConfig().getString("Properties.Air.ParticlesColor");
+				final String color = AirAbility.particleColor(player);
 				GeneralMethods.displayColoredParticle(this.location, ParticleEffect.SPELL_MOB, color, this.particleAmount, 0, 0, 0);
 			} else if (this.useNewParticles) {
 				this.particleEffect.display(this.location, this.particleAmount, this.xSpread, this.ySpread, this.zSpread, 0.1);

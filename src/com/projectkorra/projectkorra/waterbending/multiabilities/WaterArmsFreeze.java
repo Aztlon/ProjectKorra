@@ -1,5 +1,9 @@
 package com.projectkorra.projectkorra.waterbending.multiabilities;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -80,7 +84,11 @@ public class WaterArmsFreeze extends IceAbility {
 
 			final Vector dir = this.player.getLocation().getDirection();
 			this.location = this.waterArms.getActiveArmEnd().add(dir.normalize().multiply(1));
-			this.direction = GeneralMethods.getDirection(this.location, GeneralMethods.getTargetedLocation(this.player, this.iceRange, Material.WATER, Material.ICE, Material.PACKED_ICE)).normalize();
+			List<Material> nonOpaque = Arrays.stream(Material.values()).filter(mat -> mat.name().endsWith("STAINED_GLASS")).collect(Collectors.toList());
+			nonOpaque.add(Material.WATER);
+			nonOpaque.add(Material.ICE);
+			nonOpaque.add(Material.PACKED_ICE);
+			this.direction = GeneralMethods.getDirection(this.location, GeneralMethods.getTargetedLocation(this.player, this.iceRange, nonOpaque.toArray(new Material[0]))).normalize();
 		} else {
 			return;
 		}
@@ -127,7 +135,7 @@ public class WaterArmsFreeze extends IceAbility {
 
 	private void progressIce() {
 		ParticleEffect.SNOW_SHOVEL.display(this.location, 5, Math.random(), Math.random(), Math.random(), 0.05);
-		new TempBlock(this.location.getBlock(), Material.ICE).setRevertTime(10);
+		new TempBlock(this.location.getBlock(), iceMaterial(this.player)).setRevertTime(10);
 
 		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, 2.5)) {
 			if (entity instanceof LivingEntity && entity.getEntityId() != this.player.getEntityId() && !(entity instanceof ArmorStand)) {

@@ -235,7 +235,7 @@ public class IceSpikePillar extends IceAbility {
 			}
 		}
 
-		final TempBlock b = new TempBlock(affectedBlock, Material.ICE);
+		final TempBlock b = new TempBlock(affectedBlock, iceMaterial(this.player));
 		this.ice_blocks.put(affectedBlock, b);
 
 		if (!this.inField || new Random().nextInt((int) ((this.height + 1) * 1.5)) == 0) {

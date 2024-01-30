@@ -3,26 +3,11 @@ package com.projectkorra.projectkorra;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
-import co.aikar.timings.lib.MCTiming;
-import co.aikar.timings.lib.TimingManager;
-
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.reflect.StructureModifier;
-import com.comphenix.protocol.wrappers.WrappedParticle;
-import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Bukkit;
-import org.bukkit.Particle;
 import org.bukkit.Statistic;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
-import org.geysermc.floodgate.api.FloodgateApi;
 
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.util.CollisionInitializer;
@@ -39,6 +24,7 @@ import com.projectkorra.projectkorra.firebending.util.FirebendingManager;
 import com.projectkorra.projectkorra.hooks.PlaceholderAPIHook;
 import com.projectkorra.projectkorra.hooks.WorldGuardFlag;
 import com.projectkorra.projectkorra.object.Preset;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.storage.DBConnection;
 import com.projectkorra.projectkorra.util.Metrics;
 import com.projectkorra.projectkorra.util.RevertChecker;
@@ -141,25 +127,6 @@ public class ProjectKorra extends JavaPlugin {
 			papiHook = new PlaceholderAPIHook(this);
 			papiHook.register();
 		}
-
-//		if (Bukkit.getPluginManager().getPlugin("ProtocolLib") != null) {
-//			ProtocolManager manager = ProtocolLibrary.getProtocolManager();
-//			manager.addPacketListener(new PacketAdapter(this, ListenerPriority.HIGHEST, PacketType.Play.Server.WORLD_PARTICLES) {
-//				@Override
-//				public void onPacketSending(PacketEvent event) {
-//					Player player = event.getPlayer();
-//					FloodgateApi api = FloodgateApi.getInstance();
-//					if (api.isFloodgatePlayer(player.getUniqueId())) { // player is a bedrock player
-//						PacketContainer packet = event.getPacket();
-//						if (packet.getNewParticles().read(0).getParticle() == Particle.SPELL) {
-//							PacketContainer clone = packet.shallowClone();
-//							clone.getNewParticles().write(0, WrappedParticle.create(Particle.CLOUD, 0));
-//							event.setPacket(clone);
-//						}
-//					}
-//				}
-//			});
-//		}
 	}
 
 	@Override

@@ -22,6 +22,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 
 import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.util.TempBlock;
 
 /**
  * ElementalAbility is used to hold methods that should be accessible by every
@@ -131,7 +132,7 @@ public abstract class ElementalAbility extends CoreAbility {
 	}
 
 	public static boolean isIce(final Block block) {
-		return block != null && isIce(block.getType());
+		return block != null && (isIce(block.getType()) || block.getType().name().endsWith("STAINED_GLASS") && TempBlock.isTempBlock(block));
 	}
 
 	public static boolean isIce(final Material material) {

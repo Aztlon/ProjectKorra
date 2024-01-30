@@ -10,6 +10,7 @@ import org.bukkit.block.data.type.Slab;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.BendingPlayer;
+import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
@@ -170,23 +171,12 @@ public class Tremorsense extends EarthAbility {
 		}
 	}
 
-	public static void manage(final Server server) {
-		for (final Player player : server.getOnlinePlayers()) {
-
-			if (canTremorSense(player) && !hasAbility(player, Tremorsense.class)) {
-				new Tremorsense(player, false);
+	public static void manage() {
+		for (final BendingPlayer bPlayer : BendingPlayer.getPlayers().values()) {
+			if (bPlayer.hasElement(Element.EARTH) && !hasAbility(bPlayer.getPlayer(), Tremorsense.class) && bPlayer.canBendIgnoreBindsCooldowns(getAbility(Tremorsense.class))) {
+				new Tremorsense(bPlayer.getPlayer(), false);
 			}
 		}
-	}
-
-	public static boolean canTremorSense(final Player player) {
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-
-		if (bPlayer != null && bPlayer.canBendIgnoreBindsCooldowns(getAbility("Tremorsense"))) {
-			return true;
-		}
-
-		return false;
 	}
 
 	@Override

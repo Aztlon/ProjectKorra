@@ -20,6 +20,7 @@ import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.ParticleEffect;
@@ -291,7 +292,7 @@ public class EarthSmash extends EarthAbility {
 				return;
 			} else if (System.currentTimeMillis() - this.delay >= this.flightAnimationInterval) {
 				this.delay = System.currentTimeMillis();
-				if (GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
+				if (RegionProtection.isRegionProtected(this, this.location)) {
 					this.remove();
 					return;
 				}
@@ -305,7 +306,7 @@ public class EarthSmash extends EarthAbility {
 					return;
 				}
 				for (final Entity entity : entities) {
-					if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+					if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 						continue;
 					}
 					GeneralMethods.setVelocity(this, entity, direction.clone().multiply(this.flightSpeed));
@@ -347,7 +348,7 @@ public class EarthSmash extends EarthAbility {
 					for (int y = -2; y <= -1; y++) {
 						for (int z = -1; z <= 1; z++) {
 							final Block block = this.location.clone().add(x, y, z).getBlock();
-							if (GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+							if (RegionProtection.isRegionProtected(this, block.getLocation())) {
 								this.remove();
 								return;
 							}
@@ -536,6 +537,10 @@ public class EarthSmash extends EarthAbility {
 	}
 
 	public Material selectMaterialForRepresenter(final Material mat) {
+		final Material cosmetic = earthCosmetic(player);
+		if (cosmetic != null)
+			return cosmetic;
+
 		final Material tempMat = selectMaterial(mat);
 		final Random rand = new Random();
 		if (!isEarthbendable(tempMat, true, true, true) && !this.isMetalbendable(tempMat)) {

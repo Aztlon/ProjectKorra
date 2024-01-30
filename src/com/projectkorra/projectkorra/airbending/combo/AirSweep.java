@@ -22,6 +22,7 @@ import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformatio
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.firebending.combo.FireComboStream;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
@@ -129,7 +130,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 		if (this.player.isDead() || !this.player.isOnline()) {
 			this.remove();
 			return;
-		} else if (this.currentLoc != null && GeneralMethods.isRegionProtectedFromBuild(this, this.currentLoc)) {
+		} else if (this.currentLoc != null && RegionProtection.isRegionProtected(this, this.currentLoc)) {
 			this.remove();
 			return;
 		}
@@ -152,7 +153,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 				}
 				final Vector vec = GeneralMethods.getDirection(hand, endLoc);
 
-				String hexVal = getConfig().getString("Properties.Air.ParticlesColor");
+				String hexVal = particleColor(player);
 				final FireComboStream fs = new FireComboStream(this.player, this, vec, hand, this.range, this.speed);
 				fs.setDensity(1);
 				fs.setAir(true);

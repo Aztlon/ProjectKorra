@@ -25,7 +25,7 @@ public class HydroSink extends WaterAbility implements PassiveAbility {
 
 		final Block block = player.getLocation().getBlock();
 		final Block fallBlock = block.getRelative(BlockFace.DOWN);
-		if (TempBlock.isTempBlock(fallBlock) && (fallBlock.getType().equals(Material.ICE))) {
+		if (TempBlock.isTempBlock(fallBlock) && (isIce(fallBlock))) {
 			return true;
 		} else if (TempBlock.isTempBlock(block) && (block.getType().equals(Material.SNOW))) {
 			return true;

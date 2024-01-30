@@ -18,6 +18,8 @@ import com.projectkorra.projectkorra.airbending.AirSpout;
 import com.projectkorra.projectkorra.airbending.Suffocate;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 
+import me.clip.placeholderapi.PlaceholderAPI;
+
 public abstract class AirAbility extends ElementalAbility {
 
 	public AirAbility(final Player player) {
@@ -103,8 +105,12 @@ public abstract class AirAbility extends ElementalAbility {
 	 * @param loc The location to use
 	 * @param amount The amount of particles
 	 */
-	public static void playAirbendingParticles(final Location loc, final int amount) {
-		playAirbendingParticles(loc, amount, Math.random(), Math.random(), Math.random());
+	public static void playAirbendingParticles(final Player player, final Location loc, final int amount) {
+		playAirbendingParticles(player, loc, amount, Math.random(), Math.random(), Math.random());
+	}
+
+	public void playAirbendingParticles(final Location loc, final int amount) {
+		playAirbendingParticles(this.player, loc, amount);
 	}
 
 	/**
@@ -117,11 +123,23 @@ public abstract class AirAbility extends ElementalAbility {
 	 * @param yOffset The yOffset to use
 	 * @param zOffset The zOffset to use
 	 */
-	public static void playAirbendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
-		final String color = getConfig().getString("Properties.Air.ParticlesColor");
+	public static void playAirbendingParticles(final Player player, final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
+		String color = particleColor(player);
 		GeneralMethods.displayColoredParticle(loc, ParticleEffect.SPELL_MOB, color, amount, xOffset, yOffset, zOffset);
-//		ParticleEffect.SPELL_MOB.display(loc, 0, 181, 213, 255);
-//		loc.getWorld().spawnParticle(Particle.SPELL_MOB, loc, 0, 181D / 255D, 213D / 255D, 1.0);
+	}
+
+	public void playAirbendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
+		playAirbendingParticles(this.player, loc, amount, xOffset, yOffset, zOffset);
+	}
+
+	public static String particleColor(final Player player) {
+		String color = getConfig().getString("Properties.Air.ParticlesColor");
+		if (player != null) {
+			String cosmetic = PlaceholderAPI.setPlaceholders(player, "%avatarverse_airparticlecolor%");
+			if (!cosmetic.isEmpty())
+				color = cosmetic;
+		}
+		return color;
 	}
 
 	/**

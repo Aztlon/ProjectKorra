@@ -182,7 +182,7 @@ public class SurgeWave extends WaterAbility {
 				block.breakNaturally();
 			}
 
-			final TempBlock tblock = new TempBlock(block, Material.ICE);
+			final TempBlock tblock = new TempBlock(block, iceMaterial(this.player));
 
 			tblock.setRevertTask(() -> SurgeWave.this.frozenBlocks.remove(block));
 

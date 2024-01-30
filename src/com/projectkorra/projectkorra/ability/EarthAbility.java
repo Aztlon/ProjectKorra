@@ -1,5 +1,6 @@
 package com.projectkorra.projectkorra.ability;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -37,6 +38,8 @@ import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.Information;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
+
+import me.clip.placeholderapi.PlaceholderAPI;
 
 public abstract class EarthAbility extends ElementalAbility {
 
@@ -199,7 +202,7 @@ public abstract class EarthAbility extends ElementalAbility {
 	}
 
 	public boolean moveEarth(Block block, final Vector direction, final int chainlength, final boolean throwplayer) {
-		if ((!TempBlock.isTempBlock(block) || isBendableEarthTempBlock(block)) && this.isEarthbendable(block) && !GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+		if ((!TempBlock.isTempBlock(block) || isBendableEarthTempBlock(block)) && this.isEarthbendable(block) && !RegionProtection.isRegionProtected(this, block.getLocation())) {
 			boolean up = false;
 			boolean down = false;
 			final Vector norm = direction.clone().normalize();
@@ -245,13 +248,13 @@ public abstract class EarthAbility extends ElementalAbility {
 					if (!isAir(topblock.getType())) {
 						GeneralMethods.breakBlock(affectedblock);
 					} else if (!affectedblock.isLiquid() && !isAir(affectedblock.getType())) {
-						moveEarthBlock(affectedblock, topblock);
+						moveEarthBlock(affectedblock, topblock, player);
 					}
 				} else {
 					GeneralMethods.breakBlock(affectedblock);
 				}
 
-				moveEarthBlock(block, affectedblock);
+				moveEarthBlock(block, affectedblock, player);
 				if (!(this instanceof Shockwave) || ThreadLocalRandom.current().nextInt(20) == 0)
 					playEarthbendingSound(block.getLocation());
 
@@ -260,7 +263,7 @@ public abstract class EarthAbility extends ElementalAbility {
 					if (!this.isEarthbendable(affectedblock)) {
 						if (down) {
 							if (this.isTransparent(affectedblock) && !affectedblock.isLiquid() && !isAir(affectedblock.getType())) {
-								moveEarthBlock(affectedblock, block);
+								moveEarthBlock(affectedblock, block, player);
 							}
 						}
 						break;
@@ -274,7 +277,7 @@ public abstract class EarthAbility extends ElementalAbility {
 						}
 						return false;
 					}
-					moveEarthBlock(affectedblock, block);
+					moveEarthBlock(affectedblock, block, player);
 					block = affectedblock;
 				}
 
@@ -283,7 +286,7 @@ public abstract class EarthAbility extends ElementalAbility {
 				if (!this.isEarthbendable(affectedblock)) {
 					if (down) {
 						if (this.isTransparent(affectedblock) && !affectedblock.isLiquid() && !isAir(affectedblock.getType())) {
-							moveEarthBlock(affectedblock, block);
+							moveEarthBlock(affectedblock, block, player);
 						}
 					}
 				}
@@ -501,7 +504,12 @@ public abstract class EarthAbility extends ElementalAbility {
 		return bPlayer == null ? null : isSand(material) && bPlayer.canSandbend();
 	}
 
-	public static void moveEarthBlock(final Block source, final Block target) {
+	public static @Nullable Material earthCosmetic(Player player) {
+		String cosmetic = PlaceholderAPI.setPlaceholders(player, "%avatarverse_earthmaterial%");
+		return !cosmetic.isEmpty() ? Material.getMaterial(cosmetic.toUpperCase()) : null;
+	}
+
+	public static void moveEarthBlock(final Block source, final Block target, final Player player) {
 		Information info;
 
 		if (MOVED_EARTH.containsKey(source)) {
@@ -516,7 +524,10 @@ public abstract class EarthAbility extends ElementalAbility {
 		info.setTime(System.currentTimeMillis());
 		MOVED_EARTH.put(target, info);
 
-		if (info.getState().getType() == Material.SAND) {
+		Material cosmetic = earthCosmetic(player);
+		if (cosmetic != null) {
+			target.setType(cosmetic, false);
+		} else if (info.getState().getType() == Material.SAND) {
 			target.setType(Material.SANDSTONE, false);
 		} else if (info.getState().getType() == Material.RED_SAND) {
 			target.setType(Material.RED_SANDSTONE, false);
