@@ -55,6 +55,7 @@ public class DensityShift extends EarthAbility implements PassiveAbility {
 
 						if (!SAND_BLOCKS.contains(tb)) {
 							SAND_BLOCKS.add(tb);
+							tb.setBendableSource(true);
 							tb.setRevertTime(getDuration());
 							tb.setRevertTask(() -> SAND_BLOCKS.remove(tb));
 						}

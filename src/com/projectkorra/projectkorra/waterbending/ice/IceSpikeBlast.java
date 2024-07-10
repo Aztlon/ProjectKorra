@@ -19,6 +19,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.IceAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempPotionEffect;
@@ -94,7 +95,7 @@ public class IceSpikeBlast extends IceAbility {
 
 		if (this.sourceBlock == null) {
 			new IceSpikePillarField(player);
-		} else if (GeneralMethods.isRegionProtectedFromBuild(this, this.sourceBlock.getLocation())) {
+		} else if (RegionProtection.isRegionProtected(this, this.sourceBlock.getLocation())) {
 			return;
 		} else {
 			this.prepare(this.sourceBlock);
@@ -195,7 +196,7 @@ public class IceSpikeBlast extends IceAbility {
 				return;
 			}
 
-			if (GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
+			if (RegionProtection.isRegionProtected(this, this.location)) {
 				this.remove();
 				this.returnWater();
 				return;
@@ -335,7 +336,7 @@ public class IceSpikeBlast extends IceAbility {
 			} else if (!iceSpike.progressing) {
 				continue;
 			}
-			if (GeneralMethods.isRegionProtectedFromBuild(iceSpike, iceSpike.location)) {
+			if (RegionProtection.isRegionProtected(iceSpike, iceSpike.location)) {
 				continue;
 			}
 
@@ -372,7 +373,7 @@ public class IceSpikeBlast extends IceAbility {
 			final Vector vector = location.getDirection();
 			final Location mloc = iceSpike.location;
 
-			if (GeneralMethods.isRegionProtectedFromBuild(iceSpike, mloc)) {
+			if (RegionProtection.isRegionProtected(iceSpike, mloc)) {
 				continue;
 			} else if (mloc.distanceSquared(location) <= iceSpike.range * iceSpike.range && GeneralMethods.getDistanceFromLine(vector, location, iceSpike.location) < iceSpike.deflectRange && mloc.distanceSquared(location.clone().add(vector)) < mloc.distanceSquared(location.clone().add(vector.clone().multiply(-1)))) {
 				Location loc;

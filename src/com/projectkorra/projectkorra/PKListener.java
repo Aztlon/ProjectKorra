@@ -72,6 +72,7 @@ import com.projectkorra.projectkorra.earthbending.metal.MetalClips;
 import com.projectkorra.projectkorra.earthbending.passive.DensityShift;
 import com.projectkorra.projectkorra.earthbending.passive.EarthPassive;
 import com.projectkorra.projectkorra.earthbending.passive.FerroControl;
+import com.projectkorra.projectkorra.event.AbilityVelocityAffectEntityEvent;
 import com.projectkorra.projectkorra.event.EntityBendingDeathEvent;
 import com.projectkorra.projectkorra.event.HorizontalVelocityChangeEvent;
 import com.projectkorra.projectkorra.event.PlayerBindChangeEvent;
@@ -865,8 +866,7 @@ public class PKListener implements Listener {
 
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
 	public void onPlayerDamage(final EntityDamageEvent event) {
-		if (event.getEntity() instanceof Player) {
-			final Player player = (Player) event.getEntity();
+		if (event.getEntity() instanceof Player player) {
 			final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 
 			if (bPlayer == null) {
@@ -1602,20 +1602,20 @@ public class PKListener implements Listener {
 		Bukkit.getScheduler().runTaskLater(ProjectKorra.plugin, () -> Illumination.slotChange(player), 1L);
 	}
 
-	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-	public void onPlayerSwapItems(final PlayerSwapHandItemsEvent event) {
-		final Player player = event.getPlayer();
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null) {
-			return;
-		}
-
-		final ItemStack main = event.getMainHandItem();
-		final ItemStack off = event.getOffHandItem();
-		if (main.getType() == Material.AIR && (off == null || off.getType() == Material.AIR)) {
-			ComboManager.addComboAbility(player, ClickType.OFFHAND_TRIGGER);
-		}
-	}
+//	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+//	public void onPlayerSwapItems(final PlayerSwapHandItemsEvent event) {
+//		final Player player = event.getPlayer();
+//		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
+//		if (bPlayer == null) {
+//			return;
+//		}
+//
+//		final ItemStack main = event.getMainHandItem();
+//		final ItemStack off = event.getOffHandItem();
+//		if (main.getType() == Material.AIR && (off == null || off.getType() == Material.AIR)) {
+//			ComboManager.addComboAbility(player, ClickType.OFFHAND_TRIGGER);
+//		}
+//	}
 
 	@EventHandler(priority = EventPriority.NORMAL)
 	public void onPlayerInteract(final PlayerInteractEvent event) {
@@ -1678,7 +1678,7 @@ public class PKListener implements Listener {
 		}
 	}
 
-	@EventHandler
+	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
 	public void onPlayerInteract(PlayerSwingEvent event) {
 		Player player = event.getPlayer();
 		BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
@@ -2027,6 +2027,16 @@ public class PKListener implements Listener {
 		}
 		if (!event.getNewStance().isEmpty()) {
 			BendingBoardManager.updateBoard(player, event.getNewStance(), false, 0);
+		}
+	}
+
+	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+	public void onAbilityVelocityAffectEntity(AbilityVelocityAffectEntityEvent event) {
+		if (event.getAffected() instanceof FallingBlock fb) {
+			TempFallingBlock tfb = TempFallingBlock.get(fb);
+			if (tfb != null && tfb.isImmuneToBending()) {
+				event.setCancelled(true);
+			}
 		}
 	}
 

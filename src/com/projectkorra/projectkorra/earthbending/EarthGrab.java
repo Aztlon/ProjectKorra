@@ -32,6 +32,7 @@ import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.MovementHandler;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempArmor;
@@ -162,7 +163,7 @@ public class EarthGrab extends EarthAbility {
 			}
 		}
 
-		if (GeneralMethods.isRegionProtectedFromBuild(this.player, this.origin)) {
+		if (RegionProtection.isRegionProtected(this.player, this.origin)) {
 			this.remove();
 			return;
 		}
@@ -281,7 +282,7 @@ public class EarthGrab extends EarthAbility {
 			return;
 		}
 
-		if (GeneralMethods.isRegionProtectedFromBuild(this.player, this.player.getLocation())) {
+		if (RegionProtection.isRegionProtected(this.player, this.player.getLocation())) {
 			this.remove();
 			return;
 		}

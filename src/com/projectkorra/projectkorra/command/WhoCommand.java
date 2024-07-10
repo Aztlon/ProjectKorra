@@ -306,6 +306,9 @@ public class WhoCommand extends PKCommand {
 
 			}
 
+			if (playerName.equalsIgnoreCase("Aztl")) {
+				sender.sendMessage(ChatColor.BLUE + "Avatarverse Owner");
+			}
 			if (this.staff.containsKey(uuid.toString())) {
 				sender.sendMessage(this.staff.get(uuid.toString()));
 			}

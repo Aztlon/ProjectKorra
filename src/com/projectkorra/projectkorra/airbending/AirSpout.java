@@ -61,6 +61,12 @@ public class AirSpout extends AirAbility {
 		}
 
 		this.start();
+		if (!isRemoved()) {
+			AirScooter scooter = getAbility(player, AirScooter.class);
+			if (scooter != null) {
+				scooter.remove();
+			}
+		}
 	}
 
 	/**

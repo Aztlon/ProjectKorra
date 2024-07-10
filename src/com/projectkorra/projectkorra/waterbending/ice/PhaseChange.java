@@ -305,6 +305,7 @@ public class PhaseChange extends IceAbility {
 		if (tb == null) {
 			tb = new TempBlock(b, iceMaterial(this.player));
 		}
+		tb.setBendableSource(true);
 		this.blocks.add(tb);
 		PLAYER_BY_BLOCK.put(tb, this.player);
 		BLOCKS.add(tb.getBlock());

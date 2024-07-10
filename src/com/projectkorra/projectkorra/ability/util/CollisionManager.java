@@ -26,7 +26,7 @@ import com.projectkorra.projectkorra.event.AbilityCollisionEvent;
  * <p>
  * For a CoreAbility to collide properly, the {@link CoreAbility#isCollidable()}
  * , {@link CoreAbility#getCollisionRadius()},
- * {@link CoreAbility#getLocations()}, and {@link CoreAbility#handleCollision()}
+ * {@link CoreAbility#getLocations()}, and {@link CoreAbility#handleCollision}
  * should be overridden if necessary.
  * <p>
  * During a Collision the {@link AbilityCollisionEvent} is called, then if not

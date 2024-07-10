@@ -15,6 +15,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.region.RegionProtection;
 
 public class Tremorsense extends EarthAbility {
 
@@ -66,7 +67,7 @@ public class Tremorsense extends EarthAbility {
 
 				for (int k = 0; k <= this.maxDepth; k++) {
 					final Block blocki = block.getRelative(BlockFace.EAST, i).getRelative(BlockFace.NORTH, j).getRelative(BlockFace.DOWN, k);
-					if (GeneralMethods.isRegionProtectedFromBuild(this, blocki.getLocation())) {
+					if (RegionProtection.isRegionProtected(this, blocki.getLocation())) {
 						continue;
 					}
 					if (this.isEarthbendable(blocki) && !earth) {

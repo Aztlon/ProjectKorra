@@ -45,7 +45,7 @@ public class AirScooter extends AirAbility {
 
 		if (check(player)) {
 			return;
-		} else if (!player.isSprinting() || GeneralMethods.isSolid(player.getEyeLocation().getBlock()) || ElementalAbility.isWater(player.getEyeLocation().getBlock())) {
+		} else if (/*!player.isSprinting() || */GeneralMethods.isSolid(player.getEyeLocation().getBlock()) || isWater(player.getEyeLocation().getBlock())) {
 			return;
 		} else if (GeneralMethods.isSolid(player.getLocation().add(0, -.5, 0).getBlock())) {
 			return;
@@ -150,23 +150,22 @@ public class AirScooter extends AirAbility {
 			return;
 		}
 
-		Vector velocity = this.player.getEyeLocation().getDirection().clone().normalize();
-		velocity = velocity.clone().normalize().multiply(this.speed);
+		Vector velocity = this.player.getEyeLocation().getDirection().setY(0).normalize().multiply(this.speed);
 		/*
 		 * checks the players speed and ends the move if they are going too slow
 		 */
 		if (System.currentTimeMillis() > this.getStartTime() + this.interval) {
-			if (this.useslime) {
-				if (this.slime.getVelocity().length() < this.speed * 0.3) {
-					this.remove();
-					return;
-				}
-			} else {
-				if (this.player.getVelocity().length() < this.speed * 0.3) {
-					this.remove();
-					return;
-				}
-			}
+//			if (this.useslime) {
+//				if (this.slime.getVelocity().length() < this.speed * 0.3) {
+//					this.remove();
+//					return;
+//				}
+//			} else {
+//				if (this.player.getVelocity().length() < this.speed * 0.3) {
+//					this.remove();
+//					return;
+//				}
+//			}
 			this.spinScooter();
 		}
 		/*

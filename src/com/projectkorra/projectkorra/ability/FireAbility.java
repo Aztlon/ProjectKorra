@@ -221,7 +221,7 @@ public abstract class FireAbility extends ElementalAbility {
 	}
 
 	public void playFirebendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
-		playFirebendingParticles(loc, amount, xOffset, yOffset, zOffset, 0.1);
+		playFirebendingParticles(loc, amount, xOffset, yOffset, zOffset, 0.025);
 	}
 
 	public static void playFirebendingSound(final Location loc) {

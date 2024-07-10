@@ -28,6 +28,7 @@ import com.projectkorra.projectkorra.airbending.AirScooter;
 import com.projectkorra.projectkorra.airbending.AirSpout;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.FireJet;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ActionBar;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.MovementHandler;
@@ -224,7 +225,7 @@ public class FlightMultiAbility extends FlightAbility implements MultiAbility {
 
 				for (final Entity e : GeneralMethods.getEntitiesAroundPoint(this.player.getLocation(), this.speed)) {
 					if (e instanceof LivingEntity && e.getEntityId() != this.player.getEntityId() && !this.player.getPassengers().contains(e)) {
-						if (!GeneralMethods.isRegionProtectedFromBuild(this.player, e.getLocation())) {
+						if (!RegionProtection.isRegionProtected(this.player, e.getLocation())) {
 							final LivingEntity le = (LivingEntity) e;
 							DamageHandler.damageEntity(le, this.speed / 2, this);
 							GeneralMethods.setVelocity(this, le, this.player.getVelocity().clone().multiply(2 / 3));

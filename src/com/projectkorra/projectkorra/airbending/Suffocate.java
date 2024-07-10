@@ -16,6 +16,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
 /**
@@ -113,22 +114,20 @@ public class Suffocate extends AirAbility {
 				}
 			}
 		} else {
-			List<Entity> entities = new ArrayList<Entity>();
+			List<Entity> entities = new ArrayList<>();
 			for (int i = 0; i < 6; i++) {
 				final Location location = GeneralMethods.getTargetedLocation(player, i, getTransparentMaterials());
 				entities = GeneralMethods.getEntitiesAroundPoint(location, .5);
-				if (entities.contains(player)) {
-					entities.remove(player);
-				}
-				if (entities != null && !entities.isEmpty() && !entities.contains(player)) {
+				entities.remove(player);
+				if (!entities.isEmpty() && !entities.contains(player)) {
 					break;
 				}
 			}
-			if (entities == null || entities.isEmpty()) {
+			if (entities.isEmpty()) {
 				return;
 			}
 			final Entity target = entities.get(0);
-			if (target != null && target instanceof LivingEntity) {
+			if (target instanceof LivingEntity) {
 				this.targets.add((LivingEntity) target);
 			}
 		}
@@ -150,7 +149,7 @@ public class Suffocate extends AirAbility {
 	public void progress() {
 		for (int i = 0; i < this.targets.size(); i++) {
 			final LivingEntity target = this.targets.get(i);
-			if (target.isDead() || !target.getWorld().equals(this.player.getWorld()) || target.getLocation().distanceSquared(this.player.getEyeLocation()) > this.range * this.range || GeneralMethods.isRegionProtectedFromBuild(this, target.getLocation()) || target instanceof ArmorStand) {
+			if (target.isDead() || !target.getWorld().equals(this.player.getWorld()) || target.getLocation().distanceSquared(this.player.getEyeLocation()) > this.range * this.range || RegionProtection.isRegionProtected(this, target.getLocation()) || target instanceof ArmorStand) {
 				this.breakSuffocateLocal(target);
 				i--;
 			} else if (target instanceof Player) {

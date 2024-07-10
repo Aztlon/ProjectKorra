@@ -47,7 +47,7 @@ public class Collapse extends EarthAbility {
 			return;
 		} else if (TempBlock.isTempBlock(this.block) && isBendableEarthTempBlock(this.block)) {
 			TempBlock tb = TempBlock.get(this.block);
-			removeEarthbendableTempBlock(tb);
+//			removeEarthbendableTempBlock(tb);
 			tb.revertBlock();
 			return;
 		}
@@ -77,7 +77,7 @@ public class Collapse extends EarthAbility {
 		this.block = origin.getBlock();
 		if (TempBlock.isTempBlock(this.block) && isBendableEarthTempBlock(this.block)) {
 			TempBlock tb = TempBlock.get(this.block);
-			removeEarthbendableTempBlock(tb);
+//			removeEarthbendableTempBlock(tb);
 			tb.revertBlock();
 			return;
 		}

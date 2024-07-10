@@ -17,6 +17,7 @@ import com.projectkorra.projectkorra.ability.ComboAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ClickType;
 
 public class AirStream extends AirAbility implements ComboAbility {
@@ -85,7 +86,7 @@ public class AirStream extends AirAbility implements ComboAbility {
 		if (this.player.isDead() || !this.player.isOnline()) {
 			this.remove();
 			return;
-		} else if (this.currentLoc != null && GeneralMethods.isRegionProtectedFromBuild(this, this.currentLoc)) {
+		} else if (this.currentLoc != null && RegionProtection.isRegionProtected(this, this.currentLoc)) {
 			this.remove();
 			return;
 		}
@@ -128,7 +129,7 @@ public class AirStream extends AirAbility implements ComboAbility {
 		} else if (this.currentLoc.getY() - this.origin.getY() > this.airStreamMaxEntityHeight) {
 			this.remove();
 			return;
-		} else if (GeneralMethods.isRegionProtectedFromBuild(this, this.currentLoc)) {
+		} else if (RegionProtection.isRegionProtected(this, this.currentLoc)) {
 			this.remove();
 			return;
 		} else if (!this.isTransparent(this.currentLoc.getBlock())) {
@@ -163,7 +164,7 @@ public class AirStream extends AirAbility implements ComboAbility {
 		}
 
 		for (final Entity entity : this.affectedEntities) {
-			if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+			if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 				continue;
 			}
 			final Vector force = GeneralMethods.getDirection(entity.getLocation(), this.currentLoc);

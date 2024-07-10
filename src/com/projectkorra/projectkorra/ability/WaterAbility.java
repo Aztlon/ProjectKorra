@@ -95,11 +95,12 @@ public abstract class WaterAbility extends ElementalAbility {
 	}
 
 	public static boolean isBendableWaterTempBlock(final TempBlock tempBlock) {
-		return WATERBENDABLE_TEMPBLOCKS.contains(tempBlock)
-				|| PhaseChange.getFrozenBlocksMap().containsKey(tempBlock)
-				|| HeatControl.getMeltedBlocks().contains(tempBlock)
-				|| SurgeWall.SOURCE_BLOCKS.contains(tempBlock)
-				|| Torrent.getFrozenBlocks().containsKey(tempBlock);
+		return tempBlock != null && tempBlock.isBendableSource();
+//		return WATERBENDABLE_TEMPBLOCKS.contains(tempBlock)
+//				|| PhaseChange.getFrozenBlocksMap().containsKey(tempBlock)
+//				|| HeatControl.getMeltedBlocks().contains(tempBlock)
+//				|| SurgeWall.SOURCE_BLOCKS.contains(tempBlock)
+//				|| Torrent.getFrozenBlocks().containsKey(tempBlock);
 	}
 
 	/**
@@ -273,7 +274,7 @@ public abstract class WaterAbility extends ElementalAbility {
 
 		for (double i = 0; i <= range; i++) {
 			final Block block = location.clone().add(vector.clone().multiply(i)).getBlock();
-			if ((!isTransparent(player, block) && !isIce(block) && !isPlant(block) && !isDecayablePlant(block) && !isSnow(block)) || GeneralMethods.isRegionProtectedFromBuild(player, "WaterManipulation", location)) {
+			if ((!isTransparent(player, block) && !isIce(block) && !isPlant(block) && !isDecayablePlant(block) && !isSnow(block)) || RegionProtection.isRegionProtected(player, location, "WaterManipulation")) {
 				continue;
 			}
 			if (isWaterbendable(player, null, block) && ((!isPlant(block) && !isDecayablePlant(block)) || plantbending)) {

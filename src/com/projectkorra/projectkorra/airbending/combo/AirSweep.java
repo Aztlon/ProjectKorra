@@ -184,7 +184,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 			final FireComboStream fstream = (FireComboStream) this.tasks.get(i);
 			final Location loc = fstream.getLocation();
 
-			if (GeneralMethods.isRegionProtectedFromBuild(this, loc)) {
+			if (RegionProtection.isRegionProtected(this, loc)) {
 				fstream.remove();
 				return;
 			}
@@ -197,7 +197,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 			}
 			if (i % 3 == 0) {
 				for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(loc, radius)) {
-					if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation())) {
+					if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 						this.remove();
 						return;
 					}

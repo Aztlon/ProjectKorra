@@ -57,8 +57,7 @@ public abstract class EarthAbility extends ElementalAbility {
 		final Location location = block.getLocation();
 		direction = direction.normalize();
 		for (int i = 0; i <= maxlength; i++) {
-			final double j = i;
-			if (!this.isEarthbendable(location.clone().add(direction.clone().multiply(j)).getBlock())) {
+			if (!this.isEarthbendable(location.clone().add(direction.clone().multiply((double) i)).getBlock())) {
 				return i;
 			}
 		}
@@ -123,7 +122,8 @@ public abstract class EarthAbility extends ElementalAbility {
 	 * @author Aztl
 	 */
 	public static boolean isBendableEarthTempBlock(final TempBlock tempBlock) {
-		return EARTHBENDABLE_TEMPBLOCKS.contains(tempBlock) || DensityShift.getSandBlocks().contains(tempBlock);
+		return tempBlock != null && tempBlock.isBendableSource();
+//		return EARTHBENDABLE_TEMPBLOCKS.contains(tempBlock) || DensityShift.getSandBlocks().contains(tempBlock);
 	}
 
 	/**
@@ -343,8 +343,8 @@ public abstract class EarthAbility extends ElementalAbility {
 		final Material sand = red ? Material.RED_SAND : Material.SAND;
 		final Material stone = red ? Material.RED_SANDSTONE : Material.SANDSTONE;
 
-		ParticleEffect.BLOCK_CRACK.display(loc, amount, xOffset, yOffset, zOffset, speed, sand.createBlockData());
-		ParticleEffect.BLOCK_CRACK.display(loc, amount, xOffset, yOffset, zOffset, speed, stone.createBlockData());
+		ParticleEffect.BLOCK_DUST.display(loc, amount, xOffset, yOffset, zOffset, speed, sand.createBlockData());
+		ParticleEffect.BLOCK_DUST.display(loc, amount, xOffset, yOffset, zOffset, speed, stone.createBlockData());
 	}
 
 	/**

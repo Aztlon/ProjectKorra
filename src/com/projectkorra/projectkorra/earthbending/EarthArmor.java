@@ -79,7 +79,7 @@ public class EarthArmor extends EarthAbility {
 		if (COLORS.isEmpty()) defineColors();
 
 		this.headBlock = this.getTargetEarthBlock((int) this.selectRange);
-		if (!GeneralMethods.isRegionProtectedFromBuild(this, this.headBlock.getLocation()) && this.getEarthbendableBlocksLength(this.headBlock, new Vector(0, -1, 0), 2) >= 2) {
+		if (!RegionProtection.isRegionProtected(this, this.headBlock.getLocation()) && this.getEarthbendableBlocksLength(this.headBlock, new Vector(0, -1, 0), 2) >= 2) {
 			this.legsBlock = this.headBlock.getRelative(BlockFace.DOWN);
 			this.headMaterial = this.headBlock.getType();
 			this.legsMaterial = this.legsBlock.getType();

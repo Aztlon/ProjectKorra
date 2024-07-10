@@ -179,7 +179,7 @@ public class WaterSpoutWave extends WaterAbility {
 				}
 
 				this.origin = this.sourceBlock.getLocation();
-				if (!this.isWaterbendable(this.sourceBlock) || GeneralMethods.isRegionProtectedFromBuild(this, this.origin)) {
+				if (!this.isWaterbendable(this.sourceBlock) || RegionProtection.isRegionProtected(this, this.origin)) {
 					this.remove();
 					return;
 				} else if (this.iceOnly && !(this.isIcebendable(this.sourceBlock) || isSnow(this.sourceBlock))) {
@@ -248,7 +248,7 @@ public class WaterSpoutWave extends WaterAbility {
 				this.location.add(0, this.animationSpeed, 0);
 				final Block block = this.location.getBlock();
 
-				if (!(this.isWaterbendable(block) || ElementalAbility.isAir(block.getType()) || GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation()))) {
+				if (!(this.isWaterbendable(block) || ElementalAbility.isAir(block.getType()) || RegionProtection.isRegionProtected(this, block.getLocation()))) {
 					this.remove();
 					return;
 				}
@@ -264,7 +264,7 @@ public class WaterSpoutWave extends WaterAbility {
 				this.location.add(vec.normalize().multiply(this.animationSpeed));
 				final Block block = this.location.getBlock();
 
-				if (!(this.isWaterbendable(block) || ElementalAbility.isAir(block.getType()) || GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation()))) {
+				if (!(this.isWaterbendable(block) || ElementalAbility.isAir(block.getType()) || RegionProtection.isRegionProtected(this, block.getLocation()))) {
 					this.remove();
 					return;
 				}
@@ -354,7 +354,7 @@ public class WaterSpoutWave extends WaterAbility {
 			dir.setY(0);
 			final Block block = this.player.getEyeLocation().add(dir).getBlock();
 			this.location = block.getLocation();
-			if (ElementalAbility.isAir(block.getType()) && !GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+			if (ElementalAbility.isAir(block.getType()) && !RegionProtection.isRegionProtected(this, block.getLocation())) {
 				this.createBlock(block, Material.WATER);
 			}
 		}

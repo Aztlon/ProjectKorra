@@ -326,8 +326,6 @@ public class BlockSource {
 			if (sourceBlock == null || !sourceBlock.getLocation().getWorld().equals(player.getWorld()) || Math.abs(sourceBlock.getLocation().distance(player.getEyeLocation())) > range || !EarthAbility.isEarthbendable(player, sourceBlock)) {
 				return null;
 			}
-		} else {
-			sourceBlock = getSourceBlock(player, range, BlockSourceType.EARTH, clickType);
 		}
 		return sourceBlock;
 	}

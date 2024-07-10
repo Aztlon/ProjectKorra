@@ -45,6 +45,7 @@ public class FireBlast extends FireAbility {
 	private boolean dissipate;
 	private boolean isFireBurst = false;
 	private boolean fireBurstIgnite;
+	public boolean selfHit;
 	private int ticks;
 	@Attribute(Attribute.COOLDOWN)
 	private long cooldown;
@@ -186,7 +187,7 @@ public class FireBlast extends FireAbility {
 	}
 
 	private void affect(final Entity entity) {
-		if (entity.getUniqueId() != this.player.getUniqueId() && !RegionProtection.isRegionProtected(this, entity.getLocation()) && !((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+		if ((entity.getUniqueId() != this.player.getUniqueId() || selfHit) && !RegionProtection.isRegionProtected(this, entity.getLocation()) && !((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 			if (this.bPlayer.isAvatarState()) {
 				GeneralMethods.setVelocity(this, entity, this.direction.clone().multiply(AvatarState.getValue(this.knockback)));
 			} else {

@@ -27,6 +27,7 @@ import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.earthbending.lava.LavaFlow;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 
@@ -173,11 +174,12 @@ public class AirSwipe extends AirAbility {
 			this.remove();
 		}
 	}
+
 	public boolean checkLocation(Block block, Vector direction) {
 		if (GeneralMethods.checkDiagonalWall(block.getLocation(), direction) || !block.isPassable()) {
 			return false;
 		}  else {
-			if (block.getLocation().distanceSquared(this.origin) > this.range * this.range || GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+			if (block.getLocation().distanceSquared(this.origin) > this.range * this.range || RegionProtection.isRegionProtected(this, block.getLocation())) {
 				this.streams.clear();
 			} else {
 				if (!ElementalAbility.isTransparent(this.player, block) || !block.isPassable()) {
@@ -233,7 +235,7 @@ public class AirSwipe extends AirAbility {
 			new BukkitRunnable() {
 				@Override
 				public void run() {
-					if (GeneralMethods.isRegionProtectedFromBuild(AirSwipe.this, entity.getLocation())) {
+					if (RegionProtection.isRegionProtected(AirSwipe.this, entity.getLocation())) {
 						return;
 					}
 					if (entity.getEntityId() != AirSwipe.this.player.getEntityId() && entity instanceof LivingEntity) {
@@ -319,7 +321,7 @@ public class AirSwipe extends AirAbility {
 
 	@Override
 	public Location getLocation() {
-		return this.streams.size() != 0 ? this.streams.values().iterator().next() : null;
+		return !this.streams.isEmpty() ? this.streams.values().iterator().next() : null;
 	}
 
 	@Override
@@ -349,11 +351,7 @@ public class AirSwipe extends AirAbility {
 
 	@Override
 	public List<Location> getLocations() {
-		final ArrayList<Location> locations = new ArrayList<>();
-		for (final Location swipeLoc : this.streams.values()) {
-			locations.add(swipeLoc);
-		}
-		return locations;
+		return new ArrayList<>(this.streams.values());
 	}
 
 	public Location getOrigin() {

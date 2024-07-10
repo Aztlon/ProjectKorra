@@ -345,6 +345,7 @@ public class HeatControl extends FireAbility {
 				return;
 			} else {
 				final TempBlock tb = new TempBlock(block, Material.WATER);
+				tb.setBendableSource(true);
 				MELTED_BLOCKS.put(block, tb);
 
 				new BukkitRunnable() {
@@ -486,7 +487,7 @@ public class HeatControl extends FireAbility {
 
 		for (double i = 0; i <= range; i++) {
 			final Block block = location.clone().add(vector.clone().multiply(i)).getBlock();
-			if (GeneralMethods.isRegionProtectedFromBuild(player, location)) {
+			if (RegionProtection.isRegionProtected(player, location)) {
 				continue;
 			}
 			if (isLava(block)) {

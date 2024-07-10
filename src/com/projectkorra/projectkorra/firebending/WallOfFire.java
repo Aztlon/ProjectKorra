@@ -18,6 +18,7 @@ import com.projectkorra.projectkorra.ability.BlueFireAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 
@@ -144,7 +145,7 @@ public class WallOfFire extends FireAbility {
 			entities.remove(this.player);
 		}
 		for (final Entity entity : entities) {
-			if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation())) {
+			if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 				continue;
 			}
 			for (final Block block : this.blocks) {
@@ -185,7 +186,7 @@ public class WallOfFire extends FireAbility {
 			for (double j = -h; j <= h; j++) {
 				Location location = this.origin.clone().add(orthoud.clone().multiply(j));
 				location = location.add(ortholr.clone().multiply(i));
-				if (GeneralMethods.isRegionProtectedFromBuild(this, location)) {
+				if (RegionProtection.isRegionProtected(this, location)) {
 					continue;
 				}
 				final Block block = location.getBlock();

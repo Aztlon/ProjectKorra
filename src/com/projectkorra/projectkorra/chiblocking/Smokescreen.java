@@ -14,6 +14,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 
 public class Smokescreen extends ChiAbility {
@@ -69,22 +70,20 @@ public class Smokescreen extends ChiAbility {
 	}
 
 	public void applyBlindness(final Entity entity) {
-		if (entity instanceof Player) {
-			if (Commands.invincible.contains(((Player) entity).getName())) {
+		if (entity instanceof Player p) {
+			if (Commands.invincible.contains(entity.getName())) {
 				return;
-			} else if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation())) {
+			} else if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 				return;
 			}
-			final Player p = (Player) entity;
-			p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, this.duration * 20, 2));
+			p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, this.duration * 20, 2));
 			BLINDED_TIMES.put(p.getName(), System.currentTimeMillis());
 			BLINDED_TO_ABILITY.put(p.getName(), this);
 		}
 	}
 
 	public static void removeFromHashMap(final Entity entity) {
-		if (entity instanceof Player) {
-			final Player p = (Player) entity;
+		if (entity instanceof Player p) {
 			if (BLINDED_TIMES.containsKey(p.getName())) {
 				final Smokescreen smokescreen = BLINDED_TO_ABILITY.get(p.getName());
 				if (BLINDED_TIMES.get(p.getName()) + smokescreen.duration >= System.currentTimeMillis()) {

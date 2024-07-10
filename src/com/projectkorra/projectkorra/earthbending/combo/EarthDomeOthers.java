@@ -60,7 +60,7 @@ public class EarthDomeOthers extends EarthAbility implements ComboAbility {
 			this.remove(true);
 			return;
 		}
-		if (GeneralMethods.isRegionProtectedFromBuild(this.player, this.loc)) {
+		if (RegionProtection.isRegionProtected(this.player, this.loc)) {
 			this.remove(true);
 			return;
 		}

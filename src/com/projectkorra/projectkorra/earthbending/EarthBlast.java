@@ -18,6 +18,7 @@ import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.earthbending.passive.DensityShift;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
@@ -90,7 +91,7 @@ public class EarthBlast extends EarthAbility {
 				continue;
 			} else if (!blast.isProgressing) {
 				continue;
-			} else if (GeneralMethods.isRegionProtectedFromBuild(this, blast.location)) {
+			} else if (RegionProtection.isRegionProtected(this, blast.location)) {
 				continue;
 			}
 
@@ -274,7 +275,7 @@ public class EarthBlast extends EarthAbility {
 				}
 
 				for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, this.collisionRadius)) {
-					if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation())) {
+					if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 						continue;
 					}
 
@@ -468,7 +469,7 @@ public class EarthBlast extends EarthAbility {
 				continue;
 			} else if (!blast.location.getWorld().equals(player.getWorld())) {
 				continue;
-			} else if (GeneralMethods.isRegionProtectedFromBuild(blast, blast.location)) {
+			} else if (RegionProtection.isRegionProtected(blast, blast.location)) {
 				continue;
 			} else if (blast.player.equals(player)) {
 				blast.redirect(player, blast.getTargetLocation());

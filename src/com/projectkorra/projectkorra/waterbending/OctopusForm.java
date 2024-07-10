@@ -21,6 +21,7 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
@@ -207,7 +208,7 @@ public class OctopusForm extends WaterAbility {
 		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(location, this.attackRange)) {
 			if (entity.getEntityId() == this.player.getEntityId()) {
 				continue;
-			} else if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation())) {
+			} else if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 				continue;
 			} else if (GeneralMethods.isObstructed(location, entity.getLocation())) {
 				continue;
@@ -427,7 +428,7 @@ public class OctopusForm extends WaterAbility {
 	}
 
 	private void addWater(final Block block) {
-		if (GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+		if (RegionProtection.isRegionProtected(this, block.getLocation())) {
 			return;
 		}
 

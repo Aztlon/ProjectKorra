@@ -169,6 +169,7 @@ public class Torrent extends WaterAbility {
 					}
 				}
 				final TempBlock tblock = new TempBlock(block, iceMaterial(this.player));
+				tblock.setBendableSource(true);
 				FROZEN_BLOCKS.put(tblock, Pair.of(this.player, this.getId()));
 				if (this.revert) {
 					tblock.setRevertTime(this.revertTime + (new Random().nextInt((500 + 500) + 1) - 500));
@@ -370,7 +371,7 @@ public class Torrent extends WaterAbility {
 				}
 
 				final Block block = blockloc.getBlock();
-				if (!doneBlocks.contains(block) && !GeneralMethods.isRegionProtectedFromBuild(this, blockloc)) {
+				if (!doneBlocks.contains(block) && !RegionProtection.isRegionProtected(this, blockloc)) {
 					if (isTransparent(this.player, block)) {
 						this.launchedBlocks.add(new TempBlock(block, Material.WATER));
 						doneBlocks.add(block);
@@ -406,7 +407,7 @@ public class Torrent extends WaterAbility {
 		}
 
 		final Block locBlock = this.location.getBlock();
-		if (this.location.distanceSquared(this.player.getLocation()) > this.range * this.range || GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
+		if (this.location.distanceSquared(this.player.getLocation()) > this.range * this.range || RegionProtection.isRegionProtected(this, this.location)) {
 			if (this.layer < this.maxLayer) {
 				if (this.freeze || this.layer < 1) {
 					this.layer++;
@@ -583,7 +584,7 @@ public class Torrent extends WaterAbility {
 		if (entity.getEntityId() == this.player.getEntityId()) {
 			return;
 		}
-		if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+		if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 			return;
 		}
 		double x, z, vx, vz, mag;
@@ -622,7 +623,7 @@ public class Torrent extends WaterAbility {
 		if (entity.getEntityId() == this.player.getEntityId()) {
 			return;
 		}
-		if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || (entity instanceof Player && Commands.invincible.contains(((Player) entity).getName()))) {
+		if (RegionProtection.isRegionProtected(this, entity.getLocation()) || (entity instanceof Player && Commands.invincible.contains(((Player) entity).getName()))) {
 			return;
 		}
 		if (direction.getY() > this.knockup) {

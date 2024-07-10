@@ -225,6 +225,11 @@ public class DamageHandler {
 			}
 
 			if (prevHealth != nextHealth) {
+				CoreAbility coreAbility = CoreAbility.getAbility(ability.getName());
+				if (coreAbility == null) {
+					ProjectKorra.log.warning("Tried to add damage to entity " + entity.getName() + " for ability " + ability.getName() + " but the ability was not found.");
+					return;
+				}
 				if (entity instanceof Player) {
 					StatisticsMethods.addStatisticAbility(source.getUniqueId(), CoreAbility.getAbility(ability.getName()), Statistic.PLAYER_DAMAGE, (long) damage);
 				}
@@ -235,7 +240,7 @@ public class DamageHandler {
 	}
 	
 	public static void damageEntity(final Entity entity, final Player source, final double damage, final Ability ability, final boolean ignoreArmor) {
-		damageEntity(entity, source, damage, ability, ignoreArmor);
+		damageEntity(entity, source, damage, ability, ignoreArmor, false);
 	}
 	
 	public static void damageEntity(final Entity entity, final double damage, final Ability ability, final boolean ignoreArmor) {

@@ -82,7 +82,7 @@ public class Tornado extends AirAbility {
 			this.bPlayer.addCooldown(this);
 			this.remove();
 			return;
-		} else if (GeneralMethods.isRegionProtectedFromBuild(this, this.origin)) {
+		} else if (RegionProtection.isRegionProtected(this, this.origin)) {
 			this.remove();
 			return;
 		} else if (this.duration != 0) {

@@ -10,6 +10,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.EarthAbility;
@@ -52,32 +53,12 @@ public class PlantRegrowth extends PlantAbility {
 						continue;
 					}
 
-					Material newMaterial = switch (b.getType()) {
-						case CRIMSON_NYLIUM, WARPED_NYLIUM -> Material.NETHERRACK;
-						case OAK_LOG -> Material.STRIPPED_OAK_LOG;
-						case SPRUCE_LOG -> Material.STRIPPED_SPRUCE_LOG;
-						case BIRCH_LOG -> Material.STRIPPED_BIRCH_LOG;
-						case JUNGLE_LOG -> Material.STRIPPED_JUNGLE_LOG;
-						case DARK_OAK_LOG -> Material.STRIPPED_DARK_OAK_LOG;
-						case ACACIA_LOG -> Material.STRIPPED_ACACIA_LOG;
-						case OAK_WOOD -> Material.STRIPPED_OAK_WOOD;
-						case SPRUCE_WOOD -> Material.STRIPPED_SPRUCE_WOOD;
-						case BIRCH_WOOD -> Material.STRIPPED_BIRCH_WOOD;
-						case JUNGLE_WOOD -> Material.STRIPPED_JUNGLE_WOOD;
-						case DARK_OAK_WOOD -> Material.STRIPPED_DARK_OAK_WOOD;
-						case ACACIA_WOOD -> Material.STRIPPED_ACACIA_WOOD;
-						case CRIMSON_STEM -> Material.STRIPPED_CRIMSON_STEM;
-						case WARPED_STEM -> Material.STRIPPED_WARPED_STEM;
-						case CRIMSON_HYPHAE -> Material.STRIPPED_CRIMSON_HYPHAE;
-						case WARPED_HYPHAE -> Material.STRIPPED_WARPED_HYPHAE;
-						default -> Material.COARSE_DIRT;
-					};
-
-					TempBlock tb = new TempBlock(b, newMaterial);
+					TempBlock tb = getTempBlock(b);
 					affectedBlocks.put(b, tb);
 					decayedBlocks.add(tb);
-					EarthAbility.addEarthbendableTempBlock(tb);
-					tb.setRevertTask(() -> EarthAbility.removeEarthbendableTempBlock(tb));
+					tb.setBendableSource(true);
+//					EarthAbility.addEarthbendableTempBlock(tb);
+//					tb.setRevertTask(() -> EarthAbility.removeEarthbendableTempBlock(tb));
 				}
 			}
 
@@ -97,6 +78,33 @@ public class PlantRegrowth extends PlantAbility {
 			this.time = System.currentTimeMillis() + this.regrowTime / 2 + (long) (Math.random() * this.regrowTime) / 2;
 			this.start();
 		}
+	}
+
+	@NotNull
+	private static TempBlock getTempBlock(Block b) {
+		Material newMaterial = switch (b.getType()) {
+			case CRIMSON_NYLIUM, WARPED_NYLIUM -> Material.NETHERRACK;
+			case OAK_LOG -> Material.STRIPPED_OAK_LOG;
+			case SPRUCE_LOG -> Material.STRIPPED_SPRUCE_LOG;
+			case BIRCH_LOG -> Material.STRIPPED_BIRCH_LOG;
+			case JUNGLE_LOG -> Material.STRIPPED_JUNGLE_LOG;
+			case DARK_OAK_LOG -> Material.STRIPPED_DARK_OAK_LOG;
+			case ACACIA_LOG -> Material.STRIPPED_ACACIA_LOG;
+			case OAK_WOOD -> Material.STRIPPED_OAK_WOOD;
+			case SPRUCE_WOOD -> Material.STRIPPED_SPRUCE_WOOD;
+			case BIRCH_WOOD -> Material.STRIPPED_BIRCH_WOOD;
+			case JUNGLE_WOOD -> Material.STRIPPED_JUNGLE_WOOD;
+			case DARK_OAK_WOOD -> Material.STRIPPED_DARK_OAK_WOOD;
+			case ACACIA_WOOD -> Material.STRIPPED_ACACIA_WOOD;
+			case CRIMSON_STEM -> Material.STRIPPED_CRIMSON_STEM;
+			case WARPED_STEM -> Material.STRIPPED_WARPED_STEM;
+			case CRIMSON_HYPHAE -> Material.STRIPPED_CRIMSON_HYPHAE;
+			case WARPED_HYPHAE -> Material.STRIPPED_WARPED_HYPHAE;
+			case BAMBOO_BLOCK -> Material.STRIPPED_BAMBOO_BLOCK;
+			default -> Material.COARSE_DIRT;
+		};
+
+		return new TempBlock(b, newMaterial);
 	}
 
 	public PlantRegrowth(final Player player, final Block block) {

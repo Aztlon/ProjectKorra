@@ -19,7 +19,8 @@ public class TempFallingBlock {
     private CoreAbility ability;
     private long creation;
     private boolean expire;
-    private Consumer<TempFallingBlock> onPlace;
+    private boolean immuneToBending;
+    private Consumer<TempFallingBlock> onPlace, onTick;
 
     public TempFallingBlock(Location location, BlockData data, Vector velocity, CoreAbility ability) {
         this(location, data, velocity, ability, false);
@@ -39,7 +40,14 @@ public class TempFallingBlock {
         long time = System.currentTimeMillis();
 
         for (TempFallingBlock tfb : instances.values()) {
-            if (tfb.canExpire() && time > tfb.getCreationTime() + 5000) {
+            Consumer<TempFallingBlock> onTick = tfb.getOnTick();
+            if (onTick != null) {
+                onTick.accept(tfb);
+            }
+
+            if (tfb.getFallingBlock().isDead()) {
+                tfb.remove();
+            } else if (tfb.canExpire() && time > tfb.getCreationTime() + 5000) {
                 tfb.remove();
             } else if (time > tfb.getCreationTime() + 120000) { // Add a hard timeout for any abilities that misuse this.
                 tfb.remove();
@@ -129,7 +137,26 @@ public class TempFallingBlock {
         return onPlace;
     }
 
-    public void setOnPlace(Consumer<TempFallingBlock> onPlace) {
+    public TempFallingBlock setOnPlace(Consumer<TempFallingBlock> onPlace) {
         this.onPlace = onPlace;
+        return this;
+    }
+
+    public Consumer<TempFallingBlock> getOnTick() {
+        return onTick;
+    }
+
+    public TempFallingBlock setOnTick(Consumer<TempFallingBlock> onTick) {
+        this.onTick = onTick;
+        return this;
+    }
+
+    public boolean isImmuneToBending() {
+        return immuneToBending;
+    }
+
+    public TempFallingBlock setImmuneToBending(boolean immuneToBending) {
+        this.immuneToBending = immuneToBending;
+        return this;
     }
 }

@@ -110,6 +110,7 @@ public class SurgeWall extends WaterAbility {
 
 			if (isTransparent(player, block) && isTransparent(player, eyeLoc.getBlock())) {
 				final TempBlock tempBlock = new TempBlock(block, Material.WATER);
+				tempBlock.setBendableSource(true);
 				SOURCE_BLOCKS.add(tempBlock);
 
 				wave = new SurgeWave(player);
@@ -478,6 +479,7 @@ public class SurgeWall extends WaterAbility {
 
 				if (isTransparent(player, block) && isTransparent(player, eyeLoc.getBlock())) {
 					final TempBlock tempBlock = new TempBlock(block, Material.WATER);
+					tempBlock.setBendableSource(true);
 					SOURCE_BLOCKS.add(tempBlock);
 
 					wall = new SurgeWall(player);

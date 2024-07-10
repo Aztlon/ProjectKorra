@@ -257,7 +257,7 @@ public class EarthSmash extends EarthAbility {
 		} else if (this.state == State.SHOT) {
 			if (System.currentTimeMillis() - this.delay >= this.shootAnimationInterval) {
 				this.delay = System.currentTimeMillis();
-				if (GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
+				if (RegionProtection.isRegionProtected(this, this.location)) {
 					this.remove();
 					return;
 				}
@@ -587,7 +587,7 @@ public class EarthSmash extends EarthAbility {
 		final List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(this.location, this.hitRadius);
 		for (final Entity entity : entities) {
 			if (entity instanceof LivingEntity && entity != this.player && !this.affectedEntities.contains(entity)) {
-				if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+				if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 					continue;
 				}
 				this.affectedEntities.add(entity);
