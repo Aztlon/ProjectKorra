@@ -46,7 +46,7 @@ public class ClearCommand extends PKCommand {
 		}
 
 		BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(sender.getName());
-		if (args.size() == 0) {
+		if (args.isEmpty()) {
 			for (int i = 1; i <= 9; i++) {
 				if (!bPlayer.getAbilities().containsKey(i)) {
 					continue;
