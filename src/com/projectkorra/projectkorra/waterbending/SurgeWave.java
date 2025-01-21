@@ -19,6 +19,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
@@ -70,6 +71,8 @@ public class SurgeWave extends WaterAbility {
 
 	public SurgeWave(final Player player) {
 		super(player);
+
+		if (AbstractSkill.isLocked("SurgeWave", player)) return;
 
 		SurgeWave wave = getAbility(player, SurgeWave.class);
 		if (wave != null) {
@@ -264,9 +267,7 @@ public class SurgeWave extends WaterAbility {
 	public boolean prepare() {
 		this.cancelPrevious();
 		final Block block = BlockSource.getWaterSourceBlock(this.player, this.selectRange, ClickType.SHIFT_DOWN, true, true, this.bPlayer.canPlantbend());
-		if (block != null
-				&& !isDecayablePlant(block)
-				&& !RegionProtection.isRegionProtected(this, block.getLocation())) {
+		if (block != null && !isDecayablePlant(block) && !RegionProtection.isRegionProtected(this, block.getLocation())) {
 			this.sourceBlock = block;
 			this.focusBlock();
 			return true;

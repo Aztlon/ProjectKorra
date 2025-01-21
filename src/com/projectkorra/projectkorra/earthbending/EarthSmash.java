@@ -16,6 +16,7 @@ import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
@@ -97,6 +98,7 @@ public class EarthSmash extends EarthAbility {
 		if (type == ClickType.SHIFT_DOWN || type == ClickType.SHIFT_UP && !player.isSneaking()) {
 			final EarthSmash flySmash = flyingInSmashCheck(player);
 			if (flySmash != null) {
+				if (AbstractSkill.isLocked("EarthSmashRide", player)) return;
 				flySmash.state = State.FLYING;
 				flySmash.player = player;
 				flySmash.setFields();
@@ -110,6 +112,7 @@ public class EarthSmash extends EarthAbility {
 					return;
 				}
 				grabbedSmash = this.aimingAtSmashCheck(player, State.SHOT);
+				if (grabbedSmash != null && AbstractSkill.isLocked("EarthSmashRedirect", player)) return;
 			}
 
 			if (grabbedSmash != null) {

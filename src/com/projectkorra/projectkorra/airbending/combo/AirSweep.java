@@ -75,8 +75,9 @@ public class AirSweep extends AirAbility implements ComboAbility {
 			this.knockback = getConfig().getDouble("Abilities.Avatar.AvatarState.Air.AirSweep.Knockback");
 		}
 
-		this.bPlayer.addCooldown(this);
 		this.start();
+		if (!isRemoved())
+			this.bPlayer.addCooldown(this);
 	}
 
 	@Override

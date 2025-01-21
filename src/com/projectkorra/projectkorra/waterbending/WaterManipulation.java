@@ -190,7 +190,7 @@ public class WaterManipulation extends WaterAbility {
 	private static Block prepare(final Player player, final double selectRange) {
 		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 
-		final Block block = BlockSource.getWaterSourceBlock(player, selectRange, ClickType.SHIFT_DOWN, true, true, bPlayer.canPlantbend());
+		final Block block = BlockSource.getWaterSourceBlock(player, selectRange, ClickType.SHIFT_DOWN, true, bPlayer.canIcebend(), bPlayer.canPlantbend());
 		cancelPrevious(player);
 
 		return block;

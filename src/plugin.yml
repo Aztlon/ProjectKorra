@@ -21,6 +21,7 @@ permissions:
       bending.command.rechoose: true
       bending.admin.choose: true
       bending.command.choose.ignorecooldown: true
+      bending.command.cooldown.set: true
       bending.ability.AvatarState: true
       bending.water.bloodbending.anytime: true
       bending.water.bloodbending: true
@@ -53,6 +54,7 @@ permissions:
       bending.command.version: true
       bending.command.help: true
       bending.command.clear: true
+      bending.command.cooldown.view: true
       bending.command.who: true
       bending.command.preset.list: true
       bending.command.preset.create.5: true

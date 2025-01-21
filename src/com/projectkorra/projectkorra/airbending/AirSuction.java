@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Effect;
 import org.bukkit.Location;
@@ -51,8 +52,10 @@ public class AirSuction extends AirAbility {
 	private Vector direction;
 	private boolean canAffectSelf;
 
-	public AirSuction(final Player player) {
+	public AirSuction(final Player player, final Location origin) {
 		super(player);
+
+		if (origin == null && AbstractSkill.isLocked("AirSuctionSource", player)) return;
 
 		if (this.bPlayer.isOnCooldown(this)) {
 			return;
@@ -83,7 +86,7 @@ public class AirSuction extends AirAbility {
 		this.pushFactorForOthers = getConfig().getDouble("Abilities.Air.AirSuction.Push.Others");
 		this.cooldown = getConfig().getLong("Abilities.Air.AirSuction.Cooldown");
 		this.random = new Random();
-		this.origin = this.getTargetLocation();
+		this.origin = origin != null ? origin : this.getTargetLocation();
 		this.canAffectSelf = true;
 
 		if (RegionProtection.isRegionProtected(player, this.origin, this.getName())) {
@@ -282,14 +285,13 @@ public class AirSuction extends AirAbility {
 	public static void shoot(final Player player) {
 		AirSuction suc = null;
 
-		if (CoreAbility.hasAbility(player, AirSuction.class)) {
+		if (CoreAbility.hasAbility(player, AirSuction.class)) { // if they have a source
 			suc = CoreAbility.getAbility(player, AirSuction.class);
 			if (suc.isProgressing()) {
 				return;
 			}
-		} else {
-			suc = new AirSuction(player);
-			suc.setOrigin(player.getEyeLocation().clone());
+		} else { // if they don't have a source
+			suc = new AirSuction(player, player.getEyeLocation().clone());
 			suc.setCanEffectSelf(false);
 		}
 

@@ -1,6 +1,7 @@
 package com.projectkorra.projectkorra;
 
 import com.projectkorra.projectkorra.ability.Ability;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.util.MultiAbilityManager;
 import com.projectkorra.projectkorra.command.CooldownCommand;
@@ -111,7 +112,7 @@ public class OfflineBendingPlayer {
 
             PLAYERS.put(uuid, bPlayer);
 
-            final ResultSet rs2 = DBConnection.sql.readQuery("SELECT * FROM pk_players WHERE uuid = '" + uuid.toString() + "'");
+            final ResultSet rs2 = DBConnection.sql.readQuery("SELECT * FROM pk_players WHERE uuid = '" + uuid + "'");
             try {
                 if (!rs2.next()) { // Data doesn't exist, we want a completely new player.
                     DBConnection.sql.modifyQuery("INSERT INTO pk_players (uuid, player, slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9) VALUES ('" + uuid.toString() + "', '" + offlinePlayer.getName() + "', 'null', 'null', 'null', 'null', 'null', 'null', 'null', 'null', 'null')");
@@ -258,6 +259,9 @@ public class OfflineBendingPlayer {
                             if (split[0].contains("f")) {
                                 bPlayer.subelements.add(Element.FLIGHT);
                             }
+                            if (split[0].contains("x")) {
+                                bPlayer.subelements.add(Element.SUFFOCATION);
+                            }
                             if (split[0].contains("i")) {
                                 bPlayer.subelements.add(Element.ICE);
                             }
@@ -266,6 +270,9 @@ public class OfflineBendingPlayer {
                             }
                             if (split[0].contains("b")) {
                                 bPlayer.subelements.add(Element.BLOOD);
+                            }
+                            if (split[0].contains("d")) {
+                                bPlayer.subelements.add(Element.DAY_BLOOD);
                             }
                             if (split[0].contains("p")) {
                                 bPlayer.subelements.add(Element.PLANT);
@@ -431,6 +438,9 @@ public class OfflineBendingPlayer {
         if (this.hasSubElement(Element.FLIGHT)) {
             subs.append("f");
         }
+        if (this.hasSubElement(Element.SUFFOCATION)) {
+            subs.append("x");
+        }
         if (this.hasSubElement(Element.ICE)) {
             subs.append("i");
         }
@@ -439,6 +449,9 @@ public class OfflineBendingPlayer {
         }
         if (this.hasSubElement(Element.BLOOD)) {
             subs.append("b");
+        }
+        if (this.hasSubElement(Element.DAY_BLOOD)) {
+            subs.append("d");
         }
         if (this.hasSubElement(Element.PLANT)) {
             subs.append("p");
@@ -978,19 +991,19 @@ public class OfflineBendingPlayer {
      * @return true If player has permission node "bending.earth.bloodbending"
      */
     public boolean canBloodbend() {
-        return this.subelements.contains(Element.BLOOD);
+        return this.subelements.contains(Element.BLOOD) && !AbstractSkill.isLocked("BloodbendingSub", player);
     }
 
     public boolean canBloodbendAtAnytime() {
-        return false;
+        return this.subelements.contains(Element.DAY_BLOOD) && !AbstractSkill.isLocked("DayBlood", player);
     }
 
     public boolean canCombustionbend() {
-        return this.subelements.contains(Element.COMBUSTION);
+        return this.subelements.contains(Element.COMBUSTION) && !AbstractSkill.isLocked("Combustion", player);
     }
 
     public boolean canIcebend() {
-        return this.subelements.contains(Element.ICE);
+        return this.subelements.contains(Element.ICE) && !AbstractSkill.isLocked("PhaseChange", player);
     }
 
     /**
@@ -999,11 +1012,15 @@ public class OfflineBendingPlayer {
      * @return true If player has permission node "bending.earth.lavabending"
      */
     public boolean canLavabend() {
-        return this.subelements.contains(Element.LAVA);
+        return this.subelements.contains(Element.LAVA) && !AbstractSkill.isLocked("LavaFlow", player);
     }
 
     public boolean canLightningbend() {
-        return this.subelements.contains(Element.LIGHTNING);
+        return this.subelements.contains(Element.LIGHTNING) && !AbstractSkill.isLocked("Lightning", player);
+    }
+
+    public boolean canUseBlueFire() {
+        return this.subelements.contains(Element.BLUE_FIRE) && !AbstractSkill.isLocked("BlueFire", player);
     }
 
     /**
@@ -1012,7 +1029,7 @@ public class OfflineBendingPlayer {
      * @return true If player has permission node "bending.earth.metalbending"
      */
     public boolean canMetalbend() {
-        return this.subelements.contains(Element.METAL);
+        return this.subelements.contains(Element.METAL) && !AbstractSkill.isLocked("FerroControl", player);
     }
 
     /**
@@ -1021,7 +1038,7 @@ public class OfflineBendingPlayer {
      * @return true If player has permission node "bending.ability.plantbending"
      */
     public boolean canPlantbend() {
-        return this.subelements.contains(Element.PLANT);
+        return this.subelements.contains(Element.PLANT) && !AbstractSkill.isLocked("Plantbending", player);
     }
 
     /**
@@ -1030,7 +1047,7 @@ public class OfflineBendingPlayer {
      * @return true If player has permission node "bending.earth.sandbending"
      */
     public boolean canSandbend() {
-        return this.subelements.contains(Element.SAND);
+        return this.subelements.contains(Element.SAND) && !AbstractSkill.isLocked("DensityShift", player);
     }
 
     /**
@@ -1039,7 +1056,7 @@ public class OfflineBendingPlayer {
      * @return true If player has permission node "bending.air.flight"
      */
     public boolean canUseFlight() {
-        return this.subelements.contains(Element.FLIGHT);
+        return this.subelements.contains(Element.FLIGHT) && !AbstractSkill.isLocked("Flight", player);
     }
 
     /**
@@ -1049,7 +1066,14 @@ public class OfflineBendingPlayer {
      *         "bending.air.spiritualprojection"
      */
     public boolean canUseSpiritualProjection() {
-        return this.subelements.contains(Element.SPIRITUAL);
+        return this.subelements.contains(Element.SPIRITUAL) && !AbstractSkill.isLocked("SpiritualProjection", player);
+    }
+
+    /**
+     * Checks to see if a player can use Suffocate.
+     */
+    public boolean canUseSuffocation() {
+        return this.subelements.contains(Element.SUFFOCATION) && !AbstractSkill.isLocked("Suffocate", player);
     }
 
     /**
@@ -1058,7 +1082,7 @@ public class OfflineBendingPlayer {
      * @return true If player has permission node "bending.water.healing"
      */
     public boolean canWaterHeal() {
-        return this.subelements.contains(Element.HEALING);
+        return this.subelements.contains(Element.HEALING) && !AbstractSkill.isLocked("HealingHands", player);
     }
 
     public OfflinePlayer getPlayer() {

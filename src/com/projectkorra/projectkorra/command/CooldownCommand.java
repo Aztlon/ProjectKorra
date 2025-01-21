@@ -64,6 +64,11 @@ public class CooldownCommand extends PKCommand {
 
         BendingPlayer.getOrLoadOfflineAsync(oPlayer).thenAccept(bPlayer -> {
             if (Arrays.asList(new String[] {"view", "v"}).contains(list.get(0).toLowerCase())) {
+                if (oPlayer instanceof Player p && !p.hasPermission("bending.command.cooldown.view")) {
+                    ChatUtil.sendBrandingMessage(sender, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Cooldown.NoPermission"));
+                    return;
+                }
+
                 List<String> cooldowns = bPlayer.getCooldowns().entrySet().stream()
                         .sorted(Comparator.comparingLong(entry -> entry.getValue().getCooldown()))
                         .filter(entry -> entry.getValue().getCooldown() > 0)
@@ -94,6 +99,11 @@ public class CooldownCommand extends PKCommand {
                     textComponent.setHoverEvent(hoverEvent);
                     sender.spigot().sendMessage(textComponent);
                 }
+                return;
+            }
+
+            if (oPlayer instanceof Player p && !p.hasPermission("bending.command.cooldown.set")) {
+                ChatUtil.sendBrandingMessage(sender, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Cooldown.NoPermission"));
                 return;
             }
 

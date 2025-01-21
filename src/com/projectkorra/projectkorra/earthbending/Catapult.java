@@ -11,6 +11,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.EarthAbility;
@@ -37,6 +38,7 @@ public class Catapult extends EarthAbility {
 
 	public Catapult(final Player player, final boolean sneak) {
 		super(player);
+		if (sneak && AbstractSkill.isLocked("ChargedCatapult", player)) return;
 		this.setFields();
 		final Block b = player.getLocation().getBlock().getRelative(BlockFace.DOWN, 1);
 		if (!(isEarth(b) || isSand(b) || isMetal(b))) {

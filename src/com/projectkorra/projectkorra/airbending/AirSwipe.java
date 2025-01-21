@@ -19,6 +19,7 @@ import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
@@ -68,6 +69,8 @@ public class AirSwipe extends AirAbility {
 
 	public AirSwipe(final Player player, final boolean charging) {
 		super(player);
+
+		if (charging && AbstractSkill.isLocked("AirSwipeCharged", player)) return;
 
 		if (CoreAbility.hasAbility(player, AirSwipe.class)) {
 			for (final AirSwipe ability : CoreAbility.getAbilities(player, AirSwipe.class)) {

@@ -1833,7 +1833,7 @@ public class GeneralMethods {
 			return;
 		
 		Vector velocity = event.getVelocity();
-		if(velocity == null || Double.isNaN(velocity.length()))
+		if (velocity == null || Double.isNaN(velocity.length()))
 		    return;
 		
 		if (entity instanceof TNTPrimed) {
@@ -1845,6 +1845,8 @@ public class GeneralMethods {
 				velocity.multiply(ConfigManager.defaultConfig.get().getDouble("Properties.BendingAffectFallingSand.NormalStrengthMultiplier"));
 			}
 		}
+
+		if (entity.hasMetadata("bending-immune")) return;
 
 		// Attempt to stop velocity from going over the packet cap.
 		if (velocity.getX() > 4) {

@@ -16,6 +16,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.LavaAbility;
@@ -96,6 +97,8 @@ public class LavaFlow extends LavaAbility {
 			return;
 		}
 
+		if (type == AbilityType.SHIFT && AbstractSkill.isLocked("LavaFlowShift", player)) return;
+
 		this.world = player.getWorld();
 		this.time = System.currentTimeMillis();
 		this.type = type;
@@ -105,8 +108,8 @@ public class LavaFlow extends LavaAbility {
 		this.removing = false;
 		this.makeLava = true;
 		this.clickIsFinished = false;
-		this.affectedBlocks = new ArrayList<TempBlock>();
-		this.tasks = new ArrayList<BukkitRunnable>();
+		this.affectedBlocks = new ArrayList<>();
+		this.tasks = new ArrayList<>();
 		this.revertMaterial = Material.getMaterial(getConfig().getString("Abilities.Earth.LavaFlow.RevertMaterial"));
 
 		this.shiftCooldown = getConfig().getLong("Abilities.Earth.LavaFlow.ShiftCooldown");

@@ -59,6 +59,7 @@ import com.projectkorra.projectkorra.attribute.AttributeModifier;
 import com.projectkorra.projectkorra.attribute.AttributePriority;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.AbilityEndEvent;
+import com.projectkorra.projectkorra.event.AbilityPhaseEvent;
 import com.projectkorra.projectkorra.event.AbilityProgressEvent;
 import com.projectkorra.projectkorra.event.AbilityStartEvent;
 import com.projectkorra.projectkorra.util.FlightHandler;
@@ -174,6 +175,10 @@ public abstract class CoreAbility implements Ability {
 		if (this.player == null || !this.isEnabled()) {
 			return;
 		}
+		if (AbstractSkill.isLocked(getName(), player)) {
+			removed = true;
+			return;
+		}
 		final AbilityStartEvent event = new AbilityStartEvent(this);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (event.isCancelled()) {
@@ -188,13 +193,13 @@ public abstract class CoreAbility implements Ability {
 		final UUID uuid = this.player.getUniqueId();
 
 		if (!INSTANCES_BY_PLAYER.containsKey(clazz)) {
-			INSTANCES_BY_PLAYER.put(clazz, new ConcurrentHashMap<UUID, Map<Integer, CoreAbility>>());
+			INSTANCES_BY_PLAYER.put(clazz, new ConcurrentHashMap<>());
 		}
 		if (!INSTANCES_BY_PLAYER.get(clazz).containsKey(uuid)) {
-			INSTANCES_BY_PLAYER.get(clazz).put(uuid, new ConcurrentHashMap<Integer, CoreAbility>());
+			INSTANCES_BY_PLAYER.get(clazz).put(uuid, new ConcurrentHashMap<>());
 		}
 		if (!INSTANCES_BY_CLASS.containsKey(clazz)) {
-			INSTANCES_BY_CLASS.put(clazz, Collections.newSetFromMap(new ConcurrentHashMap<CoreAbility, Boolean>()));
+			INSTANCES_BY_CLASS.put(clazz, Collections.newSetFromMap(new ConcurrentHashMap<>()));
 		}
 
 		INSTANCES_BY_PLAYER.get(clazz).get(uuid).put(this.id, this);

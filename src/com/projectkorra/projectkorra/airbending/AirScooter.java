@@ -63,13 +63,6 @@ public class AirScooter extends AirAbility {
 		this.random = new Random();
 		this.angles = new ArrayList<>();
 
-		this.flightHandler.createInstance(player, this.getName());
-		player.setAllowFlight(true);
-		player.setFlying(true);
-
-		player.setSprinting(false);
-		player.setSneaking(false);
-
 		for (int i = 0; i < 5; i++) {
 			this.angles.add((double) (60 * i));
 		}
@@ -90,6 +83,14 @@ public class AirScooter extends AirAbility {
 		}
 
 		this.start();
+		if (!isRemoved()) {
+			this.flightHandler.createInstance(player, this.getName());
+			player.setAllowFlight(true);
+			player.setFlying(true);
+
+			player.setSprinting(false);
+			player.setSneaking(false);
+		}
 	}
 
 	/**

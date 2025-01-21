@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.PassiveAbility;
 import com.projectkorra.projectkorra.board.BendingBoard;
 import com.projectkorra.projectkorra.command.CooldownCommand;
@@ -23,6 +24,8 @@ import com.projectkorra.projectkorra.object.Preset;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ChatUtil;
 import net.md_5.bungee.api.ChatColor;
+
+import org.apache.commons.codec.language.bm.Lang;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -193,6 +196,9 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		if (ability == null || !this.isPassiveToggled(ability.getElement()) || !this.isToggledPassives()) {
 			return false; // If the passive is disabled.
 		}
+		if (AbstractSkill.isLocked(ability.getName(), this.player)) {
+			return false; // If the passive is locked.
+		}
 		final Element element = ability.getElement();
 		if (Commands.isToggledForAll && ConfigManager.defaultConfig.get().getBoolean("Properties.TogglePassivesWithAllBending")) {
 			return false;
@@ -249,12 +255,13 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	public boolean canBind(final CoreAbility ability) {
 		if (ability == null || !this.player.isOnline() || !ability.isEnabled()) {
 			return false;
+		} else if (AbstractSkill.isLocked(ability.getName(), player)) {
+			return false;
 		} else if (!this.player.hasPermission("bending.ability." + ability.getName())) {
 			return false;
 		} else if (!this.hasElement(ability.getElement()) && !(ability instanceof AvatarAbility && !((AvatarAbility) ability).requireAvatar())) {
 			return false;
-		} else if (ability.getElement() instanceof SubElement) {
-			final SubElement subElement = (SubElement) ability.getElement();
+		} else if (ability.getElement() instanceof SubElement subElement) {
 			if (subElement instanceof MultiSubElement) {
 				for (Element parent : ((MultiSubElement) subElement).getParentElements()) {
 					if (!this.hasElement(parent)) return false;
@@ -265,11 +272,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 			return this.hasSubElement(subElement);
 		}
 		return true;
-	}
-
-	@Override
-	public boolean canBloodbendAtAnytime() {
-		return this.canBloodbend() && this.player.hasPermission("bending.water.bloodbending.anytime");
 	}
 
 	/**

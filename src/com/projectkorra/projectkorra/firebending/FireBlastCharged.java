@@ -16,6 +16,7 @@ import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.Element.SubElement;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.BlueFireAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
@@ -61,6 +62,8 @@ public class FireBlastCharged extends FireAbility {
 
 	public FireBlastCharged(final Player player) {
 		super(player);
+
+		if (AbstractSkill.isLocked("FireBlastCharged", player)) return;
 
 		if (!this.bPlayer.canBend(this)) {
 			return;

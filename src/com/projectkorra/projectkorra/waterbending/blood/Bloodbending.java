@@ -100,7 +100,7 @@ public class Bloodbending extends BloodAbility {
 				}
 			}
 		} else {
-			List<Entity> entities = new CopyOnWriteArrayList<Entity>();
+			List<Entity> entities = new CopyOnWriteArrayList<>();
 			for (int i = 0; i < this.range; i++) {
 				final Location location = GeneralMethods.getTargetedLocation(player, i, getTransparentMaterials());
 				entities = GeneralMethods.getEntitiesAroundPoint(location, 1.7);

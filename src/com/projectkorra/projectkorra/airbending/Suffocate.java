@@ -15,13 +15,12 @@ import org.bukkit.scheduler.BukkitRunnable;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.AirAbility;
+import com.projectkorra.projectkorra.ability.SuffocationAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
 /**
- * Suffocate
- *
  * Suffocate is an air ability that causes entities to be surrounded by a sphere
  * air that causes constant damage after a configurable delay. Suffocate also
  * causes Blinding and Slowing affects to entities depending on how the ability
@@ -29,7 +28,7 @@ import com.projectkorra.projectkorra.util.DamageHandler;
  * entities within a large radius. If the user is damaged while performing this
  * ability then the ability is removed.
  */
-public class Suffocate extends AirAbility {
+public class Suffocate extends SuffocationAbility {
 
 	public static enum SpiralType {
 		HORIZONTAL1, HORIZONTAL2, VERTICAL1, VERTICAL2, DIAGONAL1, DIAGONAL2
@@ -68,7 +67,7 @@ public class Suffocate extends AirAbility {
 		this.ability = this;
 		if (this.bPlayer.isOnCooldown(this)) {
 			return;
-		} else if (hasAbility(player, Suffocate.class)) {
+		} else if (hasAbility(player, Suffocate.class) || hasAbility(player, AirSpout.class)) {
 			return;
 		}
 

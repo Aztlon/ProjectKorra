@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.util.ChatUtil;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -57,6 +58,11 @@ public class BindCommand extends PKCommand {
 			return;
 		} else if (coreAbil instanceof PassiveAbility || coreAbil instanceof ComboAbility || coreAbil.isHiddenAbility()) {
 			ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.unbindable.replace("{ability}", args.get(0)));
+			return;
+		}
+
+		if (AbstractSkill.isLocked(coreAbil.getName(), (Player) sender)) {
+			ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "You have not unlocked this ability yet.");
 			return;
 		}
 

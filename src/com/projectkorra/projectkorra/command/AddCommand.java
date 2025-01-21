@@ -250,9 +250,9 @@ public class AddCommand extends PKCommand {
 	@Override
 	protected List<String> getTabCompletion(final CommandSender sender, final List<String> args) {
 		if (args.size() >= 2 || !sender.hasPermission("bending.command.add")) {
-			return new ArrayList<String>();
+			return new ArrayList<>();
 		}
-		final List<String> l = new ArrayList<String>();
+		final List<String> l = new ArrayList<>();
 		if (args.isEmpty()) {
 
 			l.add("Air");
@@ -265,6 +265,7 @@ public class AddCommand extends PKCommand {
 			}
 
 			l.add("Blood");
+			l.add("DayBlood");
 			l.add("Combustion");
 			l.add("Flight");
 			l.add("Healing");
@@ -275,6 +276,7 @@ public class AddCommand extends PKCommand {
 			l.add("Plant");
 			l.add("Sand");
 			l.add("Spiritual");
+			l.add("Suffocation");
 			l.add("BlueFire");
 			l.add("Chi");
 			l.add("Warrior");

@@ -13,6 +13,7 @@ import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
@@ -464,6 +465,7 @@ public class EarthBlast extends EarthAbility {
 	}
 
 	private static void redirectTargettedBlasts(final Player player, final ArrayList<EarthBlast> ignore) {
+		if (AbstractSkill.isLocked("EarthBlastRedirect", player)) return;
 		for (final EarthBlast blast : getAbilities(EarthBlast.class)) {
 			if (!blast.isProgressing || ignore.contains(blast)) {
 				continue;
@@ -496,7 +498,7 @@ public class EarthBlast extends EarthAbility {
 	}
 
 	public static void throwEarth(final Player player) {
-		final ArrayList<EarthBlast> ignore = new ArrayList<EarthBlast>();
+		final ArrayList<EarthBlast> ignore = new ArrayList<>();
 		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 		EarthBlast earthBlast = null;
 

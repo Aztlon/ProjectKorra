@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Effect;
 import org.bukkit.Location;
@@ -96,8 +97,9 @@ public class HeatControl extends FireAbility {
 				new HeatControl(player, HeatControlType.SOLIDIFY);
 				return;
 			}
+			if (AbstractSkill.isLocked("HeatControlCooking", player))
+				return;
 			this.start();
-
 		} else if (this.heatControlType == HeatControlType.EXTINGUISH) {
 			if (this.bPlayer.isOnCooldown(this.getName() + "Extinguish")) {
 				this.remove();
@@ -105,8 +107,9 @@ public class HeatControl extends FireAbility {
 			}
 
 			this.start();
-
 		} else if (this.heatControlType == HeatControlType.MELT) {
+			if (AbstractSkill.isLocked("HeatControlCooking", player))
+				return;
 			this.meltLocation = GeneralMethods.getTargetedLocation(player, this.meltRange);
 			for (final Block block : GeneralMethods.getBlocksAroundPoint(this.meltLocation, this.meltRadius)) {
 
@@ -114,7 +117,6 @@ public class HeatControl extends FireAbility {
 					melt(player, block);
 				}
 			}
-
 		} else if (this.heatControlType == HeatControlType.SOLIDIFY) {
 			if (!this.bPlayer.canBend(this)) {
 				return;
@@ -127,7 +129,6 @@ public class HeatControl extends FireAbility {
 			this.solidifyLastBlockTime = System.currentTimeMillis();
 			this.start();
 		}
-
 	}
 
 	public void setFields() {

@@ -183,11 +183,6 @@ public class DamageHandler {
 				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_SELFHIT);
 			}
 
-			if (lent.getHealth() - damage <= 0 && !entity.isDead()) {
-				final EntityBendingDeathEvent event = new EntityBendingDeathEvent(entity, damage, ability);
-				Bukkit.getServer().getPluginManager().callEvent(event);
-			}
-
 			// Preparing the event call back
 			if (damage > 0 && entity instanceof Player) {
 				if (damageEvent.doesIgnoreArmor()) {
@@ -214,6 +209,11 @@ public class DamageHandler {
 
 			final double nextHealth = lent.getHealth();
 			entity.setLastDamageCause(finalEvent);
+
+			if (lent.getHealth() - damage <= 0 && !entity.isDead()) {
+				final EntityBendingDeathEvent event = new EntityBendingDeathEvent(entity, damage, ability);
+				Bukkit.getServer().getPluginManager().callEvent(event);
+			}
 
 			if (Bukkit.getPluginManager().isPluginEnabled("NoCheatPlus") && source != null) {
 				NCPExemptionManager.unexempt(source, CheckType.FIGHT_REACH);

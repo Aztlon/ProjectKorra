@@ -211,12 +211,13 @@ public abstract class WaterAbility extends ElementalAbility {
 		final Vector vector = location.getDirection().clone().normalize();
 
 		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		final Set<Material> trans = getTransparentMaterialSet();
+		if (bPlayer == null) return null;
 
+		final Set<Material> trans = getTransparentMaterialSet();
 		if (plantbending) {
 			final Set<Material> remove = new HashSet<>();
 			for (final Material m : trans) {
-				if (isPlant(m) || isDecayablePlant(m)) {
+				if (isPlant(m) || isSnow(m)) {
 					remove.add(m);
 				}
 			}
@@ -224,9 +225,7 @@ public abstract class WaterAbility extends ElementalAbility {
 		}
 
 		final Block testBlock = player.getTargetBlock(trans, Math.max(1, Math.min(3, (int)range)));
-		if (bPlayer == null) {
-			return null;
-		} else if (isWaterbendable(player, null, testBlock) && ((!isPlant(testBlock) && !isDecayablePlant(testBlock)) || plantbending)) {
+		if (isWaterbendable(player, null, testBlock) && (plantbending || (!isPlant(testBlock) && !isDecayablePlant(testBlock)))) {
 			return testBlock;
 		}
 
@@ -235,7 +234,7 @@ public abstract class WaterAbility extends ElementalAbility {
 			if ((!isTransparent(player, block) && !isIce(block) && !isPlant(block) && !isDecayablePlant(block) && !isSnow(block)) || RegionProtection.isRegionProtected(player, location, "WaterManipulation")) {
 				continue;
 			}
-			if (isWaterbendable(player, null, block) && ((!isPlant(block) && !isDecayablePlant(block)) || plantbending)) {
+			if (isWaterbendable(player, null, block) && (plantbending || (!isPlant(block) && !isDecayablePlant(block)))) {
 				if (TempBlock.isTempBlock(block) && !isBendableWaterTempBlock(block)) {
 					continue;
 				}
@@ -299,13 +298,14 @@ public abstract class WaterAbility extends ElementalAbility {
 
 	public static boolean isWaterbendable(final Player player, final String abilityName, final Block block) {
 		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
+		if (bPlayer == null) return false;
+
 		boolean waterbendable = isWater(block) || isIce(block) || isPlant(block) || isSnow(block) || isCauldron(block);
-		if (bPlayer == null || !waterbendable) {
-			return false;
-		}
+		if (!waterbendable) return false;
+
 		if (TempBlock.isTempBlock(block) && !isBendableWaterTempBlock(block)) {
 			return false;
-		} else if (isWater(block) && block.getBlockData() instanceof Levelled && ((Levelled) block.getBlockData()).getLevel() == 0) {
+		} else if (isWater(block) && block.getBlockData() instanceof Levelled levelled && levelled.getLevel() == 0) {
 			return true;
 		} else if (isIce(block) && !bPlayer.canIcebend()) {
 			return false;

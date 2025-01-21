@@ -37,7 +37,7 @@ public class BlockSource {
 		WATER, ICE, PLANT, EARTH, METAL, LAVA, SNOW
 	}
 
-	private static HashMap<Player, HashMap<BlockSourceType, HashMap<ClickType, BlockSourceInformation>>> playerSources = new HashMap<Player, HashMap<BlockSourceType, HashMap<ClickType, BlockSourceInformation>>>();
+	private static HashMap<Player, HashMap<BlockSourceType, HashMap<ClickType, BlockSourceInformation>>> playerSources = new HashMap<>();
 	private static FileConfiguration config = ConfigManager.defaultConfig.get();
 	// The player should never need to grab source blocks from farther than this.
 	private static double MAX_RANGE = config.getDouble("Abilities.Water.WaterManipulation.SelectRange");
@@ -105,10 +105,10 @@ public class BlockSource {
 	 */
 	private static void putSource(final Player player, final Block block, final BlockSourceType sourceType, final ClickType clickType) {
 		if (!playerSources.containsKey(player)) {
-			playerSources.put(player, new HashMap<BlockSourceType, HashMap<ClickType, BlockSourceInformation>>());
+			playerSources.put(player, new HashMap<>());
 		}
 		if (!playerSources.get(player).containsKey(sourceType)) {
-			playerSources.get(player).put(sourceType, new HashMap<ClickType, BlockSourceInformation>());
+			playerSources.get(player).put(sourceType, new HashMap<>());
 		}
 		final BlockSourceInformation info = new BlockSourceInformation(player, block, sourceType, clickType);
 		playerSources.get(player).get(sourceType).put(clickType, info);
@@ -256,7 +256,7 @@ public class BlockSource {
 		}
 		final boolean dynamic = ConfigManager.getConfig().getBoolean("Properties.Water.DynamicSourcing");
 		if (dynamic && sourceBlock == null) {
-			if (allowWater && sourceBlock == null) {
+			if (allowWater) {
 				sourceBlock = getSourceBlock(player, range, BlockSourceType.WATER, clickType);
 			}
 			if (allowIce && sourceBlock == null) {

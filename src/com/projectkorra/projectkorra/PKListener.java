@@ -1460,7 +1460,7 @@ public class PKListener implements Listener {
 					} else if (abil.equalsIgnoreCase("AirBurst")) {
 						new AirBurst(player, false);
 					} else if (abil.equalsIgnoreCase("AirSuction")) {
-						new AirSuction(player);
+						new AirSuction(player, null);
 					} else if (abil.equalsIgnoreCase("AirSwipe")) {
 						new AirSwipe(player, true);
 					} else if (abil.equalsIgnoreCase("AirShield")) {

@@ -19,6 +19,7 @@ import org.bukkit.util.Vector;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
@@ -84,6 +85,8 @@ public class WaterSpoutWave extends WaterAbility {
 
 	public WaterSpoutWave(final Player player, final AbilityType type) {
 		super(player);
+
+		if (AbstractSkill.isLocked("WaterWave", player)) return;
 
 		this.charging = false;
 		this.iceWave = false;

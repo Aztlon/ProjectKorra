@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Effect;
 import org.bukkit.Location;
@@ -192,6 +193,8 @@ public class AirBlast extends AirAbility {
 	}
 
 	public static void setOrigin(final Player player) {
+		if (AbstractSkill.isLocked("AirBlastSource", player)) return;
+
 		final Location location = GeneralMethods.getTargetedLocation(player, getSelectRange(), getTransparentMaterials());
 		if (location.getBlock().isLiquid() || GeneralMethods.isSolid(location.getBlock())) {
 			return;
