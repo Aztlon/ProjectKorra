@@ -133,7 +133,7 @@ public class CollisionInitializer {
 		CoreAbility.getAbility(WaterSpoutWave.class);
 
 		final CoreAbility[] smallAbils = { airSwipe, earthBlast, waterManipulation, iceBlast, iceSpikeBlast, fireBlast };
-		final CoreAbility[] largeAbils = { earthSmash, airShield, fireBlastCharged, fireKick, fireSpin, fireWheel, airSweep, iceBullet };
+		final CoreAbility[] largeAbils = { earthSmash, airShield, fireBlastCharged };
 		final CoreAbility[] comboAbils = { fireKick, fireSpin, fireWheel, airSweep, iceBullet };
 		final CoreAbility[] removeSpoutAbils = { airSwipe, earthBlast, waterManipulation, iceBlast, iceSpikeBlast, fireBlast, fireBlastCharged, earthSmash, fireKick, fireSpin, fireWheel, airSweep, iceBullet };
 		final CoreAbility[] ignoreAbils = { airBlast, airSuction, blazeArc, combustion };
@@ -171,7 +171,6 @@ public class CollisionInitializer {
 		this.collisionManager.addCollision(new Collision(fireShield, fireBlast, false, true));
 		this.collisionManager.addCollision(new Collision(fireShield, waterManipulation, false, true));
 		this.collisionManager.addCollision(new Collision(fireShield, earthBlast, false, true));
-		this.collisionManager.addCollision(new Collision(fireShield, airSweep, false, true));
 
 		this.collisionManager.addCollision(new Collision(fireManipulation, airBlast, false, true));
 		this.collisionManager.addCollision(new Collision(fireManipulation, airSuction, false, true));
@@ -179,7 +178,6 @@ public class CollisionInitializer {
 		this.collisionManager.addCollision(new Collision(fireManipulation, fireBlastCharged, false, true));
 		this.collisionManager.addCollision(new Collision(fireManipulation, waterManipulation, false, true));
 		this.collisionManager.addCollision(new Collision(fireManipulation, earthBlast, false, true));
-		this.collisionManager.addCollision(new Collision(fireManipulation, airSweep, false, true));
 	}
 
 	/**
@@ -237,7 +235,7 @@ public class CollisionInitializer {
 			return;
 		}
 		this.comboAbilities.add(comboAbility);
-		for (final CoreAbility otherComboAbility : this.smallAbilities) {
+		for (final CoreAbility otherComboAbility : this.comboAbilities) {
 			this.collisionManager.addCollision(new Collision(comboAbility, otherComboAbility, true, true));
 		}
 	}

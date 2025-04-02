@@ -12,6 +12,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.type.Snow;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
@@ -45,6 +46,9 @@ public class WaterSpout extends WaterAbility {
 	private double maxHeight;
 	private Block base;
 	private TempBlock baseBlock;
+	private boolean canSpoutHop;
+	private double spoutHopPower;
+	private long spoutHopCooldown;
 
 	public WaterSpout(final Player player) {
 		super(player);
@@ -52,6 +56,7 @@ public class WaterSpout extends WaterAbility {
 		final WaterSpout oldSpout = getAbility(player, WaterSpout.class);
 		if (oldSpout != null) {
 			oldSpout.remove();
+			oldSpout.hop();
 			return;
 		}
 
@@ -62,6 +67,9 @@ public class WaterSpout extends WaterAbility {
 		this.height = applyModifiers(getConfig().getDouble("Abilities.Water.WaterSpout.Height"));
 		this.interval = getConfig().getLong("Abilities.Water.WaterSpout.Interval");
 		this.duration = getConfig().getLong("Abilities.Water.WaterSpout.Duration");
+		this.canSpoutHop = getConfig().getBoolean("Abilities.Water.WaterSpout.SpoutHop.Enabled");
+		this.spoutHopPower = getConfig().getDouble("Abilities.Water.WaterSpout.SpoutHop.Power");
+		this.spoutHopCooldown = getConfig().getLong("Abilities.Water.WaterSpout.SpoutHop.Cooldown");
 		this.startTime = System.currentTimeMillis();
 
 		this.maxHeight = this.getNightFactor(this.height);
@@ -89,6 +97,14 @@ public class WaterSpout extends WaterAbility {
 		player.setAllowFlight(true);
 		this.spoutableWaterHeight(player.getLocation()); // Sets base.
 		this.start();
+	}
+
+	private void hop() {
+		if (player.isSneaking() && !bPlayer.isOnCooldown("SpoutHop") && canSpoutHop) {
+			Vector push = player.getEyeLocation().getDirection().multiply(spoutHopPower);
+			GeneralMethods.setVelocity(this, player, push);
+			bPlayer.addCooldown("SpoutHop", spoutHopCooldown);
+		}
 	}
 
 	private void displayWaterSpiral(final Location location) {
@@ -454,6 +470,10 @@ public class WaterSpout extends WaterAbility {
 
 	public void setBaseBlock(final TempBlock baseBlock) {
 		this.baseBlock = baseBlock;
+	}
+
+	public boolean canSpoutHop() {
+		return canSpoutHop;
 	}
 
 	public static Map<Block, Block> getAffectedBlocks() {

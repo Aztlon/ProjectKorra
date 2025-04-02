@@ -50,6 +50,7 @@ public class EarthBlast extends EarthAbility {
 	private double deflectRange;
 	private double collisionRadius;
 	private Material sourceType;
+	private TempBlock sourceTempBlock;
 	private Location location;
 	private Location destination;
 	private Location firstDestination;
@@ -115,6 +116,7 @@ public class EarthBlast extends EarthAbility {
 		} else if (getMovedEarth().containsKey(this.sourceBlock)) {
 			this.movedEarthSource = true;
 		}
+
 		if (this.sourceBlock.getType() == Material.SAND) {
 			this.sourceType = Material.SAND;
 			this.sourceBlock.setType(Material.SANDSTONE);
@@ -307,13 +309,13 @@ public class EarthBlast extends EarthAbility {
 
 					moveEarthBlock(this.sourceBlock, block, player);
 
-					if (block.getType() == Material.SAND) {
-						block.setType(Material.SANDSTONE);
-					}
-
-					if (block.getType() == Material.GRAVEL) {
-						block.setType(Material.STONE);
-					}
+//					if (block.getType() == Material.SAND) {
+//						block.setType(Material.SANDSTONE);
+//					}
+//
+//					if (block.getType() == Material.GRAVEL) {
+//						block.setType(Material.STONE);
+//					}
 				} else {
 					block.setType(this.sourceType);
 					this.sourceBlock.setType(Material.AIR);

@@ -26,6 +26,8 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempPotionEffect;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms.Arm;
 
+import dev.lone.itemsadder.api.CustomBlock;
+
 public class WaterArmsFreeze extends IceAbility {
 
 	private boolean cancelled;
@@ -85,11 +87,12 @@ public class WaterArmsFreeze extends IceAbility {
 
 			final Vector dir = this.player.getLocation().getDirection();
 			this.location = this.waterArms.getActiveArmEnd().add(dir.normalize().multiply(1));
-			List<Material> nonOpaque = Arrays.stream(Material.values()).filter(mat -> mat.name().endsWith("STAINED_GLASS")).collect(Collectors.toList());
-			nonOpaque.add(Material.WATER);
-			nonOpaque.add(Material.ICE);
-			nonOpaque.add(Material.PACKED_ICE);
-			this.direction = GeneralMethods.getDirection(this.location, GeneralMethods.getTargetedLocation(this.player, this.iceRange, nonOpaque.toArray(new Material[0]))).normalize();
+			List<String> nonOpaque = Arrays.stream(Material.values()).map(Material::name).filter(name -> name.endsWith("STAINED_GLASS")).collect(Collectors.toList());
+			nonOpaque.add(Material.WATER.name());
+			nonOpaque.add(Material.ICE.name());
+			nonOpaque.add(Material.PACKED_ICE.name());
+			CustomBlock.getNamespacedIdsInRegistry().stream().filter(id -> id.startsWith("customice:")).forEach(nonOpaque::add);
+			this.direction = GeneralMethods.getDirection(this.location, GeneralMethods.getTargetedLocation(this.player, this.iceRange, false, true, nonOpaque.toArray(new String[0]))).normalize();
 		} else {
 			return;
 		}
@@ -144,7 +147,7 @@ public class WaterArmsFreeze extends IceAbility {
 					continue;
 				}
 				DamageHandler.damageEntity(entity, this.iceDamage, this);
-				final PotionEffect effect = new PotionEffect(PotionEffectType.SLOW, 40, 2);
+				final PotionEffect effect = new PotionEffect(PotionEffectType.SLOWNESS, 40, 2);
 				new TempPotionEffect((LivingEntity) entity, effect);
 				this.remove();
 				return;

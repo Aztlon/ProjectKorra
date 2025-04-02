@@ -167,13 +167,13 @@ public class IceBlast extends IceAbility {
 	private void affect(final LivingEntity entity) {
 		if (entity instanceof Player) {
 			if (this.bPlayer.canBeSlowed()) {
-				final PotionEffect effect = new PotionEffect(PotionEffectType.SLOW, 70, 2);
+				final PotionEffect effect = new PotionEffect(PotionEffectType.SLOWNESS, 70, 2);
 				new TempPotionEffect(entity, effect);
 				this.bPlayer.slow(10);
 				DamageHandler.damageEntity(entity, this.damage, this);
 			}
 		} else {
-			final PotionEffect effect = new PotionEffect(PotionEffectType.SLOW, 70, 2);
+			final PotionEffect effect = new PotionEffect(PotionEffectType.SLOWNESS, 70, 2);
 			new TempPotionEffect(entity, effect);
 			DamageHandler.damageEntity(entity, this.damage, this);
 		}

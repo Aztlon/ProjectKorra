@@ -88,9 +88,9 @@ public class TempBlock {
 		this.attachedTempBlocks = new HashSet<>(0);
 
 		//Fire griefing will make the state update on its own, so we don't need to update it ourselves
-		if (!FireAbility.canFireGrief() && (newData.getMaterial() == Material.FIRE || newData.getMaterial() == Material.SOUL_FIRE)) {
-			newData = FireAbility.createFireState(block, newData.getMaterial() == Material.SOUL_FIRE); //Fix the blockstate looking incorrect
-		}
+//		if (!FireAbility.canFireGrief() && (newData.getMaterial() == Material.FIRE || newData.getMaterial() == Material.SOUL_FIRE)) {
+//			newData = FireAbility.createFireState(block, newData.getMaterial() == Material.SOUL_FIRE ? "SOUL_FIRE" : "FIRE"); //Fix the blockstate looking incorrect
+//		}
 		if (block.getType() == Material.SNOW) {
 			if (newData.getMaterial() == Material.AIR) {
 				updateSnowableBlock(block.getRelative(BlockFace.DOWN),false);
@@ -200,7 +200,7 @@ public class TempBlock {
 	private static void remove(TempBlock tempBlock) {
 		if (instances_.containsKey(tempBlock.block)) {
 			instances_.get(tempBlock.block).remove(tempBlock);
-			if (instances_.get(tempBlock.block).size() == 0) {
+			if (instances_.get(tempBlock.block).isEmpty()) {
 				instances_.remove(tempBlock.block);
 			}
 		}

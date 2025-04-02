@@ -9,7 +9,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionType;
 import org.bukkit.util.Vector;
 
@@ -156,7 +155,7 @@ public class WaterReturn extends WaterAbility {
 			for (int i = aux; i < inventory.getSize(); i++) {
 				if (inventory.getItem(i) != null && inventory.getItem(i).getType() == Material.POTION && inventory.getItem(i).hasItemMeta()) {
 					final PotionMeta meta = (PotionMeta) inventory.getItem(i).getItemMeta();
-					if (meta.getBasePotionData().getType().equals(PotionType.WATER)) {
+					if (meta.hasBasePotionType() && meta.getBasePotionType().equals(PotionType.WATER)) {
 						index = i;
 						break;
 					}
@@ -200,7 +199,7 @@ public class WaterReturn extends WaterAbility {
 		final ItemStack water = new ItemStack(Material.POTION);
 		final PotionMeta meta = (PotionMeta) water.getItemMeta();
 
-		meta.setBasePotionData(new PotionData(PotionType.WATER));
+		meta.setBasePotionType(PotionType.WATER);
 		water.setItemMeta(meta);
 
 		return water;

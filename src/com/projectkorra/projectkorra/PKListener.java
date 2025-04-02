@@ -21,6 +21,7 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
+import com.projectkorra.projectkorra.ability.MetalAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager;
 import com.projectkorra.projectkorra.ability.util.MultiAbilityManager;
@@ -1433,12 +1434,14 @@ public class PKListener implements Listener {
 		final Class<? extends CoreAbility> abilClass = coreAbil != null ? coreAbil.getClass() : null;
 
 		if (coreAbil == null || !coreAbil.isSneakAbility()) {
-			if (PassiveManager.hasPassive(player, CoreAbility.getAbility(FerroControl.class))) {
-				new FerroControl(player);
-			}
-
 			if (PassiveManager.hasPassive(player, CoreAbility.getAbility(FastSwim.class))) {
 				new FastSwim(player);
+			}
+		}
+
+		if (coreAbil == null || coreAbil instanceof MetalAbility) {
+			if (PassiveManager.hasPassive(player, CoreAbility.getAbility(FerroControl.class))) {
+				new FerroControl(player);
 			}
 		}
 

@@ -2,6 +2,7 @@ package com.projectkorra.projectkorra.ability;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -32,6 +34,8 @@ import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
+
+import me.clip.placeholderapi.PlaceholderAPI;
 
 public abstract class FireAbility extends ElementalAbility {
 
@@ -101,8 +105,8 @@ public abstract class FireAbility extends ElementalAbility {
 	}
 
 	public void createTempFire(final Location loc, final long time) {
-		if(isIgnitable(loc.getBlock())) {
-			new TempBlock(loc.getBlock(), createFireState(loc.getBlock(), getFireType() == Material.SOUL_FIRE), time);
+		if (isIgnitable(loc.getBlock())) {
+			new TempBlock(loc.getBlock(), createFireState(loc.getBlock(), blockType(player)), time);
 			SOURCE_PLAYERS.put(loc.getBlock(), this.getPlayer());
 		}
 	}
@@ -158,17 +162,25 @@ public abstract class FireAbility extends ElementalAbility {
 		return material.isFlammable() || material.isBurnable();
 	}
 
+	public static BlockData createFireState(Block position) {
+		return createFireState(position, FireParticle.FLAME.blockId);
+	}
+
 	/**
 	 * Create a fire block with the correct blockstate at the given position
 	 * @param position The position to test
-	 * @param blue If its soul fire or not
+	 * @param fireBlockType The fire type to use, a Material or ItemsAdder ID
 	 * @return The fire blockstate
 	 */
-	public static BlockData createFireState(Block position, boolean blue) {
-		Fire fire = (Fire) Material.FIRE.createBlockData();
-		
+	public static BlockData createFireState(Block position, String fireBlockType) {
+		BlockData data = GeneralMethods.blockDataFromId(fireBlockType);
 		if (isIgnitable(position) && position.getRelative(BlockFace.DOWN).getType().isSolid())
-			return (blue) ? Material.SOUL_FIRE.createBlockData() : fire; //Default fire for when there is a solid block bellow
+			return data;
+
+		if (!(data instanceof Fire fire)) {
+			ProjectKorra.log.warning("FireAbility#createFireState: BlockData of type " + fireBlockType + " is not a Fire block");
+			return data;
+		}
 
 		for (BlockFace face : IGNITE_FACES) {
 			fire.setFace(face, false);
@@ -213,15 +225,38 @@ public abstract class FireAbility extends ElementalAbility {
 	}
 
 	public void playFirebendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset, final double extra) {
-		if (this.getBendingPlayer().canUseSubElement(SubElement.BLUE_FIRE)) {
-			ParticleEffect.SOUL_FIRE_FLAME.display(loc, amount, xOffset, yOffset, zOffset, extra);
-		} else {
-			ParticleEffect.FLAME.display(loc, amount, xOffset, yOffset, zOffset, extra);
-		}
+		String particle = particleType(this.getPlayer());
+		FireParticle fireParticle = FireParticle.byName(particle);
+		fireParticle.getEffect().display(loc, amount, xOffset, yOffset, zOffset, extra);
+//		if (this.getBendingPlayer().canUseSubElement(SubElement.BLUE_FIRE)) {
+//			ParticleEffect.SOUL_FIRE_FLAME.display(loc, amount, xOffset, yOffset, zOffset, extra);
+//		} else {
+//			ParticleEffect.FLAME.display(loc, amount, xOffset, yOffset, zOffset, extra);
+//		}
 	}
 
 	public void playFirebendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
 		playFirebendingParticles(loc, amount, xOffset, yOffset, zOffset, 0.025);
+	}
+
+	public static String particleType(final Player player) {
+		String particle = "flame";
+		if (player != null) {
+			String placeholder = PlaceholderAPI.setPlaceholders(player, "%avatarverse_fireparticle%");
+			if (!placeholder.isEmpty())
+				particle = placeholder;
+		}
+		return particle;
+	}
+
+	public static String blockType(final Player player) {
+		String block = "fire";
+		if (player != null) {
+			String placeholder = PlaceholderAPI.setPlaceholders(player, "%avatarverse_fireblock%");
+			if (!placeholder.isEmpty())
+				block = placeholder;
+		}
+		return block;
 	}
 
 	public static void playFirebendingSound(final Location loc) {
@@ -350,6 +385,58 @@ public abstract class FireAbility extends ElementalAbility {
 
 	public static Map<Block, Player> getSourcePlayers() {
 		return SOURCE_PLAYERS;
+	}
+
+	public enum FireParticle {
+		FLAME(ParticleEffect.FLAME, "FIRE", Material.CANDLE, net.md_5.bungee.api.ChatColor.GOLD),
+		BLUE(ParticleEffect.SOUL_FIRE_FLAME, "SOUL_FIRE", Material.BLUE_CANDLE, net.md_5.bungee.api.ChatColor.DARK_AQUA),
+		WHITE(ParticleEffect.BUBBLE_POP, "customfire:white_fire", Material.WHITE_CANDLE, net.md_5.bungee.api.ChatColor.WHITE),
+		PURPLE(ParticleEffect.DRAGON_BREATH, "customfire:purple_fire", Material.PURPLE_CANDLE, net.md_5.bungee.api.ChatColor.DARK_PURPLE),
+		GREEN(ParticleEffect.SCRAPE, "customfire:green_fire", Material.GREEN_CANDLE, net.md_5.bungee.api.ChatColor.GREEN),
+		MAGENTA(ParticleEffect.WAX_OFF, "customfire:magenta_fire", Material.MAGENTA_CANDLE, net.md_5.bungee.api.ChatColor.LIGHT_PURPLE),
+		RED(ParticleEffect.WAX_ON, "customfire:red_fire", Material.RED_CANDLE, net.md_5.bungee.api.ChatColor.RED),
+		BLACK(ParticleEffect.HAPPY_VILLAGER, "customfire:black_fire", Material.BLACK_CANDLE, net.md_5.bungee.api.ChatColor.DARK_GRAY);
+
+		public static FireParticle byName(String name) {
+			return switch (name.toLowerCase()) {
+				case "blue" -> BLUE;
+				case "white" -> WHITE;
+				case "purple" -> PURPLE;
+				case "green" -> GREEN;
+				case "magenta" -> MAGENTA;
+				case "red" -> RED;
+				case "black" -> BLACK;
+				default -> FLAME;
+			};
+		}
+
+		final ParticleEffect effect;
+		final String blockId;
+		final Material icon;
+		final net.md_5.bungee.api.ChatColor color;
+
+		FireParticle(ParticleEffect effect, String blockId, Material icon, net.md_5.bungee.api.ChatColor color) {
+			this.effect = effect;
+			this.blockId = blockId;
+			this.icon = icon;
+			this.color = color;
+		}
+
+		public ParticleEffect getEffect() {
+			return effect;
+		}
+
+		public String getBlockId() {
+			return blockId;
+		}
+
+		public Material getIcon() {
+			return icon;
+		}
+
+		public net.md_5.bungee.api.ChatColor getColor() {
+			return color;
+		}
 	}
 
 }

@@ -32,12 +32,14 @@ public class AirScooter extends AirAbility {
 	private long duration;
 	@Attribute(Attribute.HEIGHT)
 	private double maxHeightFromGround;
+	@Attribute("DamageThreshold")
+	private double damageTreshold;
 	private Block floorblock;
 	private Random random;
 	private ArrayList<Double> angles;
 	private Slime slime;
 	private Boolean useslime;
-
+	private double health;
 	private double phi = 0;
 
 	public AirScooter(final Player player) {
@@ -45,7 +47,7 @@ public class AirScooter extends AirAbility {
 
 		if (check(player)) {
 			return;
-		} else if (/*!player.isSprinting() || */GeneralMethods.isSolid(player.getEyeLocation().getBlock()) || isWater(player.getEyeLocation().getBlock())) {
+		} else if (!player.isSprinting() || GeneralMethods.isSolid(player.getEyeLocation().getBlock()) || isWater(player.getEyeLocation().getBlock())) {
 			return;
 		} else if (GeneralMethods.isSolid(player.getLocation().add(0, -.5, 0).getBlock())) {
 			return;
@@ -60,8 +62,10 @@ public class AirScooter extends AirAbility {
 		this.duration = getConfig().getLong("Abilities.Air.AirScooter.Duration");
 		this.maxHeightFromGround = getConfig().getDouble("Abilities.Air.AirScooter.MaxHeightFromGround");
 		this.useslime = getConfig().getBoolean("Abilities.Air.AirScooter.ShowSitting");
+		this.damageTreshold = getConfig().getDouble("Abilities.Air.AirScooter.DamageThreshold");
 		this.random = new Random();
 		this.angles = new ArrayList<>();
+		this.health = player.getHealth();
 
 		for (int i = 0; i < 5; i++) {
 			this.angles.add((double) (60 * i));
@@ -81,6 +85,9 @@ public class AirScooter extends AirAbility {
 				this.useslime = false;
 			}
 		}
+
+		this.getFloor();
+		if (floorblock == null) return;
 
 		this.start();
 		if (!isRemoved()) {
@@ -128,6 +135,10 @@ public class AirScooter extends AirAbility {
 			this.remove();
 			return;
 		} else if (this.duration > 0 && System.currentTimeMillis() > this.getStartTime() + this.duration) {
+			this.bPlayer.addCooldown(this);
+			this.remove();
+			return;
+		} else if (this.health - this.player.getHealth() > this.damageTreshold) {
 			this.bPlayer.addCooldown(this);
 			this.remove();
 			return;

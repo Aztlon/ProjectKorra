@@ -1,19 +1,10 @@
 package com.projectkorra.projectkorra;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
-import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -25,38 +16,28 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 
-import com.google.common.io.Files;
-import com.google.common.reflect.ClassPath;
-import com.projectkorra.projectkorra.airbending.util.AirbendingManager;
-import com.projectkorra.projectkorra.chiblocking.util.ChiblockingManager;
-import com.projectkorra.projectkorra.command.PKCommand;
-import com.projectkorra.projectkorra.earthbending.util.EarthbendingManager;
-import com.projectkorra.projectkorra.firebending.util.FirebendingManager;
-import com.projectkorra.projectkorra.region.RegionProtection;
-import com.projectkorra.projectkorra.util.ChatUtil;
-import com.projectkorra.projectkorra.util.RevertChecker;
-import com.projectkorra.projectkorra.util.TempFallingBlock;
-import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
-import com.projectkorra.projectkorra.waterbending.util.WaterbendingManager;
-import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
-
 import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
+import org.bukkit.block.data.type.Fire;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.FallingBlock;
@@ -70,6 +51,8 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
+import com.google.common.io.Files;
+import com.google.common.reflect.ClassPath;
 import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.ability.AddonAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
@@ -89,33 +72,54 @@ import com.projectkorra.projectkorra.airbending.AirShield;
 import com.projectkorra.projectkorra.airbending.AirSpout;
 import com.projectkorra.projectkorra.airbending.AirSuction;
 import com.projectkorra.projectkorra.airbending.AirSwipe;
+import com.projectkorra.projectkorra.airbending.util.AirbendingManager;
 import com.projectkorra.projectkorra.board.BendingBoardManager;
+import com.projectkorra.projectkorra.chiblocking.util.ChiblockingManager;
+import com.projectkorra.projectkorra.command.PKCommand;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.earthbending.EarthBlast;
 import com.projectkorra.projectkorra.earthbending.EarthTunnel;
 import com.projectkorra.projectkorra.earthbending.passive.EarthPassive;
+import com.projectkorra.projectkorra.earthbending.util.EarthbendingManager;
 import com.projectkorra.projectkorra.event.AbilityVelocityAffectEntityEvent;
 import com.projectkorra.projectkorra.event.BendingReloadEvent;
 import com.projectkorra.projectkorra.firebending.FireBlast;
 import com.projectkorra.projectkorra.firebending.FireShield;
 import com.projectkorra.projectkorra.firebending.combustion.Combustion;
+import com.projectkorra.projectkorra.firebending.util.FirebendingManager;
 import com.projectkorra.projectkorra.object.Preset;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.util.ChatUtil;
 import com.projectkorra.projectkorra.util.ColoredParticle;
 import com.projectkorra.projectkorra.util.MovementHandler;
 import com.projectkorra.projectkorra.util.ParticleEffect;
+import com.projectkorra.projectkorra.util.RevertChecker;
 import com.projectkorra.projectkorra.util.TempArmor;
 import com.projectkorra.projectkorra.util.TempArmorStand;
 import com.projectkorra.projectkorra.util.TempBlock;
+import com.projectkorra.projectkorra.util.TempFallingBlock;
 import com.projectkorra.projectkorra.waterbending.WaterManipulation;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
+import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
+import com.projectkorra.projectkorra.waterbending.util.WaterbendingManager;
+
+import net.md_5.bungee.api.ChatColor;
+
+import dev.lone.itemsadder.api.CustomBlock;
 
 public class GeneralMethods {
 
 	private static ProjectKorra plugin;
+	private static final Map<String, Integer> CUSTOM_FIRE_AGES = new HashMap<>();
 
 	public GeneralMethods(final ProjectKorra plugin) {
 		GeneralMethods.plugin = plugin;
+
+		YamlConfiguration yaml = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder().getParent() + "/ItemsAdder/storage/custom_fires_ids_cache.yml"));
+		for (String key : yaml.getKeys(false)) {
+			CUSTOM_FIRE_AGES.put(key, yaml.getInt(key));
+		}
 	}
 
 	/**
@@ -266,25 +270,27 @@ public class GeneralMethods {
 			g = Integer.valueOf(hexVal.substring(3, 5), 16);
 			b = Integer.valueOf(hexVal.substring(5, 7), 16);
 		}
-		float red = r / 255.0F;
-		final float green = g / 255.0F;
-		final float blue = b / 255.0F;
-		if (red <= 0) {
-			red = 1 / 255.0F;
-		}
+
 		clone.setX(loc.getX() + (Math.random() * 2 - 1) * xOffset);
 		clone.setY(loc.getY() + (Math.random() * 2 - 1) * yOffset);
 		clone.setZ(loc.getZ() + (Math.random() * 2 - 1) * zOffset);
 
-		if (type != ParticleEffect.RED_DUST && type != ParticleEffect.REDSTONE && type != ParticleEffect.SPELL_MOB && type != ParticleEffect.MOB_SPELL && type != ParticleEffect.SPELL_MOB_AMBIENT && type != ParticleEffect.MOB_SPELL_AMBIENT) {
+		if (type != ParticleEffect.RED_DUST && type != ParticleEffect.REDSTONE && type != ParticleEffect.ENTITY_EFFECT && type != ParticleEffect.SPELL_MOB && type != ParticleEffect.MOB_SPELL && type != ParticleEffect.SPELL_MOB_AMBIENT && type != ParticleEffect.MOB_SPELL_AMBIENT) {
 			type = ParticleEffect.RED_DUST;
 		}
+
 		for (int i = 0; i < amount; i++) {
-			clone.getWorld().spawnParticle(type.getParticle(), clone, 0, red, green, blue);
+			if (type.getParticle() == Particle.DUST) {
+				clone.getWorld().spawnParticle(type.getParticle(), clone, 0, new Particle.DustOptions(Color.fromRGB(r, g, b), 1));
+			} else { // entity effect
+				clone.getWorld().spawnParticle(type.getParticle(), clone, 1,  Color.fromRGB(r, g, b));
+			}
+//			type.display(clone, 0, 0, 0, 0, Color.fromRGB(r, g, b));
+//			clone.getWorld().spawnParticle(Particle.ENTITY_EFFECT, clone, 0, Color.fromRGB(r, g, b));
+//			clone.getWorld().spawnParticle(type.getParticle(), clone, 0, red, green, blue);
 		}
 	}
 
-		@Deprecated
 	public static void displayColoredParticle(final Location loc, final String hexVal) {
 		displayColoredParticle(loc, ParticleEffect.RED_DUST, hexVal, 1, 0, 0, 0);
 	}
@@ -926,12 +932,11 @@ public class GeneralMethods {
 		if (!material.name().contains("_CAULDRON")) {
 			return null;
 		}
-		return material.createBlockData(d -> ((Levelled) d).setLevel((level > 3 || level > ((Levelled) d).getMaximumLevel()) ? 3 : level < 1 ? 1 : level));
+		return material.createBlockData(d -> ((Levelled) d).setLevel((level > 3 || level > ((Levelled) d).getMaximumLevel()) ? 3 : Math.max(level, 1)));
 	}
 	
 	public static void setCauldronData(final Block block, final int level) {
-		if (block.getBlockData() instanceof Levelled) {
-			Levelled levelled = (Levelled) block.getBlockData();
+		if (block.getBlockData() instanceof Levelled levelled) {
 			if (level >= 1 && level < 3) {
 				levelled.setLevel(level);
 				block.setBlockData(levelled);
@@ -949,7 +954,7 @@ public class GeneralMethods {
 		final Vector direction = player.getEyeLocation().getDirection().normalize();
 		for (final Entity entity : getEntitiesAroundPoint(origin, range)) {
 			if (entity instanceof Player) {
-				if (((Player) entity).isDead() || ((Player) entity).getGameMode().equals(GameMode.SPECTATOR)) {
+				if (entity.isDead() || ((Player) entity).getGameMode().equals(GameMode.SPECTATOR)) {
 					continue;
 				}
 			}
@@ -972,20 +977,50 @@ public class GeneralMethods {
 	}
 
 	public static Entity getTargetedEntity(final Player player, final double range) {
-		return getTargetedEntity(player, range, new ArrayList<Entity>());
+		return getTargetedEntity(player, range, new ArrayList<>());
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Material... nonOpaque2) {
+	public static BlockData blockDataFromId(final String id) {
+		if (id.startsWith("customfire:")) {
+			Fire fireData = (Fire) Material.FIRE.createBlockData();
+			int age = CUSTOM_FIRE_AGES.getOrDefault(id, 0);
+			fireData.setAge(age);
+			return fireData;
+		}
+
+		CustomBlock custom = CustomBlock.getInstance(id);
+		if (custom != null) {
+			return custom.getBaseBlockData();
+		}
+
+		Material material = Material.getMaterial(id.toUpperCase());
+		if (material != null) {
+			return material.createBlockData();
+		}
+
+		return null;
+	}
+
+	public static boolean blockMatchesId(final Block block, final String id) {
+		CustomBlock custom = CustomBlock.byAlreadyPlaced(block);
+		if (custom != null) {
+			return custom.getNamespacedID().equalsIgnoreCase(id);
+		}
+
+		return block.getType().name().equalsIgnoreCase(id);
+	}
+
+	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final String... blockTypes) {
 		final Location origin = player.getEyeLocation();
 		final Vector direction = origin.getDirection();
 
-		final HashSet<Material> trans = new HashSet<Material>();
-		trans.add(Material.AIR);
-		trans.add(Material.CAVE_AIR);
-		trans.add(Material.VOID_AIR);
+		final HashSet<String> trans = new HashSet<>();
+		trans.add(Material.AIR.name());
+		trans.add(Material.CAVE_AIR.name());
+		trans.add(Material.VOID_AIR.name());
 
-		if (nonOpaque2 != null) {
-			Collections.addAll(trans, nonOpaque2);
+		if (blockTypes != null) {
+			Collections.addAll(trans, blockTypes);
 		}
 
 		final Location location = origin.clone();
@@ -1001,17 +1036,21 @@ public class GeneralMethods {
 
 			final Block block = location.getBlock();
 
-			if (trans.contains(block.getType())) {
+			if (trans.stream().anyMatch(id -> blockMatchesId(block, id))) {
 				continue;
-			} else if (ignoreTempBlocks && (TempBlock.isTempBlock(block) && !WaterAbility.isBendableWaterTempBlock(block) && !EarthAbility.isBendableEarthTempBlock(block))) {
-				continue;
-			} else {
-				location.subtract(vec);
-				break;
 			}
+			if (ignoreTempBlocks && (TempBlock.isTempBlock(block) && !WaterAbility.isBendableWaterTempBlock(block) && !EarthAbility.isBendableEarthTempBlock(block))) {
+				continue;
+			}
+			location.subtract(vec);
+			break;
 		}
 
 		return location;
+	}
+
+	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Material... nonOpaque2) {
+		return getTargetedLocation(player, range, ignoreTempBlocks, checkDiagonals, nonOpaque2 == null ? new String[0] : Arrays.stream(nonOpaque2).filter(Objects::nonNull).map(Material::name).toArray(String[]::new));
 	}
 
 	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final Material... nonOpaque2) {

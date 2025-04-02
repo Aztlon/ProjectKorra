@@ -10,6 +10,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -255,7 +256,7 @@ public class WaterSpoutWave extends WaterAbility {
 					this.remove();
 					return;
 				}
-				this.createBlock(block, Material.WATER);
+				this.createBlock(block, Material.WATER.createBlockData());
 				if (this.location.distanceSquared(this.origin) > 4) {
 					this.animation = AnimateState.TOWARD_PLAYER;
 				}
@@ -272,7 +273,7 @@ public class WaterSpoutWave extends WaterAbility {
 					return;
 				}
 
-				this.createBlock(block, Material.WATER);
+				this.createBlock(block, Material.WATER.createBlockData());
 				if (this.location.distanceSquared(eyeLoc) < 1.7) {
 					this.animation = AnimateState.CIRCLE;
 					final Vector tempDir = this.player.getLocation().getDirection();
@@ -314,7 +315,7 @@ public class WaterSpoutWave extends WaterAbility {
 						if (this.iceWave) {
 							this.createBlockDelay(block, iceMaterial(this.player), 2L);
 						} else {
-							this.createBlock(block, Material.WATER);
+							this.createBlock(block, Material.WATER.createBlockData());
 						}
 					}
 				}
@@ -358,7 +359,7 @@ public class WaterSpoutWave extends WaterAbility {
 			final Block block = this.player.getEyeLocation().add(dir).getBlock();
 			this.location = block.getLocation();
 			if (ElementalAbility.isAir(block.getType()) && !RegionProtection.isRegionProtected(this, block.getLocation())) {
-				this.createBlock(block, Material.WATER);
+				this.createBlock(block, Material.WATER.createBlockData());
 			}
 		}
 	}
@@ -375,22 +376,22 @@ public class WaterSpoutWave extends WaterAbility {
 		}
 	}
 
-	public void createBlockDelay(final Block block, final Material mat, final long delay) {
+	public void createBlockDelay(final Block block, final BlockData data, final long delay) {
 		final BukkitRunnable br = new BukkitRunnable() {
 			@Override
 			public void run() {
-				WaterSpoutWave.this.createBlock(block, block.getLocation().distance(player.getLocation()) >= 1.6 ? mat : Material.WATER);
+				WaterSpoutWave.this.createBlock(block, block.getLocation().distance(player.getLocation()) >= 1.6 ? data : Material.WATER.createBlockData());
 			}
 		};
 		br.runTaskLater(ProjectKorra.plugin, delay);
 		this.tasks.add(br);
 	}
 
-	public void createBlock(final Block block, final Material mat) {
+	public void createBlock(final Block block, final BlockData data) {
 		if (this.affectedBlocks.containsKey(block)) {
 			this.affectedBlocks.get(block).revertBlock();
 		}
-		TempBlock tb = new TempBlock(block, mat.createBlockData(), this.trailRevertTime);
+		TempBlock tb = new TempBlock(block, data, this.trailRevertTime);
 		tb.setRevertTask(() -> this.affectedBlocks.remove(block));
 		this.affectedBlocks.put(block, tb);
 	}

@@ -276,7 +276,7 @@ public class Ripple extends EarthAbility {
 	}
 
 	private void affect(final Entity entity) {
-		if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+		if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(entity.getName()))) {
 			return;
 		}
 		if (entity instanceof LivingEntity) {
@@ -301,10 +301,7 @@ public class Ripple extends EarthAbility {
 		final int x = block.getX();
 		final int z = block.getZ();
 		final Integer[] pair = new Integer[] { x, z };
-		if (BLOCKS.containsKey(pair)) {
-			return true;
-		}
-		return false;
+		return BLOCKS.containsKey(pair);
 	}
 
 	public static void progressAllCleanup() {

@@ -254,7 +254,7 @@ public class WaterArms extends WaterAbility {
 
 			newBlocks.add(r3.getBlock());
 			if (j >= 1 && this.selectedSlot == this.freezeSlot && this.bPlayer.canIcebend()) {
-				this.addBlock(r3.getBlock(), iceMaterial(this.player).createBlockData(), 100);
+				this.addBlock(r3.getBlock(), iceMaterial(this.player), 100);
 			} else {
 				this.addBlock(r3.getBlock(), Material.WATER.createBlockData(), 100);
 			}
@@ -309,7 +309,7 @@ public class WaterArms extends WaterAbility {
 
 			newBlocks.add(l3.getBlock());
 			if (j >= 1 && this.selectedSlot == this.freezeSlot && this.bPlayer.canIcebend()) {
-				this.addBlock(l3.getBlock(), iceMaterial(this.player).createBlockData(), 100);
+				this.addBlock(l3.getBlock(), iceMaterial(this.player), 100);
 			} else {
 				this.addBlock(l3.getBlock(), Material.WATER.createBlockData(), 100);
 			}

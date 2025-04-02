@@ -1,6 +1,7 @@
 package com.projectkorra.projectkorra.firebending.combo;
 
 import com.projectkorra.projectkorra.ability.AirAbility;
+import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -69,7 +70,7 @@ public class FireComboStream extends BukkitRunnable {
 		this.collisionRadius = 2;
 		this.player = player;
 		this.bPlayer = BendingPlayer.getBendingPlayer(player);
-		this.particleEffect = bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? ParticleEffect.SOUL_FIRE_FLAME : ParticleEffect.FLAME;
+		this.particleEffect = FireAbility.FireParticle.byName(FireAbility.particleType(player)).getEffect();
 		this.coreAbility = coreAbility;
 		this.direction = direction;
 		this.speed = speed;

@@ -5,6 +5,9 @@ import com.projectkorra.projectkorra.ProjectKorra;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.damage.DamageSource;
+import org.bukkit.damage.DamageType;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -30,15 +33,11 @@ public class DamageHandler {
 	// Armor percentage
 	private static final HashMap<Integer, Double> ARMOR_PERCENTAGE_BY_ENTITY_ID = new HashMap<>();
 	private static final String IGNORE_ARMOR_PREFIX = "Properties.IgnoreArmorPercentage.";
-	public static final Set<LivingEntity> BEING_DAMAGED = new HashSet<>();
+	private static final Set<LivingEntity> BEING_DAMAGED = new HashSet<>();
 
 	private static boolean checkTicks(LivingEntity entity, double damage) {
 		return entity.getNoDamageTicks() > entity.getMaximumNoDamageTicks() / 2.0f && damage <= entity.getLastDamage();
 	}
-
-
-
-
 
 	/**
 	 *
@@ -48,7 +47,6 @@ public class DamageHandler {
 	public static boolean ignoreArmor(Entity entity) {
 		return ARMOR_PERCENTAGE_BY_ENTITY_ID.containsKey(entity.getEntityId());
 	}
-
 
 	public static double getIgnoreArmorPercentage(final Ability ability) {
 		FileConfiguration config = ProjectKorra.plugin.getConfig();
@@ -119,10 +117,14 @@ public class DamageHandler {
 
 		if (ignorePercentage == 0) return;
 
-		if (ignorePercentage == 1) {
-			event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, 0);
+		if (event.getEntity() instanceof ArmorStand) return; // ArmorStands produce errors when we modify the armor damage, so ignore them.
+
+		if (ignorePercentage >= 1) {
+			event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, 0); // Bypass armor points
+			event.setDamage(EntityDamageEvent.DamageModifier.MAGIC, 0); // Bypass protection enchantments
 		} else {
 			event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, event.getDamage(EntityDamageEvent.DamageModifier.ARMOR) * (1d - ignorePercentage));
+			event.setDamage(EntityDamageEvent.DamageModifier.MAGIC, event.getDamage(EntityDamageEvent.DamageModifier.MAGIC) * (1d - ignorePercentage));
 		}
 	}
 
@@ -146,6 +148,8 @@ public class DamageHandler {
 		if (ability == null) {
 			return;
 		}
+
+		if (entity.hasMetadata("bending-immune")) return;
 		
 		if (entity instanceof LivingEntity) {
 			if (checkTicks((LivingEntity) entity, damage)) {
@@ -173,15 +177,6 @@ public class DamageHandler {
 		
 		if (entity instanceof LivingEntity lent && !damageEvent.isCancelled()) {
 			damage = Math.max(0, damageEvent.getDamage());
-			
-			if (Bukkit.getPluginManager().isPluginEnabled("NoCheatPlus") && source != null) {
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_REACH);
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_DIRECTION);
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_NOSWING);
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_SPEED);
-				NCPExemptionManager.exemptPermanently(source, CheckType.COMBINED_IMPROBABLE);
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_SELFHIT);
-			}
 
 			// Preparing the event call back
 			if (damage > 0 && entity instanceof Player) {
@@ -196,10 +191,15 @@ public class DamageHandler {
 				}
 			}
 
-			final EntityDamageByEntityEvent finalEvent = new EntityDamageByEntityEvent(source, entity, DamageCause.CUSTOM, damage);
+			final EntityDamageByEntityEvent finalEvent = new EntityDamageByEntityEvent(source, entity, DamageCause.CUSTOM, DamageSource.builder(DamageType.GENERIC).build(), damage);
 			final double prevHealth = lent.getHealth();
-			BEING_DAMAGED.add(lent); //Stops StackOverflows
 
+			if (prevHealth - damage <= 0 && !entity.isDead()) {
+				final EntityBendingDeathEvent event = new EntityBendingDeathEvent(entity, damage, ability);
+				Bukkit.getServer().getPluginManager().callEvent(event);
+			}
+
+			BEING_DAMAGED.add(lent); //Stops StackOverflows
 			if (doSourcelessDamage) {
 				lent.damage(damage);
 			} else {
@@ -210,20 +210,6 @@ public class DamageHandler {
 			final double nextHealth = lent.getHealth();
 			entity.setLastDamageCause(finalEvent);
 
-			if (lent.getHealth() - damage <= 0 && !entity.isDead()) {
-				final EntityBendingDeathEvent event = new EntityBendingDeathEvent(entity, damage, ability);
-				Bukkit.getServer().getPluginManager().callEvent(event);
-			}
-
-			if (Bukkit.getPluginManager().isPluginEnabled("NoCheatPlus") && source != null) {
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_REACH);
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_DIRECTION);
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_NOSWING);
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_SPEED);
-				NCPExemptionManager.unexempt(source, CheckType.COMBINED_IMPROBABLE);
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_SELFHIT);
-			}
-
 			if (prevHealth != nextHealth) {
 				CoreAbility coreAbility = CoreAbility.getAbility(ability.getName());
 				if (coreAbility == null) {
@@ -231,9 +217,9 @@ public class DamageHandler {
 					return;
 				}
 				if (entity instanceof Player) {
-					StatisticsMethods.addStatisticAbility(source.getUniqueId(), CoreAbility.getAbility(ability.getName()), Statistic.PLAYER_DAMAGE, (long) damage);
+					StatisticsMethods.addStatisticAbility(source.getUniqueId(), coreAbility, Statistic.PLAYER_DAMAGE, (long) damage);
 				}
-				StatisticsMethods.addStatisticAbility(source.getUniqueId(), CoreAbility.getAbility(ability.getName()), Statistic.TOTAL_DAMAGE, (long) damage);
+				StatisticsMethods.addStatisticAbility(source.getUniqueId(), coreAbility, Statistic.TOTAL_DAMAGE, (long) damage);
 			}
 		}
 

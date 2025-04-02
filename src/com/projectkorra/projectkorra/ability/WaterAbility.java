@@ -12,6 +12,7 @@ import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
@@ -33,6 +34,8 @@ import com.projectkorra.projectkorra.waterbending.ice.PhaseChange;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 
+import dev.lone.itemsadder.api.CustomBlock;
+import dev.lone.itemsadder.api.CustomStack;
 import me.clip.placeholderapi.PlaceholderAPI;
 
 public abstract class WaterAbility extends ElementalAbility {
@@ -104,7 +107,10 @@ public abstract class WaterAbility extends ElementalAbility {
 	}
 
 	public boolean isIcebendable(final Block block) {
-		return this.isIcebendable(block.getType()) || (block.getType().name().endsWith("STAINED_GLASS") && TempBlock.isTempBlock(block));
+		if (this.isIcebendable(block.getType())) return true;
+		if (block.getType().name().endsWith("STAINED_GLASS") && TempBlock.isTempBlock(block)) return true;
+		CustomBlock custom = CustomBlock.byAlreadyPlaced(block);
+		return custom != null && custom.getNamespacedID().startsWith("customice:");
 	}
 
 	public boolean isIcebendable(final Material material) {
@@ -323,16 +329,34 @@ public abstract class WaterAbility extends ElementalAbility {
 		ParticleEffect.SMOKE_NORMAL.display(focusLoc.add(0.5, 0.5, 0.5), 4);
 	}
 
-	public static Material iceMaterial(Player player) {
-		Material mat = Material.ICE;
+	public static String iceMaterialName(Player player) {
 		String cosmeticIceMaterial = PlaceholderAPI.setPlaceholders(player, "%avatarverse_icematerial%");
 		if (!cosmeticIceMaterial.isEmpty()) {
-			mat = Material.getMaterial(cosmeticIceMaterial);
-			if (mat == null) {
-				mat = Material.ICE;
+			CustomBlock custom = CustomBlock.getInstance(cosmeticIceMaterial);
+			if (custom != null && custom.getNamespacedID().startsWith("customice:")) {
+				return custom.getNamespacedID();
+			}
+			Material mat = Material.getMaterial(cosmeticIceMaterial);
+			if (mat != null) {
+				return mat.name();
 			}
 		}
-		return mat;
+		return Material.ICE.name();
+	}
+
+	public static BlockData iceMaterial(Player player) {
+		String cosmeticIceMaterial = PlaceholderAPI.setPlaceholders(player, "%avatarverse_icematerial%");
+		if (!cosmeticIceMaterial.isEmpty()) {
+			CustomBlock custom = CustomBlock.getInstance(cosmeticIceMaterial);
+			if (custom != null && custom.getNamespacedID().startsWith("customice:")) {
+				return custom.getBaseBlockData();
+			}
+			Material mat = Material.getMaterial(cosmeticIceMaterial);
+			if (mat == null) {
+				return mat.createBlockData();
+			}
+		}
+		return Material.ICE.createBlockData();
 	}
 
 	public static void playIcebendingSound(final Location loc) {

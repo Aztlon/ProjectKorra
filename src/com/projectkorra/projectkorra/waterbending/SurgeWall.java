@@ -271,8 +271,8 @@ public class SurgeWall extends WaterAbility {
 					playWaterbendingSound(this.location);
 				}
 
-				final ArrayList<Block> blocks = new ArrayList<Block>();
-				final Location targetLoc = GeneralMethods.getTargetedLocation(this.player, (int) this.range, false, false, Material.WATER, iceMaterial(this.player));
+				final ArrayList<Block> blocks = new ArrayList<>();
+				final Location targetLoc = GeneralMethods.getTargetedLocation(this.player, (int) this.range, false, false, Material.WATER.name(), iceMaterialName(this.player));
 				this.location = targetLoc.clone();
 				final Vector eyeDir = this.player.getEyeLocation().getDirection();
 				Vector vector;

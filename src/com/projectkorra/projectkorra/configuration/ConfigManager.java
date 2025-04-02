@@ -1,5 +1,6 @@
 package com.projectkorra.projectkorra.configuration;
 
+import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
@@ -99,8 +100,9 @@ public class ConfigManager {
 			config.addDefault("Board.MiscSeparator", "  ----------");
 			
 			if (!config.contains("Board.Extras")) {
-				config.addDefault("Board.Extras.RaiseEarthWall", ChatColor.GREEN.getName());
-				config.addDefault("Board.Extras.SurgeWave", ChatColor.AQUA.getName());
+				config.addDefault("Board.Extras.RaiseEarthWall", Element.EARTH.getColor().getName());
+				config.addDefault("Board.Extras.SurgeWave", Element.WATER.getColor().getName());
+				config.addDefault("Board.Extras.SpoutHop", Element.WATER.getColor().getName());
 			}
 
 			config.addDefault("Extras.Water.NightMessage", "Your waterbending has become empowered due to the moon rising.");
@@ -387,7 +389,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Water.WaterManipulation.Instructions", "Tap sneak while looking at a water source and left click to send a water manipulation to the point that you clicked. Additionally, you can left click again to change the direction of this move. This includes other players' WaterManipulations.");
 			config.addDefault("Abilities.Water.WaterManipulation.DeathMessage", "{victim} was drowned by {attacker}'s {ability}");
 			config.addDefault("Abilities.Water.WaterSpout.Description", "This ability provides a Waterbender with a means of transportation. It's the most useful mobility move that a waterbender possesses and is great for chasing down targets or escaping.");
-			config.addDefault("Abilities.Water.WaterSpout.Instructions", "\n" + "(Spout) Left click to activate a spout beneath you and hold spacebar to go higher. If you wish to go lower, simply hold sneak. To disable this ability, left click once again." + "\n" + "(Wave) Left click a water source and hold sneak until water has formed around you. Then, release sneak to ride a water wave that transports you in the direction you're looking. To cancel this water wave, left click with WaterSpout.");
+			config.addDefault("Abilities.Water.WaterSpout.Instructions", "\n" + "(Spout) Left click to activate a spout beneath you and hold spacebar to go higher. If you wish to go lower, simply hold sneak. To disable this ability, left click once again." + "\n" + "(SpoutHop) While WaterSpout is active, hold sneak and left-click to jump forward!" + "\n" + "(Wave) Left click a water source and hold sneak until water has formed around you. Then, release sneak to ride a water wave that transports you in the direction you're looking. To cancel this water wave, left click with WaterSpout.");
 			config.addDefault("Abilities.Water.Combo.IceBullet.Description", "Using a large cavern of ice, you can punch ice shards at your opponent causing moderate damage. To rapid fire, you must alternate between Left clicking and right clicking with IceBlast.");
 			config.addDefault("Abilities.Water.Combo.IceBullet.DeathMessage", "{victim}'s heart was frozen by {attacker}'s {ability}");
 			config.addDefault("Abilities.Water.Combo.IceBullet.Instructions", "WaterBubble (Tap Shift) > IceBlast (Hold Shift) > Wait for ice to Form > Then alternate between Left and Right click with IceBlast");
@@ -749,6 +751,7 @@ public class ConfigManager {
 			config.addDefault("Properties.Earth.SafeRevert", true);
 			config.addDefault("Properties.Earth.RevertCheckTime", 300000);
 			config.addDefault("Properties.Earth.EarthPush", 0.75);
+			config.addDefault("Properties.Earth.EarthPushRadius", 1);
 			config.addDefault("Properties.Earth.CanBendWithWeapons", true);
 			config.addDefault("Properties.Earth.EarthBlocks", earthBlocks);
 			config.addDefault("Properties.Earth.MetalBlocks", metalBlocks);
@@ -985,6 +988,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Air.AirScooter.Cooldown", 7000);
 			config.addDefault("Abilities.Air.AirScooter.Duration", 0);
 			config.addDefault("Abilities.Air.AirScooter.MaxHeightFromGround", 7);
+			config.addDefault("Abilities.Air.AirScooter.DamageThreshold", 3);
 
 			config.addDefault("Abilities.Air.AirShield.Enabled", true);
 			config.addDefault("Abilities.Air.AirShield.Cooldown", 0);
@@ -1311,6 +1315,10 @@ public class ConfigManager {
 			config.addDefault("Abilities.Water.WaterSpout.Interval", 50);
 			config.addDefault("Abilities.Water.WaterSpout.BlockSpiral", true);
 			config.addDefault("Abilities.Water.WaterSpout.Particles", false);
+			config.addDefault("Abilities.Water.WaterSpout.SpoutHop.Enabled", true);
+			config.addDefault("Abilities.Water.WaterSpout.SpoutHop.Power", 0.85);
+			config.addDefault("Abilities.Water.WaterSpout.SpoutHop.Cooldown", 0);
+
 			config.addDefault("Abilities.Water.WaterSpout.Wave.Particles", false);
 			config.addDefault("Abilities.Water.WaterSpout.Wave.Enabled", true);
 			config.addDefault("Abilities.Water.WaterSpout.Wave.AllowPlantSource", true);

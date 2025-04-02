@@ -2,8 +2,10 @@ package com.projectkorra.projectkorra.board;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -19,14 +21,17 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 
 import net.md_5.bungee.api.ChatColor;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Represents a player's scoreboard for bending purposes
  */
 public class BendingBoard {
-	
+
+	private static final char[] CHAT_CHARS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
 	public static class BoardSlot {
-		
+
 		private Scoreboard board;
 		private Objective obj;
 		private int slot;
@@ -41,46 +46,44 @@ public class BendingBoard {
 			this.formTeam();
 		}
 
-		@SuppressWarnings("deprecation")
 		private void formTeam() {
-			this.team = board.registerNewTeam("slot" + this.slot);
-			this.entry = ChatColor.values()[slot % 10] + "" + ChatColor.values()[slot % 16];
-			
+			this.team = board.getTeam("slot" + this.slot) == null
+					? board.registerNewTeam("slot" + this.slot)
+					: board.getTeam("slot" + this.slot);
+			this.entry = "\u00A7" + CHAT_CHARS[slot % 10] + "" + "\u00A7" + CHAT_CHARS[slot % 16];
+
 			team.addEntry(entry);
 		}
-		
+
 		private void set() {
 			int s = Math.min(slot, 11);
 			obj.getScore(entry).setScore(-s);
 		}
-		
-		public void update(String prefix, String name) {
+
+		public void update(@NotNull String prefix, @NotNull String name) {
 			team.setPrefix(prefix);
 			team.setSuffix(name);
 			set();
 		}
-		
+
 		public void setSlot(int slot) {
 			this.slot = slot + 1;
 			set();
 		}
 
-		public void decreaseSlot() {
-			--this.slot;
-			clear(true);
+		public void clear(boolean formNewTeam) {
+			//Make sure the team hasn't already been unregistered
+			if (team.getScoreboard() != null && team.getScoreboard().getTeam("slot" + this.slot) != null) {
+				String prefix = team.getPrefix(), suffix = team.getSuffix();
+				team.unregister();
+				if (formNewTeam) {
+					formTeam();
+					update(prefix, suffix);
+				}
+			}
+			board.resetScores(entry);
 		}
 
-		public void clear(boolean formNewTeam) {
-			String prefix = team.getPrefix(), suffix = team.getSuffix();
-			board.resetScores(entry);
-			team.unregister();
-			if (formNewTeam) {
-				formTeam();
-				update(prefix, suffix);
-			}
-			next.ifPresent(BoardSlot::decreaseSlot);
-		}
-		
 		private void setNext(BoardSlot slot) {
 			this.next = Optional.of(slot);
 		}
@@ -89,10 +92,10 @@ public class BendingBoard {
 			this.prev = Optional.of(slot);
 		}
 	}
-	
+
 	private final BoardSlot[] slots = new BoardSlot[9];
 	private final Map<String, BoardSlot> misc = new HashMap<>();
-	private int miscSlot = 0;
+	private final Queue<Integer> miscSlotIds = new LinkedList<>();
 	private BoardSlot miscTail = null;
 
 	private final Player player;
@@ -101,7 +104,7 @@ public class BendingBoard {
 	private final Scoreboard bendingBoard;
 	private final Objective bendingSlots;
 	private int selectedSlot;
-	
+
 	private String prefix, emptySlot, miscSeparator;
 	private ChatColor selectedColor, altColor;
 
@@ -111,18 +114,22 @@ public class BendingBoard {
 		selectedSlot = player.getInventory().getHeldItemSlot() + 1;
 
 		bendingBoard = Bukkit.getScoreboardManager().getNewScoreboard();
-		
+
 		String title = ChatColor.translateAlternateColorCodes('&', ConfigManager.languageConfig.get().getString("Board.Title"));
 		bendingSlots = bendingBoard.registerNewObjective("Board Slots", "dummy", title);
 		bendingSlots.setDisplaySlot(DisplaySlot.SIDEBAR);
-		
+
 		for (int i = 0; i < 9; ++i) {
 			slots[i] = new BoardSlot(bendingBoard, bendingSlots, i);
 		}
-		
+
 		prefix = ChatColor.stripColor(ConfigManager.languageConfig.get().getString("Board.Prefix.Text"));
 		emptySlot = ChatColor.translateAlternateColorCodes('&', ConfigManager.languageConfig.get().getString("Board.EmptySlot"));
 		miscSeparator = ChatColor.translateAlternateColorCodes('&', ConfigManager.languageConfig.get().getString("Board.MiscSeparator"));
+
+		for (int i = 0; i < 9; i++) {
+			miscSlotIds.add(i);
+		}
 
 		updateAll();
 	}
@@ -131,7 +138,7 @@ public class BendingBoard {
 		bendingBoard.clearSlot(DisplaySlot.SIDEBAR);
 		bendingSlots.unregister();
 	}
-	
+
 	private ChatColor getElementColor() {
 		if (bendingPlayer.getElements().size() > 1) {
 			return Element.AVATAR.getColor();
@@ -141,12 +148,12 @@ public class BendingBoard {
 			return ChatColor.WHITE;
 		}
 	}
-	
+
 	private ChatColor getColor(String from, ChatColor def) {
 		if (from.equalsIgnoreCase("element")) {
 			return getElementColor();
 		}
-		
+
 		try {
 			return ChatColor.of(from);
 		} catch (Exception e) {
@@ -180,9 +187,9 @@ public class BendingBoard {
 		if (slot < 1 || slot > 9 || !player.getScoreboard().equals(bendingBoard)) {
 			return;
 		}
-		
+
 		StringBuilder sb = new StringBuilder();
-		
+
 		if (ability == null || ability.isEmpty()) {
 			sb.append(emptySlot.replaceAll("\\{slot_number\\}", "" + slot));
 		} else {
@@ -191,22 +198,22 @@ public class BendingBoard {
 				if (cooldown || bendingPlayer.isOnCooldown(ability)) {
 					sb.append(ChatColor.STRIKETHROUGH);
 				}
-				
+
 				sb.append(ability);
 			} else {
 				sb.append(coreAbility.getMovePreviewWithoutCooldownTimer(player, cooldown));
 			}
 		}
-		
+
 		slots[slot - 1].update((slot == selectedSlot ? selectedColor : altColor) + prefix, sb.toString());
 	}
-	
+
 	private int updateSelected(int newSlot) {
 		int oldSlot = selectedSlot;
 		selectedSlot = newSlot;
 		return oldSlot;
 	}
-	
+
 	public void updateColors() {
 		selectedColor = getColor(ConfigManager.languageConfig.get().getString("Board.Prefix.SelectedColor"), ChatColor.WHITE);
 		altColor = getColor(ConfigManager.languageConfig.get().getString("Board.Prefix.NonSelectedColor"), ChatColor.DARK_GRAY);
@@ -233,7 +240,7 @@ public class BendingBoard {
 	public void setAbilityCooldown(String name, boolean cooldown) {
 		bendingPlayer.getAbilities().entrySet().stream().filter(entry -> name.equals(entry.getValue())).forEach(entry -> setSlot(entry.getKey(), name, cooldown));
 	}
-	
+
 	public void updateMisc(String name, ChatColor color, boolean cooldown) {
 		if (!cooldown) {
 			misc.computeIfPresent(name, (key, slot) -> {
@@ -242,29 +249,27 @@ public class BendingBoard {
 				if (slot == miscTail) {
 					miscTail = null;
 				}
-				
+
 				slot.clear(false);
+				miscSlotIds.add(slot.slot - 10);
 				return null;
 			});
-				
+
 			if (misc.isEmpty()) {
 				bendingBoard.resetScores(miscSeparator);
 			}
 		} else if (!misc.containsKey(name)) {
-			if (miscSlot >= 90) {
-				miscSlot = 0;
-			}
-			BoardSlot slot = new BoardSlot(bendingBoard, bendingSlots, 10 + miscSlot++);
+			BoardSlot slot = new BoardSlot(bendingBoard, bendingSlots, 10 + miscSlotIds.poll());
 			slot.update(String.join("", Collections.nCopies(ChatColor.stripColor(prefix).length() + 1, " ")), color + "" + ChatColor.STRIKETHROUGH + name);
-			
+
 			if (miscTail != null) {
 				miscTail.setNext(slot);
 				slot.setPrev(miscTail);
 			}
-			
+
 			miscTail = slot;
 			misc.put(name, slot);
 			bendingSlots.getScore(miscSeparator).setScore(-10);
-		}	
+		}
 	}
 }

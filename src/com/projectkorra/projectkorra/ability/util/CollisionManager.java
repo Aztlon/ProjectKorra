@@ -92,7 +92,7 @@ public class CollisionManager {
 			if (instancesSecond.isEmpty()) {
 				continue;
 			}
-			final HashSet<CoreAbility> alreadyCollided = new HashSet<CoreAbility>();
+			final HashSet<CoreAbility> alreadyCollided = new HashSet<>();
 			final double certainNoCollisionDistSquared = Math.pow(this.certainNoCollisionDistance, 2);
 
 			for (final CoreAbility abilityFirst : instancesFirst) {

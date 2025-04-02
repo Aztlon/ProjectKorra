@@ -92,7 +92,7 @@ public class AvatarState extends AvatarAbility {
 			this.addProgressPotionEffect(PotionEffectType.SPEED, this.speedPower);
 		}
 		if (this.resistanceEnabled) {
-			this.addProgressPotionEffect(PotionEffectType.DAMAGE_RESISTANCE, this.resistancePower);
+			this.addProgressPotionEffect(PotionEffectType.RESISTANCE, this.resistancePower);
 		}
 		if (this.fireResistanceEnabled) {
 			this.addProgressPotionEffect(PotionEffectType.FIRE_RESISTANCE, this.fireResistancePower);

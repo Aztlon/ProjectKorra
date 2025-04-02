@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.bekvon.bukkit.residence.commands.info;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -62,6 +63,10 @@ public abstract class EarthAbility extends ElementalAbility {
 			}
 		}
 		return maxlength;
+	}
+
+	public static double getEarthPushRadius() {
+		return getConfig().getDouble("Properties.Earth.EarthPushRadius");
 	}
 
 	public static double getEarthPush() {
@@ -202,7 +207,7 @@ public abstract class EarthAbility extends ElementalAbility {
 	}
 
 	public boolean moveEarth(Block block, final Vector direction, final int chainlength, final boolean throwplayer) {
-		if ((!TempBlock.isTempBlock(block) || isBendableEarthTempBlock(block)) && this.isEarthbendable(block) && !RegionProtection.isRegionProtected(this, block.getLocation())) {
+		if ((!TempBlock.isTempBlock(block) || TempBlock.get(block).isBendableSource()) && this.isEarthbendable(block) && !RegionProtection.isRegionProtected(this, block.getLocation())) {
 			boolean up = false;
 			boolean down = false;
 			final Vector norm = direction.clone().normalize();
@@ -239,7 +244,7 @@ public abstract class EarthAbility extends ElementalAbility {
 				return false;
 			} else if (this.isTransparent(affectedblock)) {
 				if (throwplayer) {
-					for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(affectedblock.getLocation(), 1.75)) {
+					for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(affectedblock.getLocation(), getEarthPushRadius())) {
 						entity.setVelocity(norm.clone().multiply(getEarthPush()));
 					}
 				}
@@ -509,7 +514,34 @@ public abstract class EarthAbility extends ElementalAbility {
 		return !cosmetic.isEmpty() ? Material.getMaterial(cosmetic.toUpperCase()) : null;
 	}
 
-	public static void moveEarthBlock(final Block source, final Block target, final Player player) {
+	public void moveEarthBlock(final Block source, final Block target, final Player player) {
+//		BlockData data = source.getBlockData();
+//		long revertTime = ConfigManager.getConfig().getLong("Properties.Earth.RevertCheckTime");
+//
+//		TempBlock tbOld = TempBlock.get(source);
+//		if (tbOld != null) {
+//			data = tbOld.getBlockData();
+//			tbOld.revertBlock();
+//		} else {
+//			tbOld = new TempBlock(source, Material.AIR);
+//			tbOld.setRevertTime(revertTime);
+//		}
+//
+//		if (data.getMaterial() == Material.SAND) {
+//			data = Material.SANDSTONE.createBlockData();
+//		} else if (data.getMaterial() == Material.RED_SAND) {
+//			data = Material.RED_SANDSTONE.createBlockData();
+//		} else if (data.getMaterial() == Material.GRAVEL) {
+//			data = Material.STONE.createBlockData();
+//		} else if (data.getMaterial().name().endsWith("CONCRETE_POWDER")) {
+//			data = Material.getMaterial(data.getMaterial().name().replace("_POWDER", "")).createBlockData();
+//		}
+//
+//		TempBlock tbNew = new TempBlock(target, data);
+//		tbNew.setBendableSource(true);
+//		tbNew.setRevertTime(revertTime);
+//		tbNew.setAbility(this);
+
 		Information info;
 
 		if (MOVED_EARTH.containsKey(source)) {
