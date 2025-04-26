@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -272,7 +273,7 @@ public class SurgeWall extends WaterAbility {
 				}
 
 				final ArrayList<Block> blocks = new ArrayList<>();
-				final Location targetLoc = GeneralMethods.getTargetedLocation(this.player, (int) this.range, false, false, Material.WATER.name(), iceMaterialName(this.player));
+				final Location targetLoc = GeneralMethods.getTargetedLocation(this.player, (int) this.range, false, false, b -> isWater(b) || isIcebendable(b));
 				this.location = targetLoc.clone();
 				final Vector eyeDir = this.player.getEyeLocation().getDirection();
 				Vector vector;

@@ -691,7 +691,7 @@ public class Lightning extends LightningAbility {
 
 	@Override
 	public boolean isExplosiveAbility() {
-		return false;
+		return true;
 	}
 
 	public boolean isCollidable() {

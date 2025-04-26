@@ -309,13 +309,13 @@ public class EarthBlast extends EarthAbility {
 
 					moveEarthBlock(this.sourceBlock, block, player);
 
-//					if (block.getType() == Material.SAND) {
-//						block.setType(Material.SANDSTONE);
-//					}
-//
-//					if (block.getType() == Material.GRAVEL) {
-//						block.setType(Material.STONE);
-//					}
+					if (block.getType() == Material.SAND) {
+						block.setType(Material.SANDSTONE);
+					}
+
+					if (block.getType() == Material.GRAVEL) {
+						block.setType(Material.STONE);
+					}
 				} else {
 					block.setType(this.sourceType);
 					this.sourceBlock.setType(Material.AIR);

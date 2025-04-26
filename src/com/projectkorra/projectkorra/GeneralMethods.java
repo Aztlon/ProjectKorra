@@ -1010,18 +1010,14 @@ public class GeneralMethods {
 		return block.getType().name().equalsIgnoreCase(id);
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final String... blockTypes) {
+	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Predicate<Block> transparentPredicate) {
 		final Location origin = player.getEyeLocation();
 		final Vector direction = origin.getDirection();
 
-		final HashSet<String> trans = new HashSet<>();
-		trans.add(Material.AIR.name());
-		trans.add(Material.CAVE_AIR.name());
-		trans.add(Material.VOID_AIR.name());
-
-		if (blockTypes != null) {
-			Collections.addAll(trans, blockTypes);
-		}
+		final HashSet<String> transparent = new HashSet<>();
+		transparent.add(Material.AIR.name());
+		transparent.add(Material.CAVE_AIR.name());
+		transparent.add(Material.VOID_AIR.name());
 
 		final Location location = origin.clone();
 		final Vector vec = direction.normalize().multiply(0.2);
@@ -1036,7 +1032,7 @@ public class GeneralMethods {
 
 			final Block block = location.getBlock();
 
-			if (trans.stream().anyMatch(id -> blockMatchesId(block, id))) {
+			if (transparent.stream().anyMatch(id -> blockMatchesId(block, id)) || transparentPredicate.test(block)) {
 				continue;
 			}
 			if (ignoreTempBlocks && (TempBlock.isTempBlock(block) && !WaterAbility.isBendableWaterTempBlock(block) && !EarthAbility.isBendableEarthTempBlock(block))) {
@@ -1047,6 +1043,10 @@ public class GeneralMethods {
 		}
 
 		return location;
+	}
+
+	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final String... blockTypes) {
+		return getTargetedLocation(player, range, ignoreTempBlocks, checkDiagonals, block -> Arrays.stream(blockTypes).anyMatch(s -> blockMatchesId(block, s)));
 	}
 
 	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Material... nonOpaque2) {
@@ -1382,6 +1382,7 @@ public class GeneralMethods {
 		ConfigManager.defaultConfig.reload();
 		ConfigManager.languageConfig.reload();
 		ConfigManager.presetConfig.reload();
+		ConfigManager.loadConstants();
 		Arrays.stream(Element.getElements()).forEach(e -> {e.setColor(null); e.setSubColor(null);}); //Load colors from config again
 		Arrays.stream(Element.getSubElements()).forEach(e -> {e.setColor(null); e.setSubColor(null);}); //Same for subs
 		ElementalAbility.clearBendableMaterials(); // Clear and re-cache the material lists on reload.

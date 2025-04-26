@@ -1,10 +1,10 @@
 package com.projectkorra.projectkorra.ability;
 
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
-import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -14,6 +14,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
+import org.bukkit.block.data.type.NoteBlock;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
@@ -22,25 +23,23 @@ import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.util.Collision;
-import com.projectkorra.projectkorra.firebending.HeatControl;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.SurgeWall;
 import com.projectkorra.projectkorra.waterbending.SurgeWave;
-import com.projectkorra.projectkorra.waterbending.Torrent;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
 import com.projectkorra.projectkorra.waterbending.ice.PhaseChange;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 
 import dev.lone.itemsadder.api.CustomBlock;
-import dev.lone.itemsadder.api.CustomStack;
 import me.clip.placeholderapi.PlaceholderAPI;
 
 public abstract class WaterAbility extends ElementalAbility {
 
-	private static final Set<TempBlock> WATERBENDABLE_TEMPBLOCKS = new HashSet<>();
+	public static final Map<String, String> BLOCK_DATA_CUSTOM_ICE = new HashMap<>(); // <block data string, namespaced id>
 
 	public WaterAbility(final Player player) {
 		super(player);
@@ -109,8 +108,7 @@ public abstract class WaterAbility extends ElementalAbility {
 	public boolean isIcebendable(final Block block) {
 		if (this.isIcebendable(block.getType())) return true;
 		if (block.getType().name().endsWith("STAINED_GLASS") && TempBlock.isTempBlock(block)) return true;
-		CustomBlock custom = CustomBlock.byAlreadyPlaced(block);
-		return custom != null && custom.getNamespacedID().startsWith("customice:");
+		return block.getType() == Material.NOTE_BLOCK && BLOCK_DATA_CUSTOM_ICE.containsKey(block.getBlockData().getAsString());
 	}
 
 	public boolean isIcebendable(final Material material) {
@@ -334,7 +332,7 @@ public abstract class WaterAbility extends ElementalAbility {
 		if (!cosmeticIceMaterial.isEmpty()) {
 			CustomBlock custom = CustomBlock.getInstance(cosmeticIceMaterial);
 			if (custom != null && custom.getNamespacedID().startsWith("customice:")) {
-				return custom.getNamespacedID();
+				return custom.getBaseBlockData().getAsString();
 			}
 			Material mat = Material.getMaterial(cosmeticIceMaterial);
 			if (mat != null) {
@@ -352,7 +350,7 @@ public abstract class WaterAbility extends ElementalAbility {
 				return custom.getBaseBlockData();
 			}
 			Material mat = Material.getMaterial(cosmeticIceMaterial);
-			if (mat == null) {
+			if (mat != null) {
 				return mat.createBlockData();
 			}
 		}

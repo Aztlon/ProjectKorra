@@ -186,6 +186,9 @@ public abstract class CoreAbility implements Ability {
 			return;
 		}
 
+		if (!this.attributesModified)
+			this.modifyAttributes();
+
 		this.started = true;
 		this.startTime = System.currentTimeMillis();
 		this.startTick = getCurrentTick();
@@ -275,7 +278,6 @@ public abstract class CoreAbility implements Ability {
 				try {
 					if (!abil.attributesModified) {
 						abil.modifyAttributes();
-						abil.attributesModified = true;
 					}
 
 //					try (MCTiming timing = ProjectKorra.timing(abil.getName()).startTiming()) {
@@ -991,6 +993,7 @@ public abstract class CoreAbility implements Ability {
 				field.setAccessible(accessibility);
 			}
 		}
+
 		this.attributeValues.forEach((attribute, value) -> {
 			final Field field = ATTRIBUTE_FIELDS.get(this.getClass()).get(attribute);
 			final boolean accessibility = field.isAccessible();
@@ -1003,6 +1006,8 @@ public abstract class CoreAbility implements Ability {
 				field.setAccessible(accessibility);
 			}
 		});
+
+		attributesModified = true;
 	}
 
 	/**

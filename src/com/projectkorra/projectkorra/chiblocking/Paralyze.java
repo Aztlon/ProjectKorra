@@ -41,7 +41,7 @@ public class Paralyze extends ChiAbility {
 	public void progress() {
 		if (this.bPlayer.canBend(this)) {
 			if (this.target instanceof Player) {
-				if (Commands.invincible.contains(((Player) this.target).getName())) {
+				if (Commands.invincible.contains(this.target.getName())) {
 					this.remove();
 					return;
 				}

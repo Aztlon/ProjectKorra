@@ -19,6 +19,9 @@ public class ConfigManager {
 	public static Config defaultConfig;
 	public static Config languageConfig;
 
+	public static double waterSpoutMaxSpeed;
+	public static double airSpoutMaxSpeed;
+
 	public ConfigManager() {
 		presetConfig = new Config(new File("presets.yml"));
 		defaultConfig = new Config(new File("config.yml"));
@@ -26,6 +29,7 @@ public class ConfigManager {
 		configCheck(ConfigType.DEFAULT);
 		configCheck(ConfigType.LANGUAGE);
 		configCheck(ConfigType.PRESETS);
+		loadConstants();
 	}
 
 	public static void configCheck(final ConfigType type) {
@@ -1005,6 +1009,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Air.AirSpout.Duration", 0);
 			config.addDefault("Abilities.Air.AirSpout.Height", 16);
 			config.addDefault("Abilities.Air.AirSpout.Interval", 100);
+			config.addDefault("Abilities.Air.AirSpout.MaxSpeed", 0.2);
 
 			config.addDefault("Abilities.Air.AirSuction.Enabled", true);
 			config.addDefault("Abilities.Air.AirSuction.Speed", 25);
@@ -1315,6 +1320,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Water.WaterSpout.Interval", 50);
 			config.addDefault("Abilities.Water.WaterSpout.BlockSpiral", true);
 			config.addDefault("Abilities.Water.WaterSpout.Particles", false);
+			config.addDefault("Abilities.Water.WaterSpout.MaxSpeed", 0.2);
 			config.addDefault("Abilities.Water.WaterSpout.SpoutHop.Enabled", true);
 			config.addDefault("Abilities.Water.WaterSpout.SpoutHop.Power", 0.85);
 			config.addDefault("Abilities.Water.WaterSpout.SpoutHop.Cooldown", 0);
@@ -1801,6 +1807,11 @@ public class ConfigManager {
 
 			defaultConfig.save();
 		}
+	}
+
+	public static void loadConstants() {
+		waterSpoutMaxSpeed = ConfigManager.defaultConfig.get().getDouble("Abilities.Water.WaterSpout.MaxSpeed");
+		airSpoutMaxSpeed = ConfigManager.defaultConfig.get().getDouble("Abilities.Air.AirSpout.MaxSpeed");
 	}
 
 	public static FileConfiguration getConfig() {

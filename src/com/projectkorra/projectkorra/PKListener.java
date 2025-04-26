@@ -207,6 +207,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import co.aikar.timings.lib.MCTiming;
+import dev.lone.itemsadder.api.CustomBlock;
+import dev.lone.itemsadder.api.Events.ItemsAdderLoadDataEvent;
 
 public class PKListener implements Listener {
 	ProjectKorra plugin;
@@ -404,31 +406,31 @@ public class PKListener implements Listener {
 		final Block block = event.getBlock();
 
 //		try (MCTiming timing = TimingPhysicsWaterManipulationCheck.startTiming()) {
-			if (!WaterManipulation.canPhysicsChange(block)) {
-				event.setCancelled(true);
-				return;
-			}
+		if (!WaterManipulation.canPhysicsChange(block)) {
+			event.setCancelled(true);
+			return;
+		}
 //		}
 
 //		try (MCTiming timing = TimingPhysicsEarthPassiveCheck.startTiming()) {
-			if (!EarthPassive.canPhysicsChange(block)) {
-				event.setCancelled(true);
-				return;
-			}
+		if (!EarthPassive.canPhysicsChange(block)) {
+			event.setCancelled(true);
+			return;
+		}
 //		}
 
 //		try (MCTiming timing = TimingPhysicsEarthAbilityCheck.startTiming()) {
-			if (EarthAbility.getPreventPhysicsBlocks().contains(block)) {
-				event.setCancelled(true);
-				return;
-			}
+		if (EarthAbility.getPreventPhysicsBlocks().contains(block)) {
+			event.setCancelled(true);
+			return;
+		}
 //		}
 
 		// If there is a TempBlock of Air bellow FallingSand blocks, prevent it from updating.
 //		try (MCTiming timing = TimingPhysicsAirTempBlockBelowFallingBlockCheck.startTiming()) {
-			if ((block.getType() == Material.SAND || block.getType() == Material.RED_SAND || block.getType() == Material.GRAVEL || block.getType() == Material.ANVIL || block.getType() == Material.DRAGON_EGG) && ElementalAbility.isAir(block.getRelative(BlockFace.DOWN).getType()) && TempBlock.isTempBlock(block.getRelative(BlockFace.DOWN))) {
-				event.setCancelled(true);
-			}
+		if ((block.getType() == Material.SAND || block.getType() == Material.RED_SAND || block.getType() == Material.GRAVEL || block.getType() == Material.ANVIL || block.getType() == Material.DRAGON_EGG) && ElementalAbility.isAir(block.getRelative(BlockFace.DOWN).getType()) && TempBlock.isTempBlock(block.getRelative(BlockFace.DOWN))) {
+			event.setCancelled(true);
+		}
 //		}
 	}
 
@@ -549,7 +551,7 @@ public class PKListener implements Listener {
 		if (event.getCause() == DamageCause.FIRE && FireAbility.getSourcePlayers().containsKey(entity.getLocation().getBlock())) {
 			new FireDamageTimer(entity, FireAbility.getSourcePlayers().get(entity.getLocation().getBlock()), null, true);
 		}
-		
+
 		if (FireDamageTimer.isEnflamed(entity) && event.getCause() == DamageCause.FIRE_TICK) {
 			event.setCancelled(true);
 			FireDamageTimer.dealFlameDamage(entity, damage);
@@ -806,7 +808,7 @@ public class PKListener implements Listener {
 				if (ability == null) {
 					return;
 				}
-				
+
 				final Player player = (Player) event.getEntity();
 				BENDING_PLAYER_DEATH.put(player, Pair.of(ability.getElement().getColor() + ability.getName(), event.getAttacker()));
 
@@ -882,7 +884,7 @@ public class PKListener implements Listener {
 			}
 
 			if (bPlayer.hasElement(Element.EARTH) && event.getCause() == DamageCause.FALL) {
-				if (bPlayer.getBoundAbilityName().equalsIgnoreCase("Shockwave")) {
+				if (CoreAbility.getAbility(Shockwave.class).equals(bPlayer.getBoundAbility())) {
 					new Shockwave(player, true);
 				} else if (bPlayer.getBoundAbilityName().equalsIgnoreCase("Catapult")) {
 					new EarthPillars(player, true);
@@ -1040,7 +1042,7 @@ public class PKListener implements Listener {
 			} // Do nothing. TempArmor drops are handled by the EntityDeath event and not PlayerDeath.
 
 		}
-		
+
 		if (BENDING_PLAYER_DEATH.containsKey(event.getEntity())) {
 			String message = ConfigManager.languageConfig.get().getString("DeathMessages.Default");
 			final String ability = BENDING_PLAYER_DEATH.get(event.getEntity()).getLeft();
@@ -1049,11 +1051,11 @@ public class PKListener implements Listener {
 			Element element = null;
 			final boolean isAvatarAbility = false;
 			final Player killer = BENDING_PLAYER_DEATH.get(event.getEntity()).getRight();
-			
+
 			if (coreAbil != null) {
 				element = coreAbil.getElement();
 			}
-			
+
 			if (HorizontalVelocityTracker.hasBeenDamagedByHorizontalVelocity(event.getEntity()) && Arrays.asList(HorizontalVelocityTracker.abils).contains(tempAbility)) {
 				if (ConfigManager.languageConfig.get().contains("Abilities." + element.getName() + "." + tempAbility + ".HorizontalVelocityDeath")) {
 					message = ConfigManager.languageConfig.get().getString("Abilities." + element.getName() + "." + tempAbility + ".HorizontalVelocityDeath");
@@ -1252,81 +1254,83 @@ public class PKListener implements Listener {
 		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 
 //		try (MCTiming timing = TimingPlayerMoveMovementHandlerCheck.startTiming()) {
-			if (MovementHandler.isStopped(player)) {
-				if (event.getTo().getX() != event.getFrom().getX() || event.getTo().getZ() != event.getFrom().getZ() || event.getTo().getY() > event.getFrom().getY()) {
-					event.setCancelled(true);
-				}
-				return;
+		if (MovementHandler.isStopped(player)) {
+			if (event.getTo().getX() != event.getFrom().getX() || event.getTo().getZ() != event.getFrom().getZ() || event.getTo().getY() > event.getFrom().getY()) {
+				event.setCancelled(true);
 			}
+			return;
+		}
 //		}
 
 //		try (MCTiming timing = TimingPlayerMoveSpoutCheck.startTiming()) {
-			if (CoreAbility.hasAbility(player, WaterSpout.class) || CoreAbility.hasAbility(player, AirSpout.class)) {
-				Vector vel = new Vector();
-				vel.setX(event.getTo().getX() - event.getFrom().getX());
-				vel.setZ(event.getTo().getZ() - event.getFrom().getZ());
+		boolean hasWaterSpout = CoreAbility.hasAbility(player, WaterSpout.class);
+		boolean hasAirSpout = CoreAbility.hasAbility(player, AirSpout.class);
+		if (hasWaterSpout || hasAirSpout) {
+			Vector vel = new Vector();
+			vel.setX(event.getTo().getX() - event.getFrom().getX());
+			vel.setZ(event.getTo().getZ() - event.getFrom().getZ());
 
-				final double currspeed = vel.length();
-				final double maxspeed = .2;
-				if (currspeed > maxspeed) {
-					// apply only if moving set a factor
-					vel = vel.normalize().multiply(maxspeed);
-					// apply the new velocity
-					event.getPlayer().setVelocity(vel);
-				}
-				return;
+			final double currspeed = vel.length();
+			final double maxspeed = hasWaterSpout ? ConfigManager.waterSpoutMaxSpeed : ConfigManager.airSpoutMaxSpeed;
+			if (currspeed > maxspeed) {
+				// apply only if moving set a factor
+				vel = vel.normalize().multiply(maxspeed);
+				// apply the new velocity
+				event.getPlayer().setVelocity(vel);
 			}
+			return;
+		}
 //		}
 
 //		try (MCTiming timing = TimingPlayerMoveBloodbentCheck.startTiming()) {
-			if (Bloodbending.isBloodbent(player)) {
-				final BendingPlayer bender = Bloodbending.getBloodbender(player);
-				if (bender.isAvatarState()) {
-					event.setCancelled(true);
-					return;
-				}
-
-				final Location loc = Bloodbending.getBloodbendingLocation(player);
-				if (player.getWorld().equals(loc.getWorld())) {
-					if (!player.getVelocity().equals(Bloodbending.getBloodbendingVector(player))) {
-						player.setVelocity(Bloodbending.getBloodbendingVector(player));
-					}
-				}
+		if (Bloodbending.isBloodbent(player)) {
+			final BendingPlayer bender = Bloodbending.getBloodbender(player);
+			if (bender.isAvatarState()) {
+				event.setCancelled(true);
 				return;
 			}
+
+			final Location loc = Bloodbending.getBloodbendingLocation(player);
+			if (player.getWorld().equals(loc.getWorld())) {
+				if (!player.getVelocity().equals(Bloodbending.getBloodbendingVector(player))) {
+					player.setVelocity(Bloodbending.getBloodbendingVector(player));
+				}
+			}
+			return;
+		}
 //		}
 
 		if (bPlayer != null) {
 //			try (MCTiming timing = TimingPlayerMoveAirChiPassiveCheck) {
-				if (bPlayer.hasElement(Element.AIR) || bPlayer.hasElement(Element.CHI)) {
-					PassiveHandler.checkExhaustionPassives(player);
-				}
+			if (bPlayer.hasElement(Element.AIR) || bPlayer.hasElement(Element.CHI)) {
+				PassiveHandler.checkExhaustionPassives(player);
+			}
 //			}
 
 //			try (MCTiming timing = TimingPlayerMoveFirePassiveCheck.startTiming()) {
-				if (event.getTo().getBlock() != event.getFrom().getBlock()) {
-					FirePassive.handle(player);
-				}
+			if (event.getTo().getBlock() != event.getFrom().getBlock()) {
+				FirePassive.handle(player);
+			}
 //			}
 		}
 
 //		try (MCTiming timing = TimingPlayerMoveJumpCheck.startTiming()) {
-			if (event.getTo().getY() > event.getFrom().getY()) {
-				if (!(player.getLocation().getBlock().getType() == Material.VINE) && !(player.getLocation().getBlock().getType() == Material.LADDER)) {
-					final int current = player.getStatistic(Statistic.JUMP);
-					final int last = JUMPS.get(player);
+		if (event.getTo().getY() > event.getFrom().getY()) {
+			if (!(player.getLocation().getBlock().getType() == Material.VINE) && !(player.getLocation().getBlock().getType() == Material.LADDER)) {
+				final int current = player.getStatistic(Statistic.JUMP);
+				final int last = JUMPS.get(player);
 
-					if (last != current) {
-						JUMPS.put(player, current);
+				if (last != current) {
+					JUMPS.put(player, current);
 
-						final double yDif = event.getTo().getY() - event.getFrom().getY();
+					final double yDif = event.getTo().getY() - event.getFrom().getY();
 
-						if ((yDif < 0.035 || yDif > 0.037) && (yDif < 0.116 || yDif > 0.118)) {
-							Bukkit.getServer().getPluginManager().callEvent(new PlayerJumpEvent(player, yDif));
-						}
+					if ((yDif < 0.035 || yDif > 0.037) && (yDif < 0.116 || yDif > 0.118)) {
+						Bukkit.getServer().getPluginManager().callEvent(new PlayerJumpEvent(player, yDif));
 					}
 				}
 			}
+		}
 //		}
 	}
 
@@ -2010,7 +2014,7 @@ public class PKListener implements Listener {
 				public void run() {
 					BendingBoardManager.updateAllSlots(player);
 				}
-				
+
 			}.runTaskLater(ProjectKorra.plugin, 1);
 		} else {
 			if (event.isBinding()) {
@@ -2047,6 +2051,22 @@ public class PKListener implements Listener {
 	public void onPluginUnload(PluginDisableEvent event) {
 		RegionProtection.unloadPlugin((JavaPlugin) event.getPlugin());
 		BendingPlayer.HOOKS.remove((JavaPlugin) event.getPlugin());
+	}
+
+	@EventHandler(priority = EventPriority.MONITOR)
+	public void onItemsAdderLoad(ItemsAdderLoadDataEvent event) {
+		Optional.ofNullable(CustomBlock.getInstance("customice:red_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:orange_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:yellow_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:green_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:teal_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:blue_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:purple_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:magenta_ice")).ifPresent(this::registerCustomIce);
+	}
+
+	private void registerCustomIce(CustomBlock block) {
+		WaterAbility.BLOCK_DATA_CUSTOM_ICE.put(block.getBaseBlockData().getAsString(), block.getNamespacedID());
 	}
 
 	public static HashMap<Player, Pair<String, Player>> getBendingPlayerDeath() {

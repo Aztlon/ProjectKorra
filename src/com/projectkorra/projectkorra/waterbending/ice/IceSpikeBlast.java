@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -54,7 +55,7 @@ public class IceSpikeBlast extends IceAbility {
 	private Location firstDestination;
 	private Location destination;
 	private TempBlock source;
-	private Material sourceType;
+	private BlockData sourceType;
 
 	public IceSpikeBlast(final Player player) {
 		super(player);
@@ -131,9 +132,9 @@ public class IceSpikeBlast extends IceAbility {
 
 		this.sourceBlock = block;
 		if (!isIce(block)) {
-			this.sourceType = Material.ICE;
+			this.sourceType = iceMaterial(player);
 		} else {
-			this.sourceType = block.getType();
+			this.sourceType = block.getType().createBlockData();
 		}
 		this.location = this.sourceBlock.getLocation();
 		this.prepared = true;

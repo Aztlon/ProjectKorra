@@ -323,7 +323,7 @@ public class PhaseChange extends IceAbility {
 		this.meltTicks += this.meltSpeed / 20;
 
 		for (int i = 0; i < this.meltTicks % (this.meltSpeed); i++) {
-			if (ice.size() == 0) {
+			if (ice.isEmpty()) {
 				this.meltRadius++;
 				return;
 			}

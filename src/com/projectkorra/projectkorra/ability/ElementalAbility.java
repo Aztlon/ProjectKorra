@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
-import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -22,9 +21,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 
 import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.TempBlock;
-
-import dev.lone.itemsadder.api.CustomBlock;
 
 /**
  * ElementalAbility is used to hold methods that should be accessible by every
@@ -138,8 +136,7 @@ public abstract class ElementalAbility extends CoreAbility {
 		if (isIce(block.getType())) return true;
 		if (block.getType().name().endsWith("STAINED_GLASS") && TempBlock.isTempBlock(block))
 			return true;
-		CustomBlock custom = CustomBlock.byAlreadyPlaced(block);
-		return custom != null && custom.getNamespacedID().startsWith("customice:");
+		return block.getType() == Material.NOTE_BLOCK && WaterAbility.BLOCK_DATA_CUSTOM_ICE.containsKey(block.getBlockData().getAsString());
 	}
 
 	public static boolean isIce(final Material material) {
