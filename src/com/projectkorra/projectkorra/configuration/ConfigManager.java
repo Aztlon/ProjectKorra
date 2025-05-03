@@ -929,6 +929,9 @@ public class ConfigManager {
 			config.addDefault("Abilities.Avatar.AvatarState.Water.IceBlast.Damage", 4);
 			config.addDefault("Abilities.Avatar.AvatarState.Water.IceBlast.Range", 30);
 			config.addDefault("Abilities.Avatar.AvatarState.Water.IceBlast.Cooldown", 0);
+			config.addDefault("Abilities.Avatar.AvatarState.Water.IceBlast.SlowCooldown", 0);
+			config.addDefault("Abilities.Avatar.AvatarState.Water.IceBlast.SlowPotency", 3);
+			config.addDefault("Abilities.Avatar.AvatarState.Water.IceBlast.SlowDuration", 90);
 			config.addDefault("Abilities.Avatar.AvatarState.Water.IceBullet.Cooldown", 0);
 			config.addDefault("Abilities.Avatar.AvatarState.Water.IceSpike.Damage", 4);
 			config.addDefault("Abilities.Avatar.AvatarState.Water.IceSpike.Range", 30);
@@ -1143,6 +1146,9 @@ public class ConfigManager {
 			config.addDefault("Abilities.Water.IceBlast.CollisionRadius", 1.0);
 			config.addDefault("Abilities.Water.IceBlast.Interval", 20);
 			config.addDefault("Abilities.Water.IceBlast.Cooldown", 1500);
+			config.addDefault("Abilities.Water.IceBlast.SlowCooldown", 5000);
+			config.addDefault("Abilities.Water.IceBlast.SlowPotency", 2);
+			config.addDefault("Abilities.Water.IceBlast.SlowDuration", 70);
 			config.addDefault("Abilities.Water.IceBlast.AllowSnow", false);
 
 			config.addDefault("Abilities.Water.IceSpike.Enabled", true);

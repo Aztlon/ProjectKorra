@@ -36,8 +36,14 @@ public class IceBlast extends IceAbility {
 	private boolean progressing;
 	private byte data;
 	private long time;
+	@Attribute("SlowPotency")
+	private int slowPotency;
+	@Attribute("Slow" + Attribute.DURATION)
+	private int slowDuration;
 	@Attribute(Attribute.COOLDOWN)
 	private long cooldown;
+	@Attribute("Slow" + Attribute.COOLDOWN)
+	private long slowCooldown;
 	private long interval;
 	@Attribute(Attribute.RANGE)
 	private double range;
@@ -62,7 +68,10 @@ public class IceBlast extends IceAbility {
 		this.deflectRange = applyModifiers(getConfig().getDouble("Abilities.Water.IceBlast.DeflectRange"));
 		this.range = applyModifiers(getConfig().getDouble("Abilities.Water.IceBlast.Range"));
 		this.damage = applyModifiers(getConfig().getInt("Abilities.Water.IceBlast.Damage"));
-		this.cooldown = applyInverseModifiers(getConfig().getInt("Abilities.Water.IceBlast.Cooldown"));
+		this.slowCooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.IceBlast.SlowCooldown"));
+		this.cooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.IceBlast.Cooldown"));
+		this.slowPotency = getConfig().getInt("Abilities.Water.IceBlast.SlowPotency");
+		this.slowDuration = getConfig().getInt("Abilities.Water.IceBlast.SlowDuration");
 		this.allowSnow = getConfig().getBoolean("Abilities.Water.IceBlast.AllowSnow");
 
 		if (!this.bPlayer.canBend(this) || !this.bPlayer.canIcebend()) {
@@ -71,8 +80,11 @@ public class IceBlast extends IceAbility {
 
 		if (this.bPlayer.isAvatarState()) {
 			this.cooldown = getConfig().getLong("Abilities.Avatar.AvatarState.Water.IceBlast.Cooldown");
+			this.slowCooldown = getConfig().getLong("Abilities.Avatar.AvatarState.Water.IceBlast.SlowCooldown");
 			this.range = getConfig().getDouble("Abilities.Avatar.AvatarState.Water.IceBlast.Range");
 			this.damage = getConfig().getInt("Abilities.Avatar.AvatarState.Water.IceBlast.Damage");
+			this.slowPotency = getConfig().getInt("Abilities.Avatar.AvatarState.Water.IceBlast.SlowPotency");
+			this.slowDuration = getConfig().getInt("Abilities.Avatar.AvatarState.Water.IceBlast.SlowDuration");
 		}
 
 		block(player);
@@ -165,23 +177,21 @@ public class IceBlast extends IceAbility {
 	}
 
 	private void affect(final LivingEntity entity) {
-		if (entity instanceof Player) {
-			if (this.bPlayer.canBeSlowed()) {
-				final PotionEffect effect = new PotionEffect(PotionEffectType.SLOWNESS, 70, 2);
-				new TempPotionEffect(entity, effect);
-				this.bPlayer.slow(10);
-				DamageHandler.damageEntity(entity, this.damage, this);
-			}
-		} else {
-			final PotionEffect effect = new PotionEffect(PotionEffectType.SLOWNESS, 70, 2);
-			new TempPotionEffect(entity, effect);
-			DamageHandler.damageEntity(entity, this.damage, this);
-		}
+		DamageHandler.damageEntity(entity, this.damage, this);
 		AirAbility.breakBreathbendingHold(entity);
 
 		for (int x = 0; x < 30; x++) {
 			ParticleEffect.ITEM_CRACK.display(this.location, 5, Math.random() / 4, Math.random() / 4, Math.random() / 4, new ItemStack(Material.ICE));
 		}
+
+		if (entity instanceof Player) {
+			if (!this.bPlayer.canBeSlowed())
+				return;
+
+			this.bPlayer.slow(this.slowCooldown);
+		}
+
+		new TempPotionEffect(entity, new PotionEffect(PotionEffectType.SLOWNESS, this.slowDuration, this.slowPotency));
 	}
 
 	private void throwIce() {
@@ -421,6 +431,30 @@ public class IceBlast extends IceAbility {
 
 	public void setInterval(final long interval) {
 		this.interval = interval;
+	}
+
+	public int getSlowPotency() {
+		return this.slowPotency;
+	}
+
+	public void setSlowPotency(final int slowPotency) {
+		this.slowPotency = slowPotency;
+	}
+
+	public int getSlowDuration() {
+		return this.slowDuration;
+	}
+
+	public void setSlowDuration(final int slowDuration) {
+		this.slowDuration = slowDuration;
+	}
+
+	public long getSlowCooldown() {
+		return this.slowCooldown;
+	}
+
+	public void setSlowCooldown(final long slowCooldown) {
+		this.slowCooldown = slowCooldown;
 	}
 
 	public double getRange() {
