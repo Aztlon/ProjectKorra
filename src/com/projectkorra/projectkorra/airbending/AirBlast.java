@@ -163,7 +163,7 @@ public class AirBlast
 			ORIGINS.remove(player);
 			return;
 		}
-		if (!bPlayer.canBendIgnoreCooldowns(AirBlast.getAbility("AirBlast"))) {
+		if (!bPlayer.canBendIgnoreBindsCooldowns(AirBlast.getAbility("AirBlast"))) {
 			ORIGINS.remove(player);
 			return;
 		}

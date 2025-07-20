@@ -480,6 +480,10 @@ public class OctopusForm extends WaterAbility {
 		super.remove();
 		this.returnWater();
 
+		if (formed) {
+			bPlayer.addCooldown(this);
+		}
+
 		if (this.source != null) {
 			this.source.revertBlock();
 		}

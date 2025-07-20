@@ -138,7 +138,7 @@ public class AirScooter extends AirAbility {
 			this.bPlayer.addCooldown(this);
 			this.remove();
 			return;
-		} else if (this.health - this.player.getHealth() > this.damageTreshold) {
+		} else if (this.health - this.player.getHealth() >= this.damageTreshold) {
 			this.bPlayer.addCooldown(this);
 			this.remove();
 			return;

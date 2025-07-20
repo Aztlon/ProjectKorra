@@ -156,45 +156,36 @@ public class SurgeWave extends WaterAbility {
 		if (freezeradius > this.maxFreezeRadius) {
 			freezeradius = this.maxFreezeRadius;
 		}
-		final List<Entity> trapped = GeneralMethods.getEntitiesAroundPoint(this.frozenLocation, freezeradius);
-		ICE_SETTING: for (final Block block : GeneralMethods.getBlocksAroundPoint(this.frozenLocation, freezeradius)) {
-			if (RegionProtection.isRegionProtected(this, block.getLocation())) {
-				continue;
-			} else if (TempBlock.isTempBlock(block)) {
-				continue;
-			}
 
-			for (final Entity entity : trapped) {
-				if (entity instanceof Player) {
-					if (Commands.invincible.contains(((Player) entity).getName())) {
-						return;
-					}
-					if (!getConfig().getBoolean("Properties.Water.FreezePlayerHead") && GeneralMethods.playerHeadIsInBlock((Player) entity, block)) {
-						continue ICE_SETTING;
-					}
-					if (!getConfig().getBoolean("Properties.Water.FreezePlayerFeet") && GeneralMethods.playerFeetIsInBlock((Player) entity, block)) {
-						continue ICE_SETTING;
+		final List<Block> ice = GeneralMethods.getBlocksAroundPoint(this.frozenLocation, freezeradius);
+		final List<Entity> trapped = GeneralMethods.getEntitiesAroundPoint(this.frozenLocation, freezeradius);
+		ICE_SETTING: for (final Block block : ice) {
+			if (isTransparent(player, block) && !isIce(block)) {
+				for (final Entity entity : trapped) {
+					if (entity instanceof Player) {
+						if (Commands.invincible.contains(((Player) entity).getName())) {
+							return;
+						}
+						if (!getConfig().getBoolean("Properties.Water.FreezePlayerHead") && GeneralMethods.playerHeadIsInBlock((Player) entity, block)) {
+							continue ICE_SETTING;
+						}
+						if (!getConfig().getBoolean("Properties.Water.FreezePlayerFeet") && GeneralMethods.playerFeetIsInBlock((Player) entity, block)) {
+							continue ICE_SETTING;
+						}
 					}
 				}
-			}
 
-			final Block oldBlock = block;
-			if (!isAir(block.getType()) && block.getType() != Material.SNOW && !isWater(block) && !isPlant(block)) {
-				continue;
-			} else if (isPlant(block) && !isDecayablePlant(block)) {
-				block.breakNaturally();
-			}
+				final TempBlock tblock = new TempBlock(block, iceMaterial(this.player));
 
-			final TempBlock tblock = new TempBlock(block, iceMaterial(this.player));
+				tblock.setRevertTask(() -> SurgeWave.this.frozenBlocks.remove(block));
 
-			tblock.setRevertTask(() -> SurgeWave.this.frozenBlocks.remove(block));
+				tblock.setRevertTime(this.iceRevertTime + (new Random().nextInt(1000)));
+				this.frozenBlocks.put(block, block.getType());
 
-			tblock.setRevertTime(this.iceRevertTime + (new Random().nextInt(1000)));
-			this.frozenBlocks.put(block, oldBlock.getType());
-
-			for (final Block sound : this.frozenBlocks.keySet()) {
-				if ((new Random()).nextInt(4) == 0) {
-					playWaterbendingSound(sound.getLocation());
+				for (final Block sound : this.frozenBlocks.keySet()) {
+					if ((new Random()).nextInt(4) == 0) {
+						playWaterbendingSound(sound.getLocation());
+					}
 				}
 			}
 		}

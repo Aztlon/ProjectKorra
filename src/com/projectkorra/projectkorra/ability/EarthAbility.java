@@ -9,7 +9,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
-import com.bekvon.bukkit.residence.commands.info;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -20,8 +19,6 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.FallingBlock;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
@@ -691,6 +688,14 @@ public abstract class EarthAbility extends ElementalAbility {
 	}
 
 	public static boolean revertBlock(final Block block) {
+		if (TempBlock.isTempBlock(block)) {
+			for (TempBlock tempBlock : TempBlock.getAll(block)) {
+				if (!tempBlock.isReverted()) {
+					tempBlock.revertBlock();
+				}
+			}
+		}
+
 		if (!isEarthRevertOn()) {
 			MOVED_EARTH.remove(block);
 			return false;
