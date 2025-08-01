@@ -1050,6 +1050,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Air.Suffocate.Damage", 2);
 			config.addDefault("Abilities.Air.Suffocate.DamageInitialDelay", 2);
 			config.addDefault("Abilities.Air.Suffocate.DamageInterval", 1);
+			config.addDefault("Abilities.Air.Suffocate.DamageThreshold", 4);
 			config.addDefault("Abilities.Air.Suffocate.SlowPotency", 1);
 			config.addDefault("Abilities.Air.Suffocate.SlowDelay", 0.5);
 			config.addDefault("Abilities.Air.Suffocate.SlowInterval", 1.25);
@@ -1062,6 +1063,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Air.Suffocate.AnimationRadius", 2.0);
 			config.addDefault("Abilities.Air.Suffocate.AnimationParticleAmount", 1);
 			config.addDefault("Abilities.Air.Suffocate.AnimationSpeed", 1.0);
+			config.addDefault("Abilities.Air.Suffocate.DetectionRadius", 0.5);
 
 			config.addDefault("Abilities.Air.Tornado.Enabled", true);
 			config.addDefault("Abilities.Air.Tornado.Cooldown", 0);

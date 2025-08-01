@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import com.projectkorra.projectkorra.Element.SubElement;
 import com.projectkorra.projectkorra.ability.Ability;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.AddonAbility;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.AvatarAbility;
@@ -1462,7 +1463,7 @@ public class PKListener implements Listener {
 				if (bPlayer.canCurrentlyBendWithWeapons()) {
 					if (abil.equalsIgnoreCase("Tornado")) {
 						new Tornado(player);
-					} else if (abil.equalsIgnoreCase("AirBlast")) {
+					} else if (abil.equalsIgnoreCase("AirBlast") && !AbstractSkill.isLocked("AirBlastSource", player)) {
 						AirBlast.setOrigin(player);
 					} else if (abil.equalsIgnoreCase("AirBurst")) {
 						new AirBurst(player, false);
@@ -2059,10 +2060,14 @@ public class PKListener implements Listener {
 		Optional.ofNullable(CustomBlock.getInstance("customice:orange_ice")).ifPresent(this::registerCustomIce);
 		Optional.ofNullable(CustomBlock.getInstance("customice:yellow_ice")).ifPresent(this::registerCustomIce);
 		Optional.ofNullable(CustomBlock.getInstance("customice:green_ice")).ifPresent(this::registerCustomIce);
-		Optional.ofNullable(CustomBlock.getInstance("customice:teal_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:turquoise_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:sky_ice")).ifPresent(this::registerCustomIce);
 		Optional.ofNullable(CustomBlock.getInstance("customice:blue_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:indigo_ice")).ifPresent(this::registerCustomIce);
 		Optional.ofNullable(CustomBlock.getInstance("customice:purple_ice")).ifPresent(this::registerCustomIce);
 		Optional.ofNullable(CustomBlock.getInstance("customice:magenta_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:pink_ice")).ifPresent(this::registerCustomIce);
+		Optional.ofNullable(CustomBlock.getInstance("customice:rose_ice")).ifPresent(this::registerCustomIce);
 	}
 
 	private void registerCustomIce(CustomBlock block) {

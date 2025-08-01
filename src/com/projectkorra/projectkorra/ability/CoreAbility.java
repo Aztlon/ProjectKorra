@@ -256,8 +256,8 @@ public abstract class CoreAbility implements Ability {
 	public static void progressAll() {
 		for (final Set<CoreAbility> setAbils : INSTANCES_BY_CLASS.values()) {
 			for (final CoreAbility abil : setAbils) {
-				if (abil instanceof PassiveAbility) {
-					if (!((PassiveAbility) abil).isProgressable()) {
+				if (abil instanceof PassiveAbility passive) {
+					if (!passive.isProgressable()) {
 						continue;
 					}
 

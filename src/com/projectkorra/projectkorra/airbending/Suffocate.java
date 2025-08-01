@@ -46,6 +46,7 @@ public class Suffocate extends SuffocationAbility {
 	private double range;
 	@Attribute(Attribute.RADIUS)
 	private double radius;
+	private double detectionRadius;
 	@Attribute(Attribute.DAMAGE)
 	private double damage;
 	private double damageDelay;
@@ -54,6 +55,8 @@ public class Suffocate extends SuffocationAbility {
 	private double slowRepeat;
 	private double slowDelay;
 	private double constantAimRadius;
+	private double damageThreshold;
+	private double initialHealth;
 	private double blind;
 	private double blindDelay;
 	private double blindRepeat;
@@ -80,7 +83,9 @@ public class Suffocate extends SuffocationAbility {
 		this.cooldown = getConfig().getLong("Abilities.Air.Suffocate.Cooldown");
 		this.range = getConfig().getDouble("Abilities.Air.Suffocate.Range");
 		this.radius = getConfig().getDouble("Abilities.Air.Suffocate.AnimationRadius");
+		this.detectionRadius = getConfig().getDouble("Abilities.Air.Suffocate.DetectionRadius");
 		this.constantAimRadius = getConfig().getDouble("Abilities.Air.Suffocate.RequireConstantAimRadius");
+		this.damageThreshold = getConfig().getDouble("Abilities.Air.Suffocate.DamageThreshold");
 		this.damage = getConfig().getDouble("Abilities.Air.Suffocate.Damage");
 		this.damageDelay = getConfig().getDouble("Abilities.Air.Suffocate.DamageInitialDelay");
 		this.damageRepeat = getConfig().getDouble("Abilities.Air.Suffocate.DamageInterval");
@@ -116,7 +121,7 @@ public class Suffocate extends SuffocationAbility {
 			List<Entity> entities = new ArrayList<>();
 			for (int i = 0; i < 6; i++) {
 				final Location location = GeneralMethods.getTargetedLocation(player, i, getTransparentMaterials());
-				entities = GeneralMethods.getEntitiesAroundPoint(location, .5);
+				entities = GeneralMethods.getEntitiesAroundPoint(location, detectionRadius);
 				entities.remove(player);
 				if (!entities.isEmpty() && !entities.contains(player)) {
 					break;
@@ -140,6 +145,8 @@ public class Suffocate extends SuffocationAbility {
 				}
 			}
 		}
+
+		initialHealth = this.player.getHealth();
 
 		this.start();
 	}
@@ -183,6 +190,11 @@ public class Suffocate extends SuffocationAbility {
 				this.remove();
 				return;
 			}
+		}
+
+		if (this.player.getHealth() < this.initialHealth - this.damageThreshold) {
+			this.remove();
+			return;
 		}
 
 		if (System.currentTimeMillis() - this.getStartTime() < this.chargeTime) {

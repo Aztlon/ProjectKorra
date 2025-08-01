@@ -988,6 +988,10 @@ public class GeneralMethods {
 			return fireData;
 		}
 
+		if (id.equals("SOUL_FIRE")) {
+			return Material.SOUL_FIRE.createBlockData();
+		}
+
 		CustomBlock custom = CustomBlock.getInstance(id);
 		if (custom != null) {
 			return custom.getBaseBlockData();
