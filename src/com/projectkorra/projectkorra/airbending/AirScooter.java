@@ -41,6 +41,9 @@ public class AirScooter extends AirAbility {
 	private Boolean useslime;
 	private double health;
 	private double phi = 0;
+	private boolean cancelOnSwapSlot;
+	private boolean cancelOnClick;
+	private boolean cancelOnSneak;
 
 	public AirScooter(final Player player) {
 		super(player);
@@ -63,6 +66,9 @@ public class AirScooter extends AirAbility {
 		this.maxHeightFromGround = getConfig().getDouble("Abilities.Air.AirScooter.MaxHeightFromGround");
 		this.useslime = getConfig().getBoolean("Abilities.Air.AirScooter.ShowSitting");
 		this.damageTreshold = getConfig().getDouble("Abilities.Air.AirScooter.DamageThreshold");
+		this.cancelOnSwapSlot = getConfig().getBoolean("Abilities.Air.AirScooter.Cancel.OnSwapSlot");
+		this.cancelOnClick = getConfig().getBoolean("Abilities.Air.AirScooter.Cancel.OnClick");
+		this.cancelOnSneak = getConfig().getBoolean("Abilities.Air.AirScooter.Cancel.OnSneak");
 		this.random = new Random();
 		this.angles = new ArrayList<>();
 		this.health = player.getHealth();
@@ -101,17 +107,25 @@ public class AirScooter extends AirAbility {
 	}
 
 	/**
-	 * Checks if player has an instance already and removes if they do.
+	 * Checks if player has an instance already and removes if they do
 	 *
 	 * @param player The player to check
-	 * @return false If player doesn't have an instance
+	 * @return true if an instance was removed
 	 */
 	public static boolean check(final Player player) {
-		if (hasAbility(player, AirScooter.class)) {
-			getAbility(player, AirScooter.class).remove();
+		AirScooter scooter = getAbility(player, AirScooter.class);
+		if (scooter != null) {
+			scooter.remove();
 			return true;
 		}
 		return false;
+	}
+
+	public static void tryRemoveOnClick(final Player player) {
+		AirScooter scooter = getAbility(player, AirScooter.class);
+		if (scooter != null && scooter.cancelOnClick) {
+			scooter.remove();
+		}
 	}
 
 	/*
@@ -150,7 +164,7 @@ public class AirScooter extends AirAbility {
 			return;
 		}
 
-		if (this.player.isSneaking()) {
+		if (this.player.isSneaking() && this.cancelOnSneak) {
 			this.bPlayer.addCooldown(this);
 			this.remove();
 			return;

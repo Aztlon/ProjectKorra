@@ -197,7 +197,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.server.PluginDisableEvent;
@@ -207,7 +206,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
-import co.aikar.timings.lib.MCTiming;
 import dev.lone.itemsadder.api.CustomBlock;
 import dev.lone.itemsadder.api.Events.ItemsAdderLoadDataEvent;
 
@@ -1432,7 +1430,7 @@ public class PKListener implements Listener {
 			BlockSource.update(player, ClickType.SHIFT_DOWN);
 		}
 
-		AirScooter.check(player);
+//		AirScooter.check(player);
 
 		final CoreAbility coreAbil = bPlayer.getBoundAbility();
 		final String abil = bPlayer.getBoundAbilityName();
@@ -1698,6 +1696,10 @@ public class PKListener implements Listener {
 		if (coreAbil == null && !MultiAbilityManager.hasMultiAbilityBound(player)) {
 			return;
 		} else if (bPlayer.canBendIgnoreCooldowns(coreAbil)) {
+			if (!abil.equalsIgnoreCase("AirScooter")) {
+				AirScooter.tryRemoveOnClick(player);
+			}
+
 			if (coreAbil instanceof AddonAbility) {
 				return;
 			}

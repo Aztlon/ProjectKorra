@@ -996,6 +996,9 @@ public class ConfigManager {
 			config.addDefault("Abilities.Air.AirScooter.Duration", 0);
 			config.addDefault("Abilities.Air.AirScooter.MaxHeightFromGround", 7);
 			config.addDefault("Abilities.Air.AirScooter.DamageThreshold", 3);
+			config.addDefault("Abilities.Air.AirScooter.Cancel.OnSwapSlots", false);
+			config.addDefault("Abilities.Air.AirScooter.Cancel.OnClick", true);
+			config.addDefault("Abilities.Air.AirScooter.Cancel.OnSneak", true);
 
 			config.addDefault("Abilities.Air.AirShield.Enabled", true);
 			config.addDefault("Abilities.Air.AirShield.Cooldown", 0);

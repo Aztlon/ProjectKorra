@@ -120,11 +120,15 @@ public class DamageHandler {
 		if (event.getEntity() instanceof ArmorStand) return; // ArmorStands produce errors when we modify the armor damage, so ignore them.
 
 		if (ignorePercentage >= 1) {
-			event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, 0); // Bypass armor points
-			event.setDamage(EntityDamageEvent.DamageModifier.MAGIC, 0); // Bypass protection enchantments
+			if (event.isApplicable(EntityDamageEvent.DamageModifier.ARMOR))
+				event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, 0); // Bypass armor points
+			if (event.isApplicable(EntityDamageEvent.DamageModifier.MAGIC))
+				event.setDamage(EntityDamageEvent.DamageModifier.MAGIC, 0); // Bypass protection enchantments
 		} else {
-			event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, event.getDamage(EntityDamageEvent.DamageModifier.ARMOR) * (1d - ignorePercentage));
-			event.setDamage(EntityDamageEvent.DamageModifier.MAGIC, event.getDamage(EntityDamageEvent.DamageModifier.MAGIC) * (1d - ignorePercentage));
+			if (event.isApplicable(EntityDamageEvent.DamageModifier.ARMOR))
+				event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, event.getDamage(EntityDamageEvent.DamageModifier.ARMOR) * (1d - ignorePercentage));
+			if (event.isApplicable(EntityDamageEvent.DamageModifier.MAGIC))
+				event.setDamage(EntityDamageEvent.DamageModifier.MAGIC, event.getDamage(EntityDamageEvent.DamageModifier.MAGIC) * (1d - ignorePercentage));
 		}
 	}
 
@@ -160,7 +164,7 @@ public class DamageHandler {
 				ignoreArmor = true;
 			}
 		}
-		
+
 		if (source == null) {
 			source = ability.getPlayer();
 		}
@@ -174,7 +178,7 @@ public class DamageHandler {
 		}
 		
 		Bukkit.getServer().getPluginManager().callEvent(damageEvent);
-		
+
 		if (entity instanceof LivingEntity lent && !damageEvent.isCancelled()) {
 			damage = Math.max(0, damageEvent.getDamage());
 
@@ -192,12 +196,12 @@ public class DamageHandler {
 			}
 
 			final EntityDamageByEntityEvent finalEvent = new EntityDamageByEntityEvent(source, entity, DamageCause.CUSTOM, DamageSource.builder(DamageType.GENERIC).build(), damage);
-			final double prevHealth = lent.getHealth();
-
-			if (prevHealth - damage <= 0 && !entity.isDead()) {
-				final EntityBendingDeathEvent event = new EntityBendingDeathEvent(entity, damage, ability);
-				Bukkit.getServer().getPluginManager().callEvent(event);
+			Bukkit.getServer().getPluginManager().callEvent(finalEvent);
+			if (finalEvent.isCancelled()) {
+				return;
 			}
+
+			final double prevHealth = lent.getHealth();
 
 			BEING_DAMAGED.add(lent); //Stops StackOverflows
 			if (doSourcelessDamage) {
@@ -211,6 +215,11 @@ public class DamageHandler {
 			entity.setLastDamageCause(finalEvent);
 
 			if (prevHealth != nextHealth) {
+				if (prevHealth - damage <= 0) {
+					final EntityBendingDeathEvent event = new EntityBendingDeathEvent(entity, damage, ability);
+					Bukkit.getServer().getPluginManager().callEvent(event);
+				}
+
 				CoreAbility coreAbility = CoreAbility.getAbility(ability.getName());
 				if (coreAbility == null) {
 					ProjectKorra.log.warning("Tried to add damage to entity " + entity.getName() + " for ability " + ability.getName() + " but the ability was not found.");

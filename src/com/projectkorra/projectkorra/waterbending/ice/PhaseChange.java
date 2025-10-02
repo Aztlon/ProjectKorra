@@ -113,16 +113,16 @@ public class PhaseChange extends IceAbility {
 		}
 
 		if (this.active_types.contains(PhaseChangeType.MELT)) {
-			if (!this.player.isSneaking() || !this.bPlayer.canBend(this)) {
+			if (!this.player.isSneaking() || !this.bPlayer.canBend(this) || this.meltRadius >= this.meltMaxRadius) {
 				this.active_types.remove(PhaseChangeType.MELT);
 				this.bPlayer.addCooldown("PhaseChangeMelt", this.meltCooldown);
 				this.meltRadius = 1;
 				this.meltTicks = 0;
 				return;
 			}
-			if (this.meltRadius >= this.meltMaxRadius) {
-				this.meltRadius = 1;
-			}
+//			if (this.meltRadius >= this.meltMaxRadius) {
+//				this.meltRadius = 1;
+//			}
 			final Location l = GeneralMethods.getTargetedLocation(this.player, this.sourceRange);
 			this.resetMeltLocation(l);
 			this.meltArea(l, this.meltRadius);

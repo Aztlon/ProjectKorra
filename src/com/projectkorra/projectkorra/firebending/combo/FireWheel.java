@@ -1,6 +1,7 @@
 package com.projectkorra.projectkorra.firebending.combo;
 
 import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
 import com.projectkorra.projectkorra.ability.util.ComboUtil;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
@@ -24,6 +25,7 @@ import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
+import com.projectkorra.projectkorra.util.TempBlock;
 
 public class FireWheel extends FireAbility implements ComboAbility {
 
@@ -113,7 +115,8 @@ public class FireWheel extends FireAbility implements ComboAbility {
 
 		Block topBlock = GeneralMethods.getTopBlock(this.location, (int) this.radius, (int)this.radius + 2);
 		if (topBlock.getType().equals(Material.SNOW)) {
-			topBlock.breakNaturally();
+			new TempBlock(topBlock, Material.AIR.createBlockData(), 60_000L + ThreadLocalRandom.current().nextLong(0, 1_000L));
+//			topBlock.breakNaturally();
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
 		}
 		if (isWater(topBlock)) {
@@ -122,7 +125,8 @@ public class FireWheel extends FireAbility implements ComboAbility {
 		} else if (topBlock.getType() == Material.FIRE) {
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
 		} else if (isPlant(topBlock) && !isDecayablePlant(topBlock)) {
-			topBlock.breakNaturally();
+			new TempBlock(topBlock, Material.AIR.createBlockData(), 60_000L + ThreadLocalRandom.current().nextLong(0, 1_000L));
+//			topBlock.breakNaturally();
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
 		} else if (isAir(topBlock.getType())) {
 			this.remove();
