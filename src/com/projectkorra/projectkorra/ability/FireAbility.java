@@ -177,8 +177,14 @@ public abstract class FireAbility extends ElementalAbility {
 		if (isIgnitable(position) && position.getRelative(BlockFace.DOWN).getType().isSolid())
 			return data;
 
-		if (fireBlockType.equals("SOUL_FIRE"))
-			return data;
+		if (fireBlockType.equals("SOUL_FIRE")) {
+			if (isIgnitable(position.getRelative(BlockFace.UP))) {
+				return data;
+			} else {
+				fireBlockType = "fire";
+				data = GeneralMethods.blockDataFromId(fireBlockType);
+			}
+		}
 
 		if (!(data instanceof Fire fire)) {
 			ProjectKorra.log.warning("FireAbility#createFireState: BlockData of type " + fireBlockType + " is not a Fire block");
