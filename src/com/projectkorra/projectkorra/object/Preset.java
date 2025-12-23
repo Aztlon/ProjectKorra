@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -20,6 +21,7 @@ import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.board.BendingBoardManager;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.event.PlayerBindChangeEvent;
 import com.projectkorra.projectkorra.storage.DBConnection;
 
 /**
@@ -143,6 +145,13 @@ public class Preset {
 			if (coreAbil != null && !bPlayer.canBind(coreAbil)) {
 				abilities.remove(i);
 				boundAll = false;
+			} else {
+				final PlayerBindChangeEvent event = new PlayerBindChangeEvent(player, abilities.get(i), i, true, false);
+				Bukkit.getPluginManager().callEvent(event);
+				if (event.isCancelled()) {
+					abilities.remove(i);
+					boundAll = false;
+				}
 			}
 		}
 		bPlayer.setAbilities(abilities);
@@ -250,10 +259,18 @@ public class Preset {
 			}
 
 			for (int i = 1; i <= 9; i++) {
-				final CoreAbility coreAbil = CoreAbility.getAbility(abilities.get(i));
-				if (coreAbil != null && !bPlayer.canBind(coreAbil)) {
+				final String abil = abilities.get(i);
+				final CoreAbility coreAbil = CoreAbility.getAbility(abil);
+				if (coreAbil != null && (!bPlayer.canBind(coreAbil))) {
 					abilities.remove(i);
 					boundAll = false;
+				} else {
+					final PlayerBindChangeEvent event = new PlayerBindChangeEvent(player, abil, i, true, false);
+					Bukkit.getPluginManager().callEvent(event);
+					if (event.isCancelled()) {
+						abilities.remove(i);
+						boundAll = false;
+					}
 				}
 			}
 			bPlayer.setAbilities(abilities);

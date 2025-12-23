@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import com.projectkorra.projectkorra.ability.util.MultiAbilityManager;
+import com.projectkorra.projectkorra.event.PlayerBindChangeEvent;
 import com.projectkorra.projectkorra.util.ChatUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -112,10 +113,18 @@ public class CopyCommand extends PKCommand {
 			final HashMap<Integer, String> abilities = (HashMap<Integer, String>) orig.getAbilities().clone();
 			boolean boundAll = true;
 			for (int i = 1; i <= 9; i++) {
-				final CoreAbility coreAbil = CoreAbility.getAbility(abilities.get(i));
+				final String abil = abilities.get(i);
+				final CoreAbility coreAbil = CoreAbility.getAbility(abil);
 				if (coreAbil != null && !target.canBind(coreAbil)) {
 					abilities.remove(i);
 					boundAll = false;
+				} else {
+					final PlayerBindChangeEvent event = new PlayerBindChangeEvent(player2, abil, i, true, false);
+					ProjectKorra.plugin.getServer().getPluginManager().callEvent(event);
+					if (event.isCancelled()) {
+						abilities.remove(i);
+						boundAll = false;
+					}
 				}
 			}
 			target.setAbilities(abilities);

@@ -234,14 +234,12 @@ public class AirBlast
 	}
 
 	private void oldPkEffect(Entity entity) {
-		boolean isUser;
-		boolean bl = isUser = entity.getUniqueId() == this.player.getUniqueId();
+		boolean isUser = entity.getUniqueId() == this.player.getUniqueId();
 		if (this.isFromOtherOrigin || !isUser) {
 			double comp;
-			double pushFactor = this.getPushFactor();
 			Vector velocity = entity.getVelocity();
 			double max = 1.0 / this.getPushFactorForOthers();
-			double factor = isUser ? pushFactor : this.getPushFactorForOthers();
+			double factor = isUser ? this.getPushFactor() : this.getPushFactorForOthers();
 			Vector push = this.direction.clone();
 			if (Math.abs(push.getY()) > max && !isUser) {
 				if (push.getY() < 0.0) {
@@ -250,10 +248,6 @@ public class AirBlast
 					push.setY(max);
 				}
 			}
-//			if (Math.abs(push.getY()) < 0.2 && this.player.isOnGround() && isUser && this.bPlayer.getAirBlastType() == AirBlastType.MEGACRAFT) {
-//				this.player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText((String)(ChatColor.GREEN + "They see me rollin'")));
-//				factor *= this.getPushFactorSlide();
-//			}
 			factor *= 1.0 - this.location.distance(this.origin) / (2.0 * this.range);
 			if (isUser && GeneralMethods.isSolid(this.player.getLocation().add(0.0, -0.5, 0.0).getBlock())) {
 				factor *= 0.5;

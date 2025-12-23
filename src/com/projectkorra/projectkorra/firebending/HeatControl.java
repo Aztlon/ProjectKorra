@@ -19,6 +19,7 @@ import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.block.data.Lightable;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -203,6 +204,12 @@ public class HeatControl extends FireAbility {
 					block.setBlockData(lightable);
 					block.getWorld().playEffect(block.getLocation(), Effect.EXTINGUISH, 0);
 				}
+			}
+
+			for (Entity e : GeneralMethods.getEntitiesAroundPoint(this.player.getLocation(), this.extinguishRadius)) {
+				if (e.getFireTicks() <= 0) continue;
+				e.setFireTicks(0);
+				e.getWorld().playEffect(e.getLocation(), Effect.EXTINGUISH, 0);
 			}
 
 		} else if (this.heatControlType == HeatControlType.SOLIDIFY) {

@@ -646,7 +646,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		}
 
 		// Remove all bound abilities that will become unusable.
-		final HashMap<Integer, String> slots = this.getAbilities();
+		final HashMap<Integer, String> slots = (HashMap<Integer, String>) this.getAbilities();
 		final HashMap<Integer, String> finalAbilities = new HashMap<>();
 		for (final int i : slots.keySet()) {
 			if (this.canBind(CoreAbility.getAbility(slots.get(i)))) {
