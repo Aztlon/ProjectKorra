@@ -1,6 +1,7 @@
 package com.projectkorra.projectkorra.event;
 
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -79,12 +80,12 @@ public class AbilityDamageEntityEvent extends Event implements Cancellable {
 	}
 
 	/**
-	 * Gets the player that used the ability
+	 * Gets the entity that used the ability
 	 *
-	 * @return player that used ability
+	 * @return entity that used ability
 	 */
-	public Player getSource() {
-		return this.ability.getPlayer();
+	public LivingEntity getSource() {
+		return this.ability.getCaster();
 	}
 
 	@Override

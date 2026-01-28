@@ -30,6 +30,7 @@ import com.projectkorra.projectkorra.Element.SubElement;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 /**
  * Executor for /bending who. Extends {@link PKCommand}.
@@ -73,7 +74,7 @@ public class WhoCommand extends PKCommand {
 					WhoCommand.this.staff.clear();
 					WhoCommand.this.staff.putAll(updatedstaff);
 				} catch (final SocketException e) {
-					ProjectKorra.log.info("Could not update staff list.");
+					PkLang.info("Could not update staff list.");
 				} catch (final IOException e) {
 					e.printStackTrace();
 				}

@@ -14,6 +14,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.ComboAbility;
@@ -92,6 +93,7 @@ public class FireWheel extends FireAbility implements ComboAbility {
 		}
 	}
 
+	@NotNull
 	@Override
 	public Object createNewComboInstance(final Player player) {
 		return new FireWheel(player);

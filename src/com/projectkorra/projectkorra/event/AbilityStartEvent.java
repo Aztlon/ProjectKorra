@@ -4,7 +4,9 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
+import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.Ability;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 /**
  * Called when an ability starts
@@ -44,6 +46,10 @@ public class AbilityStartEvent extends Event implements Cancellable {
 	@Override
 	public void setCancelled(final boolean cancelled) {
 		this.cancelled = cancelled;
+//		if (cancelled) {
+//			PkLang.info("AbilityStartEvent cancelled for ability: " + ability.getName() + ":");
+//			new Exception().printStackTrace();
+//		}
 	}
 
 }

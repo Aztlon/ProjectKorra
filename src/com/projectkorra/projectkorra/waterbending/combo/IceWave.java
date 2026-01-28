@@ -9,6 +9,7 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.ability.ComboAbility;
 import com.projectkorra.projectkorra.ability.IceAbility;
@@ -120,6 +121,7 @@ public class IceWave extends IceAbility implements ComboAbility {
 		this.origin = location;
 	}
 
+	@NotNull
 	@Override
 	public Object createNewComboInstance(final Player player) {
 		return new IceWave(player);

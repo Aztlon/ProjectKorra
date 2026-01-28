@@ -8,6 +8,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.Element;
@@ -17,13 +18,14 @@ import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.airbending.AirSpout;
 import com.projectkorra.projectkorra.airbending.Suffocate;
 import com.projectkorra.projectkorra.util.ParticleEffect;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 
 public abstract class AirAbility extends ElementalAbility {
 
-	public AirAbility(final Player player) {
-		super(player);
+	public AirAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	@Override
@@ -105,8 +107,8 @@ public abstract class AirAbility extends ElementalAbility {
 	 * @param loc The location to use
 	 * @param amount The amount of particles
 	 */
-	public static void playAirbendingParticles(final Player player, final Location loc, final int amount) {
-		playAirbendingParticles(player, loc, amount, Math.random(), Math.random(), Math.random());
+	public static void playAirbendingParticles(final LivingEntity caster, final Location loc, final int amount) {
+		playAirbendingParticles(caster, loc, amount, Math.random(), Math.random(), Math.random());
 	}
 
 	public void playAirbendingParticles(final Location loc, final int amount) {
@@ -123,8 +125,8 @@ public abstract class AirAbility extends ElementalAbility {
 	 * @param yOffset The yOffset to use
 	 * @param zOffset The zOffset to use
 	 */
-	public static void playAirbendingParticles(final Player player, final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
-		String color = particleColor(player);
+	public static void playAirbendingParticles(final LivingEntity caster, final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
+		String color = particleColor(caster);
 		GeneralMethods.displayColoredParticle(loc, ParticleEffect.SPELL_MOB, color, amount, xOffset, yOffset, zOffset);
 	}
 
@@ -132,10 +134,10 @@ public abstract class AirAbility extends ElementalAbility {
 		playAirbendingParticles(this.player, loc, amount, xOffset, yOffset, zOffset);
 	}
 
-	public static String particleColor(final Player player) {
+	public static String particleColor(final LivingEntity caster) {
 		String color = getConfig().getString("Properties.Air.ParticlesColor");
-		if (player != null) {
-			String cosmetic = PlaceholderAPI.setPlaceholders(player, "%avatarverse_airparticlecolor%");
+		if (caster instanceof Player p) {
+			String cosmetic = PlaceholderAPI.setPlaceholders(p, "%avatarverse_airparticlecolor%");
 			if (!cosmetic.isEmpty())
 				color = cosmetic;
 		}
@@ -157,7 +159,7 @@ public abstract class AirAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Properties.Air.Sound.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Properties.Air.Sound.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Properties.Air.Sound.Sound' is not valid.");
 			} finally {
 				loc.getWorld().playSound(loc, sound, volume, pitch);
 			}

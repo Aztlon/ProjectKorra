@@ -48,8 +48,8 @@ public class WallOfFire extends FireAbility {
 	private Location origin;
 	private List<Block> blocks;
 
-	public WallOfFire(final Player player) {
-		super(player);
+	public WallOfFire(final LivingEntity caster) {
+		super(caster);
 
 		this.maxAngle = getConfig().getDouble("Abilities.Fire.WallOfFire.MaxAngle");
 		this.interval = getConfig().getLong("Abilities.Fire.WallOfFire.Interval");
@@ -64,32 +64,32 @@ public class WallOfFire extends FireAbility {
 		this.random = new Random();
 		this.blocks = new ArrayList<>();
 
-		if (hasAbility(player, WallOfFire.class) && !this.bPlayer.isAvatarState()) {
+		if (hasAbility(caster, WallOfFire.class) && !this.bender.isAvatarState()) {
 			return;
-		} else if (this.bPlayer.isOnCooldown(this)) {
+		} else if (this.bender.isOnCooldown(this)) {
 			return;
 		}
 
-		this.origin = GeneralMethods.getTargetedLocation(player, this.range);
+		this.origin = GeneralMethods.getTargetedLocation(caster, this.range);
 
 		double widthMod = 0;
 		double heightMod = 0;
 		long durationMod = 0;
 		double damageMod = 0;
 
-		if (isDay(player.getWorld())) {
+		if (isDay(caster.getWorld())) {
 			widthMod = this.getDayFactor(this.width) - this.width;
 			heightMod = this.getDayFactor(this.height) - this.height;
 			durationMod = ((long) this.getDayFactor(this.duration) - this.duration);
 			damageMod = this.getDayFactor(this.damage) - this.damage;
 		}
 
-		widthMod = (int) (bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getRangeFactor() * width - width) + widthMod : widthMod);
-		heightMod = (int) (bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getRangeFactor() * height - height) + heightMod : heightMod);
-		durationMod = (int) (bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? (duration / BlueFireAbility.getCooldownFactor() - duration) + durationMod : durationMod);
-		damageMod = (int) (bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getDamageFactor() * damage - damage) + damageMod : damageMod);
+		widthMod = (int) (bender.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getRangeFactor() * width - width) + widthMod : widthMod);
+		heightMod = (int) (bender.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getRangeFactor() * height - height) + heightMod : heightMod);
+		durationMod = (int) (bender.canUseSubElement(SubElement.BLUE_FIRE) ? (duration / BlueFireAbility.getCooldownFactor() - duration) + durationMod : durationMod);
+		damageMod = (int) (bender.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getDamageFactor() * damage - damage) + damageMod : damageMod);
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.width = getConfig().getInt("Abilities.Avatar.AvatarState.Fire.WallOfFire.Width");
 			this.height = getConfig().getInt("Abilities.Avatar.AvatarState.Fire.WallOfFire.Height");
 			this.duration = getConfig().getLong("Abilities.Avatar.AvatarState.Fire.WallOfFire.Duration");
@@ -108,7 +108,7 @@ public class WallOfFire extends FireAbility {
 			return;
 		}
 
-		final Vector direction = player.getEyeLocation().getDirection();
+		final Vector direction = caster.getEyeLocation().getDirection();
 		final Vector compare = direction.clone();
 		compare.setY(0);
 		if (Math.abs(direction.angle(compare)) > Math.toRadians(this.maxAngle)) {
@@ -130,7 +130,7 @@ public class WallOfFire extends FireAbility {
 			AirAbility.breakBreathbendingHold(entity);
 		}
 		entity.setFireTicks((int) (this.fireTicks * 20));
-		new FireDamageTimer(entity, this.player, this);
+		new FireDamageTimer(entity, this.caster, this);
 	}
 
 	private void damage() {
@@ -141,9 +141,7 @@ public class WallOfFire extends FireAbility {
 
 		radius = radius + 1;
 		final List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(this.origin, radius);
-		if (entities.contains(this.player)) {
-			entities.remove(this.player);
-		}
+		entities.remove(this.caster);
 		for (final Entity entity : entities) {
 			if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 				continue;
@@ -170,7 +168,7 @@ public class WallOfFire extends FireAbility {
 	}
 
 	private void initializeBlocks() {
-		Vector direction = this.player.getEyeLocation().getDirection();
+		Vector direction = this.caster.getEyeLocation().getDirection();
 		direction = direction.normalize();
 
 		Vector ortholr = GeneralMethods.getOrthogonalVector(direction, 0, 1);
@@ -218,7 +216,7 @@ public class WallOfFire extends FireAbility {
 	@Override
 	public void remove() {
 		super.remove();
-		this.bPlayer.addCooldown(this);
+		this.bender.addCooldown(this);
 	}
 
 	@Override

@@ -5,6 +5,7 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.hooks.RegionProtectionHook;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -31,7 +32,7 @@ public abstract class RegionProtectionBase implements RegionProtectionHook {
     }
 
     @Override
-    public final boolean isRegionProtected(@NotNull Player player, @NotNull Location location, @Nullable CoreAbility ability) {
+    public final boolean isRegionProtected(@NotNull LivingEntity caster, @NotNull Location location, @Nullable CoreAbility ability) {
         if (ConfigManager.defaultConfig.get().getBoolean("Properties.RegionProtection." + path)) {
 
             final boolean allowHarmless = ConfigManager.defaultConfig.get().getBoolean("Properties.RegionProtection.AllowHarmlessAbilities");
@@ -49,6 +50,9 @@ public abstract class RegionProtectionBase implements RegionProtectionHook {
             if (ability == null && allowHarmless) {
                 return false;
             }
+			if (!(caster instanceof Player player)) {
+				return false;
+			}
             return isRegionProtectedReal(player, location, ability, isHarmless, isIgnite, isExplosive);
         }
         return false;

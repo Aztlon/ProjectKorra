@@ -27,6 +27,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.BlockIterator;
 import org.bukkit.util.Vector;
 
+import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
@@ -40,10 +41,9 @@ import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 
-public class AirBlast
-		extends AirAbility {
+public class AirBlast extends AirAbility {
 	private static final int MAX_TICKS = 10000;
-	private static final Map<Player, Location> ORIGINS = new ConcurrentHashMap<>();
+	private static final Map<LivingEntity, Location> ORIGINS = new ConcurrentHashMap<>();
 	public static final Material[] DOORS = Tag.WOODEN_DOORS.getValues().toArray(new Material[0]);
 	public static final Material[] TDOORS = Tag.WOODEN_TRAPDOORS.getValues().toArray(new Material[0]);
 	public static final Material[] BUTTONS = Tag.BUTTONS.getValues().toArray(new Material[0]);
@@ -80,24 +80,24 @@ public class AirBlast
 	private ArrayList<Block> affectedLevers;
 	private ArrayList<Entity> affectedEntities;
 
-	public AirBlast(Player player) {
-		super(player);
+	public AirBlast(LivingEntity caster) {
+		super(caster);
 		if (this.bPlayer.isOnCooldown(this)) {
 			return;
 		}
-		if (player.getEyeLocation().getBlock().isLiquid()) {
+		if (caster.getEyeLocation().getBlock().isLiquid()) {
 			return;
 		}
 		this.setFields();
-		if (ORIGINS.containsKey(player)) {
-			Entity entity = GeneralMethods.getTargetedEntity(player, this.getRange());
+		if (ORIGINS.containsKey(caster)) {
+			Entity entity = GeneralMethods.getTargetedEntity(caster, this.getRange());
 			this.isFromOtherOrigin = true;
-			this.origin = ORIGINS.get(player);
-			ORIGINS.remove(player);
+			this.origin = ORIGINS.get(caster);
+			ORIGINS.remove(caster);
 			this.direction = entity != null ? GeneralMethods.getDirection(this.origin, GeneralMethods.getTargetedLocation(player, this.range, false, false, new Material[0])).normalize() : GeneralMethods.getDirection(this.origin, GeneralMethods.getTargetedLocation(player, this.range, new Material[0])).normalize();
 		} else {
-			this.origin = player.getEyeLocation();
-			this.direction = player.getEyeLocation().getDirection().normalize();
+			this.origin = caster.getEyeLocation();
+			this.direction = caster.getEyeLocation().getDirection().normalize();
 		}
 		if (!(Double.isFinite(this.direction.getX()) && Double.isFinite(this.direction.getY()) && Double.isFinite(this.direction.getZ()))) {
 			return;
@@ -107,8 +107,8 @@ public class AirBlast
 		this.start();
 	}
 
-	public AirBlast(Player player, Location location, Vector direction, double modifiedPushFactor, AirBurst burst) {
-		super(player);
+	public AirBlast(LivingEntity caster, Location location, Vector direction, double modifiedPushFactor, AirBurst burst) {
+		super(caster);
 		if (location.getBlock().isLiquid()) {
 			return;
 		}
@@ -117,8 +117,8 @@ public class AirBlast
 		this.direction = direction.clone();
 		this.location = location.clone();
 		this.setFields();
-		this.affectedLevers = new ArrayList();
-		this.affectedEntities = new ArrayList();
+		this.affectedLevers = new ArrayList<>();
+		this.affectedEntities = new ArrayList<>();
 		this.canOpenDoors = false;
 		this.canPressButtons = false;
 		this.canFlickLevers = false;
@@ -150,49 +150,49 @@ public class AirBlast
 		this.affectedEntities = new ArrayList();
 	}
 
-	private static void playOriginEffect(Player player) {
-		if (!ORIGINS.containsKey(player)) {
+	private static void playOriginEffect(LivingEntity caster) {
+		if (!ORIGINS.containsKey(caster)) {
 			return;
 		}
-		Location origin = ORIGINS.get(player);
-		BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null || player.isDead() || !player.isOnline()) {
+		Location origin = ORIGINS.get(caster);
+		Bender bender = Bender.get(caster);
+		if (bender == null || caster.isDead()) {
 			return;
 		}
-		if (!origin.getWorld().equals(player.getWorld())) {
-			ORIGINS.remove(player);
+		if (!origin.getWorld().equals(caster.getWorld())) {
+			ORIGINS.remove(caster);
 			return;
 		}
-		if (!bPlayer.canBendIgnoreBindsCooldowns(AirBlast.getAbility("AirBlast"))) {
-			ORIGINS.remove(player);
+		if (!bender.canBendIgnoreBindsCooldowns(AirBlast.getAbility("AirBlast"))) {
+			ORIGINS.remove(caster);
 			return;
 		}
-		if (origin.distanceSquared(player.getEyeLocation()) > AirBlast.getSelectRange() * AirBlast.getSelectRange()) {
-			ORIGINS.remove(player);
+		if (origin.distanceSquared(caster.getEyeLocation()) > AirBlast.getSelectRange() * AirBlast.getSelectRange()) {
+			ORIGINS.remove(caster);
 			return;
 		}
-		playAirbendingParticles(player, origin, AirBlast.getSelectParticles());
+		playAirbendingParticles(caster, origin, AirBlast.getSelectParticles());
 	}
 
 	public static void progressOrigins() {
-		for (Player player : ORIGINS.keySet()) {
-			AirBlast.playOriginEffect(player);
+		for (LivingEntity caster : ORIGINS.keySet()) {
+			AirBlast.playOriginEffect(caster);
 		}
 	}
 
-	public static void setOrigin(Player player) {
-		BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null) {
+	public static void setOrigin(LivingEntity caster) {
+		Bender bender = Bender.get(caster);
+		if (bender == null) {
 			return;
 		}
-		Location location = GeneralMethods.getTargetedLocation(player, AirBlast.getSelectRange(), AirBlast.getTransparentMaterials());
+		Location location = GeneralMethods.getTargetedLocation(caster, AirBlast.getSelectRange(), AirBlast.getTransparentMaterials());
 		if (location.getBlock().isLiquid() || GeneralMethods.isSolid(location.getBlock())) {
 			return;
 		}
-		if (RegionProtection.isRegionProtected(player, location, "AirBlast")) {
+		if (RegionProtection.isRegionProtected(caster, location, "AirBlast")) {
 			return;
 		}
-		ORIGINS.put(player, location);
+		ORIGINS.put(caster, location);
 	}
 
 	private void advanceLocation() {

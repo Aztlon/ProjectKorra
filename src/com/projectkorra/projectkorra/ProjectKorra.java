@@ -31,6 +31,7 @@ import com.projectkorra.projectkorra.util.RevertChecker;
 import com.projectkorra.projectkorra.util.StatisticsManager;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.Updater;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 import com.projectkorra.projectkorra.waterbending.util.WaterbendingManager;
 
 public class ProjectKorra extends JavaPlugin {
@@ -49,6 +50,7 @@ public class ProjectKorra extends JavaPlugin {
 	public void onEnable() {
 		plugin = this;
 		ProjectKorra.log = this.getLogger();
+		new PkLang(this);
 
 //		timingManager = TimingManager.of(this);
 

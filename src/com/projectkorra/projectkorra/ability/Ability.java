@@ -1,8 +1,10 @@
 package com.projectkorra.projectkorra.ability;
 
 import org.bukkit.Location;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
@@ -25,12 +27,12 @@ public interface Ability {
 	/**
 	 * Causes the ability to be updated.
 	 */
-	public void progress();
+	void progress();
 
 	/**
 	 * Causes the ability to be removed from existence.
 	 */
-	public void remove();
+	void remove();
 
 	/**
 	 * Determines if this ability uses the {@link PlayerToggleSneakEvent} as a
@@ -39,7 +41,7 @@ public interface Ability {
 	 *
 	 * @return true if the ability uses sneak as a controlling mechanism
 	 */
-	public boolean isSneakAbility();
+	boolean isSneakAbility();
 
 	/**
 	 * Determines if this ability is considered harmless against other players.
@@ -49,19 +51,19 @@ public interface Ability {
 	 * @return true if the ability is harmless and should be allowed in both PvP
 	 *         and non-PvP zones
 	 */
-	public boolean isHarmlessAbility();
+	boolean isHarmlessAbility();
 
 	/**
 	 * Determines if this ability can ignite blocks. For example: {@link Blaze},
 	 * {@link FireBlast}, and {@link FireBurst}.
 	 */
-	public boolean isIgniteAbility();
+	boolean isIgniteAbility();
 
 	/**
 	 * Determines if this ability can cause explosions. For example:
 	 * {@link FireBlastCharged}
 	 */
-	public boolean isExplosiveAbility();
+	boolean isExplosiveAbility();
 
 	/**
 	 * A hidden ability is an ability that should not be shown by commands such
@@ -70,19 +72,21 @@ public interface Ability {
 	 *
 	 * @return true if the ability should not be displayed to the players
 	 */
-	public boolean isHiddenAbility();
+	boolean isHiddenAbility();
 
 	/**
 	 * Returns true if the ability is enabled through the config.yml. Usually
 	 * the Enabled option follows the format
 	 * Abilities.ElementName.AbilityName.Enabled.
 	 */
-	public boolean isEnabled();
+	boolean isEnabled();
 
 	/**
 	 * @return the cooldown for the ability
 	 */
-	public long getCooldown();
+	long getCooldown();
+
+	LivingEntity getCaster();
 
 	/**
 	 * Returns the player that caused this ability to be initiated. The player
@@ -92,7 +96,7 @@ public interface Ability {
 	 *
 	 * @return the player that this ability belongs to
 	 */
-	public Player getPlayer();
+	@Nullable Player getPlayer();
 
 	/**
 	 * The name of the ability is used for commands such as <b>/bending
@@ -106,7 +110,7 @@ public interface Ability {
 	 *
 	 * @return Returns the name of the ability
 	 */
-	public String getName();
+	String getName();
 
 	/**
 	 * Return's the instructions of an ability. ProjectKorra's help command will
@@ -117,7 +121,7 @@ public interface Ability {
 	 * @see HelpCommand
 	 * @see CoreAbility#getInstructions()
 	 */
-	public String getInstructions();
+	String getInstructions();
 
 	/**
 	 * The description of an ability is a few sentences used to describe how the
@@ -129,7 +133,7 @@ public interface Ability {
 	 * @see HelpCommand
 	 * @see CoreAbility#getDescription()
 	 */
-	public String getDescription();
+	String getDescription();
 
 	/**
 	 * Specifies the Element used to represent this type of ability, favoring
@@ -139,7 +143,7 @@ public interface Ability {
 	 * @return the most accurate Element that this ability belongs to
 	 * @see SubElement#getParentElement
 	 */
-	public Element getElement();
+	Element getElement();
 
 	/**
 	 * Specifies the Location of the ability, which may be slightly inaccurate
@@ -152,5 +156,9 @@ public interface Ability {
 	 * @return the location of the Ability
 	 * @see BendingPlayer#canBend(CoreAbility)
 	 */
-	public Location getLocation();
+	@Nullable Location getLocation();
+
+	default String getDisplayName() {
+		return getElement().getColor() + getName();
+	}
 }

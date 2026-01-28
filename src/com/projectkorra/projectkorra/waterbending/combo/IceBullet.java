@@ -17,6 +17,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
@@ -326,6 +327,7 @@ public class IceBullet extends IceAbility implements ComboAbility {
 		return this.location;
 	}
 
+	@NotNull
 	@Override
 	public Object createNewComboInstance(final Player player) {
 		return new IceBullet(player);

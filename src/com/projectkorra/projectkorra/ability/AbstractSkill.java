@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import com.projectkorra.projectkorra.Element;
 
@@ -18,7 +21,7 @@ public abstract class AbstractSkill {
 		CACHE.put(name, this);
 	}
 
-	public static AbstractSkill byName(String name) {
+	public static @Nullable AbstractSkill byName(String name) {
 		return CACHE.get(name);
 	}
 

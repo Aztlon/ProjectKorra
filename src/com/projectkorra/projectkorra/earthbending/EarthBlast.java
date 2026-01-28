@@ -1,8 +1,8 @@
 package com.projectkorra.projectkorra.earthbending;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
-import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -10,12 +10,10 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
-import com.projectkorra.projectkorra.BendingPlayer;
+import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.GeneralMethods;
-import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
@@ -24,6 +22,9 @@ import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempFallingBlock;
 
+import lombok.Getter;
+
+@Getter
 public class EarthBlast extends EarthAbility {
 	private boolean isProgressing;
 	private boolean isAtDestination;
@@ -54,8 +55,8 @@ public class EarthBlast extends EarthAbility {
 	private TempBlock blastBlock;
 	BlockData blockData;
 
-	public EarthBlast(final Player player) {
-		super(player);
+	public EarthBlast(final LivingEntity caster) {
+		super(caster);
 
 		this.isProgressing = false;
 		this.isAtDestination = false;
@@ -72,7 +73,7 @@ public class EarthBlast extends EarthAbility {
 		this.time = System.currentTimeMillis();
 		this.interval = (long) (1000.0 / this.speed);
 
-		if (this.bPlayer.isAvatarState()) {
+		if (bender.isAvatarState()) {
 			this.cooldown = getConfig().getLong("Abilities.Avatar.AvatarState.Earth.EarthBlast.Cooldown");
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Earth.EarthBlast.Damage");
 		}
@@ -85,9 +86,9 @@ public class EarthBlast extends EarthAbility {
 	
 	private void disableEnemyBlasts(Location loc) {
 		for (EarthBlast blast : getAbilities(EarthBlast.class)) {
-			if (blast.player.equals(this.player)) {
+			if (blast.caster.equals(this.caster)) {
 				continue;
-			} else if (!blast.location.getWorld().equals(this.player.getWorld())) {
+			} else if (!blast.location.getWorld().equals(this.caster.getWorld())) {
 				continue;
 			} else if (!blast.isProgressing) {
 				continue;
@@ -97,7 +98,7 @@ public class EarthBlast extends EarthAbility {
 
 			final Location blastLocation = blast.location;
 
-			if(loc.distanceSquared(blastLocation) < deflectRange * deflectRange) {
+			if (loc.distanceSquared(blastLocation) < deflectRange * deflectRange) {
 				playEarthbendingSound(loc);
 				blast.becomeFallingBlock(blastLocation);
 			}
@@ -112,10 +113,8 @@ public class EarthBlast extends EarthAbility {
 
 	private void focusBlock(Block block) {
 		Material material = block.getType();
-		
-		if(TempBlock.isTempBlock(block)) {
-			TempBlock.get(block).revertBlock();
-		}
+
+		Optional.ofNullable(TempBlock.get(block)).ifPresent(TempBlock::revertBlock);
 		
 		this.damage = applyMetalPowerFactor(this.damage, block);
 		this.location = block.getLocation();
@@ -142,7 +141,7 @@ public class EarthBlast extends EarthAbility {
 	}
 
 	private Material selectMaterialForBlast(Material material) {
-		final Material cosmetic = earthCosmetic(player);
+		final Material cosmetic = earthCosmetic(caster);
 		if (cosmetic != null) {
 			return cosmetic;
 		}
@@ -174,7 +173,7 @@ public class EarthBlast extends EarthAbility {
 	}
 
 	private Location getTargetLocation() {
-		final Entity target = GeneralMethods.getTargetedEntity(this.player, this.range);
+		final Entity target = GeneralMethods.getTargetedEntity(this.caster, this.range);
 		if (target != null) {
 			LivingEntity e = ((LivingEntity) target);
 
@@ -183,7 +182,7 @@ public class EarthBlast extends EarthAbility {
 			}
 
 			double r = range;
-			Vector c = this.player.getLocation().toVector();
+			Vector c = this.caster.getLocation().toVector();
 			Vector ro = this.location.toVector();
 			Vector rd = GeneralMethods.getDirection(location, e.getEyeLocation()).normalize();
 
@@ -201,34 +200,33 @@ public class EarthBlast extends EarthAbility {
 			double intersect2 = x + t;
 
 			Vector finalPosition = ro.add(rd.multiply(intersect2));
-			return finalPosition.toLocation(this.player.getWorld());
+			return finalPosition.toLocation(this.caster.getWorld());
 		}
 		
-		return GeneralMethods.getTargetedLocation(this.player, this.range, true, getTransparentMaterials());
+		return GeneralMethods.getTargetedLocation(this.caster, this.range, true, getTransparentMaterials());
 	}
 
 	public boolean prepare() {
-		final Block block = getTargetEarthBlock(player, (int) selectRange);
+		final Block block = getTargetEarthBlock(caster, (int) selectRange);
 
-		if (block == null || !this.isEarthbendable(block)) {
+		if (!this.isEarthbendable(block)) {
 			return false;
 		} else if (TempBlock.isTempBlock(block) && !isBendableEarthTempBlock(block)) {
-			try {
-				if (TempBlock.get(block).getAbility().get().getName().equals(this.getName())) {
+			Optional.ofNullable(TempBlock.get(block)).ifPresent(tb -> {
+				if (tb.getAbility().map(abil -> abil.getName().equals(this.getName())).orElse(false))
 					disableEnemyBlasts(block.getLocation());
-				}
-			} catch (Exception ignored) {}
+			});
 
 			return false;
 		}
 		
-		for (final EarthBlast blast : getAbilities(this.player, EarthBlast.class)) {
+		for (final EarthBlast blast : getAbilities(this.caster, EarthBlast.class)) {
 			if (!blast.isProgressing) {
 				blast.remove();
 			}
 		}
 
-		if (block.getLocation().distanceSquared(this.player.getLocation()) > this.selectRange * this.selectRange) {
+		if (block.getLocation().distanceSquared(this.caster.getLocation()) > this.selectRange * this.selectRange) {
 			return false;
 		}
 
@@ -238,7 +236,7 @@ public class EarthBlast extends EarthAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
 			return;
 		}
@@ -254,17 +252,12 @@ public class EarthBlast extends EarthAbility {
 			return;
 		}
 
-		if (!this.isProgressing && !this.isAtDestination) {
-			if (this.sourceBlock == null || !this.bPlayer.getBoundAbilityName().equals(this.getName())) {
-				this.remove();
-				return;
-			} else if (this.sourceBlock.getLocation().distanceSquared(this.player.getLocation()) > this.selectRange * this.selectRange) {
-				this.remove();
-				return;
-			}
-		}
-
 		if (!this.isProgressing) {
+			if (this.sourceBlock == null || !bender.boundAbilityMatches(getName())) {
+				this.remove();
+			} else if (this.sourceBlock.getLocation().distanceSquared(this.caster.getLocation()) > this.selectRange * this.selectRange) {
+				this.remove();
+			}
 			return;
 		}
 
@@ -312,8 +305,8 @@ public class EarthBlast extends EarthAbility {
 				continue;
 			}
 
-			if (entity instanceof LivingEntity && (entity.getEntityId() != this.player.getEntityId() || this.canHitSelf)) {
-				final Location location = this.player.getEyeLocation();
+			if (entity instanceof LivingEntity && (entity.getEntityId() != this.caster.getEntityId() || this.canHitSelf)) {
+				final Location location = this.caster.getEyeLocation();
 				final Vector vector = location.getDirection();
 				GeneralMethods.setVelocity(this, entity, vector.normalize().multiply(this.pushFactor));
 				double damage = this.damage;
@@ -337,9 +330,9 @@ public class EarthBlast extends EarthAbility {
 		}
 	}
 
-	private void redirect(final Player player, final Location targetlocation) {
+	private void redirect(final LivingEntity caster, final Location targetlocation) {
 		if (this.isProgressing) {
-			if (this.location.distanceSquared(player.getLocation()) <= this.range * this.range) {
+			if (this.location.distanceSquared(caster.getLocation()) <= this.range * this.range) {
 				this.isSettingUp = false;
 				this.destination = targetlocation;
 			}
@@ -363,7 +356,7 @@ public class EarthBlast extends EarthAbility {
 
 	public void throwEarth() {
 		if (!this.isProgressing && !isAtDestination) {
-			if(this.sourceBlock == null || !this.sourceBlock.getBlock().getWorld().equals(this.player.getWorld())) {
+			if (this.sourceBlock == null || !this.sourceBlock.getBlock().getWorld().equals(this.caster.getWorld())) {
 				return;
 			}
 
@@ -371,7 +364,7 @@ public class EarthBlast extends EarthAbility {
 			this.firstDestination = this.location.clone();
 			if (this.destination.getY() - this.location.getY() > 2) {
 				this.firstDestination.setY(this.destination.getY() - 1);
-			} else if (this.location.getY() > player.getEyeLocation().getY() && this.location.getBlock().getRelative(BlockFace.UP).isPassable()) {
+			} else if (this.location.getY() > caster.getEyeLocation().getY() && this.location.getBlock().getRelative(BlockFace.UP).isPassable()) {
 				this.firstDestination.subtract(0, 2, 0);
 			} else if (this.location.getBlock().getRelative(BlockFace.UP).isPassable() && this.location.getBlock().getRelative(BlockFace.UP, 2).isPassable()) {
 				this.firstDestination.add(0, 2, 0);
@@ -389,7 +382,7 @@ public class EarthBlast extends EarthAbility {
 		}
 
 		if (this.isProgressing) {
-			if(this.blastBlock == null || !this.blastBlock.getBlock().getWorld().equals(this.player.getWorld())) {
+			if(this.blastBlock == null || !this.blastBlock.getBlock().getWorld().equals(this.caster.getWorld())) {
 				return;
 			}
 			
@@ -407,10 +400,10 @@ public class EarthBlast extends EarthAbility {
 	 * {@link Collision} for the new system.
 	 */
 	@Deprecated
-	public static boolean annihilateBlasts(final Location location, final double radius, final Player source) {
+	public static boolean annihilateBlasts(final Location location, final double radius, final LivingEntity source) {
 		boolean broke = false;
 		for (final EarthBlast blast : getAbilities(EarthBlast.class)) {
-			if (blast.location.getWorld().equals(location.getWorld()) && !source.equals(blast.player)) {
+			if (blast.location.getWorld().equals(location.getWorld()) && !source.equals(blast.caster)) {
 				if (blast.location.distanceSquared(location) <= radius * radius) {
 					blast.remove();
 					broke = true;
@@ -444,27 +437,27 @@ public class EarthBlast extends EarthAbility {
 		return null;
 	}
 
-	private static void redirectTargettedBlasts(final Player player, final ArrayList<EarthBlast> ignore) {
-		if (AbstractSkill.isLocked("EarthBlastRedirect", player)) return;
+	private static void redirectTargettedBlasts(final LivingEntity caster, final ArrayList<EarthBlast> ignore) {
+		if (Optional.ofNullable(Bender.get(caster)).map(b -> !b.hasUnlocked("EarthBlastRedirect")).orElse(true)) return;
 		for (final EarthBlast blast : getAbilities(EarthBlast.class)) {
 			if (!blast.isProgressing || ignore.contains(blast)) {
 				continue;
-			} else if (!blast.location.getWorld().equals(player.getWorld())) {
+			} else if (!blast.location.getWorld().equals(caster.getWorld())) {
 				continue;
 			} else if (RegionProtection.isRegionProtected(blast, blast.location)) {
 				continue;
-			} else if (blast.player.equals(player)) {
-				blast.redirect(player, blast.getTargetLocation());
+			} else if (blast.caster.equals(caster)) {
+				blast.redirect(caster, blast.getTargetLocation());
 			}
 
-			final Location location = player.getEyeLocation();
+			final Location location = caster.getEyeLocation();
 			final Vector vector = location.getDirection();
 			final Location mloc = blast.location;
 
 			if (mloc.distanceSquared(location) <= blast.range * blast.range 
 					&& GeneralMethods.getDistanceFromLine(vector, location, blast.location) < blast.deflectRange 
 					&& mloc.distanceSquared(location.clone().add(vector)) < mloc.distanceSquared(location.clone().add(vector.clone().multiply(-1)))) {
-				blast.redirect(player, blast.getTargetLocation());
+				blast.redirect(caster, blast.getTargetLocation());
 			}
 		}
 	}
@@ -479,17 +472,17 @@ public class EarthBlast extends EarthAbility {
 		}
 	}
 
-	public static void throwEarth(final Player player) {
+	public static void throwEarth(final LivingEntity caster) {
 		final ArrayList<EarthBlast> ignore = new ArrayList<>();
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
+		final Bender bender = Bender.get(caster);
 		EarthBlast earthBlast = null;
 
-		if (bPlayer == null) {
+		if (bender == null) {
 			return;
 		}
 
-		for (final EarthBlast blast : getAbilities(player, EarthBlast.class)) {
-			if (!blast.isProgressing && bPlayer.canBend(blast)) {
+		for (final EarthBlast blast : getAbilities(caster, EarthBlast.class)) {
+			if (!blast.isProgressing && bender.canBend(blast)) {
 				blast.throwEarth();
 				ignore.add(blast);
 				earthBlast = blast;
@@ -497,10 +490,10 @@ public class EarthBlast extends EarthAbility {
 		}
 
 		if (earthBlast != null) {
-			bPlayer.addCooldown(earthBlast);
+			bender.addCooldown(earthBlast);
 		}
 
-		redirectTargettedBlasts(player, ignore);
+		redirectTargettedBlasts(caster, ignore);
 	}
 
 	@Override
@@ -538,106 +531,6 @@ public class EarthBlast extends EarthAbility {
 		return this.collisionRadius;
 	}
 
-	public boolean isProgressing() {
-		return this.isProgressing;
-	}
-
-	public void setProgressing(final boolean isProgressing) {
-		this.isProgressing = isProgressing;
-	}
-
-	public boolean isAtDestination() {
-		return this.isAtDestination;
-	}
-
-	public void setAtDestination(final boolean isAtDestination) {
-		this.isAtDestination = isAtDestination;
-	}
-
-	public boolean isSettingUp() {
-		return this.isSettingUp;
-	}
-
-	public void setSettingUp(final boolean isSettingUp) {
-		this.isSettingUp = isSettingUp;
-	}
-
-	public boolean isCanHitSelf() {
-		return this.canHitSelf;
-	}
-
-	public void setCanHitSelf(final boolean canHitSelf) {
-		this.canHitSelf = canHitSelf;
-	}
-
-	public long getTime() {
-		return this.time;
-	}
-
-	public void setTime(final long time) {
-		this.time = time;
-	}
-
-	public long getInterval() {
-		return this.interval;
-	}
-
-	public void setInterval(final long interval) {
-		this.interval = interval;
-	}
-
-	public double getRange() {
-		return this.range;
-	}
-
-	public void setRange(final double range) {
-		this.range = range;
-	}
-
-	public double getDamage() {
-		return this.damage;
-	}
-
-	public void setDamage(final double damage) {
-		this.damage = damage;
-	}
-
-	public double getSpeed() {
-		return this.speed;
-	}
-
-	public void setSpeed(final double speed) {
-		this.speed = speed;
-	}
-
-	public double getPushFactor() {
-		return this.pushFactor;
-	}
-
-	public void setPushFactor(final double pushFactor) {
-		this.pushFactor = pushFactor;
-	}
-
-	public double getSelectRange() {
-		return this.selectRange;
-	}
-
-	public void setSelectRange(final double selectRange) {
-		this.selectRange = selectRange;
-	}
-
-	public double getDeflectRange() {
-		return this.deflectRange;
-	}
-
-	public void setDeflectRange(final double deflectRange) {
-		this.deflectRange = deflectRange;
-	}
-
-	public void setCollisionRadius(final double collisionRadius) {
-		this.collisionRadius = collisionRadius;
-	}
-
 	public Material getSourcetype() {
 		return this.blastType;
 	}
@@ -646,35 +539,11 @@ public class EarthBlast extends EarthAbility {
 		this.blastType = sourcetype;
 	}
 
-	public Location getDestination() {
-		return this.destination;
-	}
-
-	public void setDestination(final Location destination) {
-		this.destination = destination;
-	}
-
-	public Location getFirstDestination() {
-		return this.firstDestination;
-	}
-
-	public void setFirstDestination(final Location firstDestination) {
-		this.firstDestination = firstDestination;
-	}
-
 	public Block getSourceBlock() {
 		return this.blastBlock.getBlock();
 	}
 
 	public void setSourceBlock(final Block sourceBlock) {
 		this.blastBlock = new TempBlock(sourceBlock, blockData, this);
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
-	}
-
-	public void setLocation(final Location location) {
-		this.location = location;
 	}
 }

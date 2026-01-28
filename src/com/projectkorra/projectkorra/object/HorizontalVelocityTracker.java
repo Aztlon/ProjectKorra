@@ -22,6 +22,7 @@ import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.HorizontalVelocityChangeEvent;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 /**
  * Created by Carbogen on 2/2/2015.
@@ -34,7 +35,7 @@ public class HorizontalVelocityTracker {
 	private long delay;
 	private long fireTime;
 	private Entity entity;
-	private Player instigator;
+	private LivingEntity instigator;
 	private Vector lastVelocity;
 	private Vector thisVelocity;
 	private Location launchLocation;
@@ -43,7 +44,7 @@ public class HorizontalVelocityTracker {
 
 	public static String[] abils = { "AirBlast", "AirBurst", "AirSuction", "Bloodbending" };
 
-	public HorizontalVelocityTracker(final Entity e, final Player instigator, final long delay, final Ability ability) {
+	public HorizontalVelocityTracker(final Entity e, final LivingEntity instigator, final long delay, final Ability ability) {
 		if (!ProjectKorra.plugin.getConfig().getBoolean("Properties.HorizontalCollisionPhysics.Enabled")) {
 			return;
 		}
@@ -76,7 +77,7 @@ public class HorizontalVelocityTracker {
 		}
 
 		if (System.currentTimeMillis() > (this.fireTime + 30000)) {
-			ProjectKorra.log.info("removed HorizontalVelocityTracker lasting over 30 seconds: " + this.instigator.getName() + " using " + this.abil.getName() + " on " + this.entity);
+			PkLang.info("removed HorizontalVelocityTracker lasting over 30 seconds: " + this.instigator.getName() + " using " + this.abil.getName() + " on " + this.entity);
 			this.remove();
 			return;
 		}

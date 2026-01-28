@@ -23,6 +23,7 @@ import com.projectkorra.projectkorra.board.BendingBoardManager;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.PlayerBindChangeEvent;
 import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 /**
  * A savable association of abilities and hotbar slots, stored per player.
@@ -106,7 +107,7 @@ public class Preset {
 							new Preset(uuid, rs.getString("name"), moves);
 							i++;
 						} while (rs.next());
-						ProjectKorra.log.info("Loaded " + i + " presets for " + player.getName());
+						PkLang.info("Loaded " + i + " presets for " + player.getName());
 					}
 				} catch (final SQLException ex) {
 					ex.printStackTrace();

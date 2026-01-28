@@ -4,9 +4,12 @@ import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.hooks.RegionProtectionHook;
 import com.projectkorra.projectkorra.util.BlockCacheElement;
+import com.projectkorra.projectkorra.util.logging.PkLang;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -78,15 +81,15 @@ public class RegionProtection {
     /**
      * Checks if a location is protected by region protection plugins. Abilities that damage terrain
      * will not damage the terrain (or progress) if this method returns true
-     * @param player The player being checked
+     * @param caster The caster being checked
      * @param location The location to check
      * @param ability The ability to check
      * @return True if the region is protected by other plugins
      */
-    public static boolean isRegionProtected(@NotNull Player player, @Nullable Location location, @Nullable CoreAbility ability) {
-        final String playerName = player.getName();
-        final Block block = location != null ? location.getBlock() : player.getLocation().getBlock();
-        final Map<Block, BlockCacheElement> blockMap = BLOCK_CACHE.computeIfAbsent(playerName, name -> new ConcurrentHashMap<>());
+    public static boolean isRegionProtected(@NotNull LivingEntity caster, @Nullable Location location, @Nullable CoreAbility ability) {
+        final String casterName = caster.getName();
+        final Block block = location != null ? location.getBlock() : caster.getLocation().getBlock();
+        final Map<Block, BlockCacheElement> blockMap = BLOCK_CACHE.computeIfAbsent(casterName, name -> new ConcurrentHashMap<>());
 
         // Both abilities must be equal to each other to use the cache
         if (blockMap.containsKey(block)) {
@@ -97,32 +100,32 @@ public class RegionProtection {
             }
         }
 
-        final boolean value = isRegionProtectedCached(player, location, ability);
-        blockMap.put(block, new BlockCacheElement(player, block, ability, value, System.currentTimeMillis()));
+        final boolean value = isRegionProtectedCached(caster, location, ability);
+        blockMap.put(block, new BlockCacheElement(caster, block, ability, value, System.currentTimeMillis()));
         return value;
     }
 
     /**
      * Checks if a location is protected by region protection plugins. Abilities that damage terrain
      * will not damage the terrain (or progress) if this method returns true
-     * @param player The player being checked
+     * @param caster The caster being checked
      * @param location The location to check
      * @param ability The ability to check
      * @return True if the region is protected by other plugins
      */
-    public static boolean isRegionProtected(@NotNull Player player, @Nullable Location location, @Nullable String ability) {
-        return isRegionProtected(player, location, CoreAbility.getAbility(ability));
+    public static boolean isRegionProtected(@NotNull LivingEntity caster, @Nullable Location location, @Nullable String ability) {
+        return isRegionProtected(caster, location, CoreAbility.getAbility(ability));
     }
 
     /**
      * Checks if a location is protected by region protection plugins. Abilities that damage terrain
      * will not damage the terrain (or progress) if this method returns true
-     * @param player The player being checked
+     * @param caster The caster being checked
      * @param location The location to check
      * @return True if the region is protected by other plugins
      */
-    public static boolean isRegionProtected(@NotNull Player player, @Nullable Location location) {
-        return isRegionProtected(player, location, (CoreAbility) null);
+    public static boolean isRegionProtected(@NotNull LivingEntity caster, @Nullable Location location) {
+        return isRegionProtected(caster, location, (CoreAbility) null);
     }
 
     /**
@@ -133,31 +136,31 @@ public class RegionProtection {
      * @return True if the region is protected by other plugins
      */
     public static boolean isRegionProtected(@NotNull CoreAbility ability, @Nullable Location location) {
-        return isRegionProtected(ability.getPlayer(), location, ability);
+        return isRegionProtected(ability.getCaster(), location, ability);
     }
 
 
     /**
      * Checks if a location is protected by region protection plugins. Abilities that damage terrain
      * will not damage the terrain (or progress) if this method returns true
-     * @param player The player being checked
+     * @param caster The caster being checked
      * @param ability The ability to check
      * @return True if the region is protected by other plugins
      */
-    public static boolean isRegionProtected(@NotNull Player player, @Nullable CoreAbility ability) {
-        return isRegionProtected(player, null, ability);
+    public static boolean isRegionProtected(@NotNull LivingEntity caster, @Nullable CoreAbility ability) {
+        return isRegionProtected(caster, null, ability);
     }
 
-    protected static boolean isRegionProtectedCached(Player player, Location location, CoreAbility ability) {
-        if (location != null && checkAll(player, location, ability)) return true;
+    protected static boolean isRegionProtectedCached(LivingEntity caster, Location location, CoreAbility ability) {
+        if (location != null && checkAll(caster, location, ability)) return true;
 
-        return checkAll(player, player.getLocation(), ability);
+        return checkAll(caster, caster.getLocation(), ability);
     }
 
-    private static boolean checkAll(Player player, Location location, CoreAbility ability) {
+    private static boolean checkAll(LivingEntity caster, Location location, CoreAbility ability) {
         for (RegionProtectionHook protection : RegionProtection.getActiveProtections().values()) {
             try {
-                if (protection.isRegionProtected(player, location, ability)) {
+                if (protection.isRegionProtected(caster, location, ability)) {
                     return true;
                 }
             } catch (Exception e) {

@@ -8,6 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
@@ -90,6 +91,7 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 		return this.target != null ? this.target.getLocation() : null;
 	}
 
+	@NotNull
 	@Override
 	public Object createNewComboInstance(final Player player) {
 		return new Immobilize(player);

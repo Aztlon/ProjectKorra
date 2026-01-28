@@ -19,7 +19,7 @@ public class FireDamageTimer {
 	private static Ability ability = null;
 	private static final double DAMAGE = 1;
 	private static final long BUFFER = 30;
-	private static final Map<Entity, Player> INSTANCES = new ConcurrentHashMap<>();
+	private static final Map<Entity, LivingEntity> INSTANCES = new ConcurrentHashMap<>();
 	private static final Map<Entity, Long> TIMES = new ConcurrentHashMap<>();
 
 	/**
@@ -29,15 +29,15 @@ public class FireDamageTimer {
 	 * @param source player who used the fire move.
 	 */
 	@Deprecated
-	public FireDamageTimer(final Entity entity, final Player source) {
+	public FireDamageTimer(final Entity entity, final LivingEntity source) {
 		this(entity, source, null, false);
 	}
 	
-	public FireDamageTimer(final Entity entity, final Player source, Ability abil) {
+	public FireDamageTimer(final Entity entity, final LivingEntity source, Ability abil) {
 		this(entity, source, abil, false);
 	}
 
-	public FireDamageTimer(final Entity entity, final Player source, Ability abil, final boolean affectSelf) {
+	public FireDamageTimer(final Entity entity, final LivingEntity source, Ability abil, final boolean affectSelf) {
 		if (entity.getEntityId() == source.getEntityId() && !affectSelf) {
 			return;
 		}
@@ -69,7 +69,7 @@ public class FireDamageTimer {
 				}
 			}
 			final LivingEntity Lentity = (LivingEntity) entity;
-			final Player source = INSTANCES.get(entity);
+			final LivingEntity source = INSTANCES.get(entity);
 			
 			// damages the entity.
 			if (ability == null) {
@@ -102,7 +102,7 @@ public class FireDamageTimer {
 	 * @return Map from Entity to Player, entity on fire to player who set them
 	 * alight with firebending.
 	 */
-	public static Map<Entity, Player> getInstances() {
+	public static Map<Entity, LivingEntity> getInstances() {
 		return INSTANCES;
 	}
 }

@@ -1,14 +1,16 @@
 package com.projectkorra.projectkorra.ability;
 
 import com.projectkorra.projectkorra.GeneralMethods;
+
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.Element;
 
 public abstract class CombustionAbility extends FireAbility implements SubAbility {
 
-	public CombustionAbility(final Player player) {
-		super(player);
+	public CombustionAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	@Override

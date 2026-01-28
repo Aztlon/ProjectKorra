@@ -7,6 +7,7 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.ComboAbility;
@@ -51,6 +52,7 @@ public class JetBlast extends FireAbility implements ComboAbility {
 		this.start();
 	}
 
+	@NotNull
 	@Override
 	public Object createNewComboInstance(final Player player) {
 		return new JetBlast(player);

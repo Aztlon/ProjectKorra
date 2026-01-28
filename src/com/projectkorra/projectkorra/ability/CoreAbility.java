@@ -1,10 +1,7 @@
 package com.projectkorra.projectkorra.ability;
 
 import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,19 +17,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.jar.JarFile;
 
+import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.command.CooldownCommand;
+
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.permissions.Permission;
-import sun.reflect.ReflectionFactory;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.commons.lang3.tuple.Pair;
-
-import com.google.common.reflect.ClassPath;
-import com.google.common.reflect.ClassPath.ClassInfo;
-
-import co.aikar.timings.lib.MCTiming;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -40,6 +34,8 @@ import org.bukkit.Location;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
@@ -59,11 +55,13 @@ import com.projectkorra.projectkorra.attribute.AttributeModifier;
 import com.projectkorra.projectkorra.attribute.AttributePriority;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.AbilityEndEvent;
-import com.projectkorra.projectkorra.event.AbilityPhaseEvent;
 import com.projectkorra.projectkorra.event.AbilityProgressEvent;
 import com.projectkorra.projectkorra.event.AbilityStartEvent;
 import com.projectkorra.projectkorra.util.FlightHandler;
 import com.projectkorra.projectkorra.util.TimeUtil;
+import com.projectkorra.projectkorra.util.logging.PkLang;
+
+import lombok.Getter;
 
 /**
  * CoreAbility provides default implementation of an Ability, including methods
@@ -83,8 +81,8 @@ import com.projectkorra.projectkorra.util.TimeUtil;
  */
 public abstract class CoreAbility implements Ability {
 
-	private static final Set<CoreAbility> INSTANCES = Collections.newSetFromMap(new ConcurrentHashMap<CoreAbility, Boolean>());
-	private static final Map<Class<? extends CoreAbility>, Map<UUID, Map<Integer, CoreAbility>>> INSTANCES_BY_PLAYER = new ConcurrentHashMap<>();
+	private static final Set<CoreAbility> INSTANCES = Collections.newSetFromMap(new ConcurrentHashMap<>());
+	private static final Map<Class<? extends CoreAbility>, Map<UUID, Map<Integer, CoreAbility>>> INSTANCES_BY_CASTER = new ConcurrentHashMap<>();
 	private static final Map<Class<? extends CoreAbility>, Set<CoreAbility>> INSTANCES_BY_CLASS = new ConcurrentHashMap<>();
 	private static final Map<String, CoreAbility> ABILITIES_BY_NAME = new ConcurrentSkipListMap<>(); // preserves ordering.
 	private static final Map<Class<? extends CoreAbility>, CoreAbility> ABILITIES_BY_CLASS = new ConcurrentHashMap<>();
@@ -93,19 +91,27 @@ public abstract class CoreAbility implements Ability {
 	private static final Map<Class<? extends CoreAbility>, Map<String, Field>> ATTRIBUTE_FIELDS = new HashMap<>();
 
 	private static int idCounter;
+	@Getter
 	private static long currentTick;
 
-	protected Player player;
-	protected BendingPlayer bPlayer;
-	protected FlightHandler flightHandler;
+	@MonotonicNonNull protected LivingEntity caster;
+	@MonotonicNonNull protected Bender bender;
+	@MonotonicNonNull protected Player player;
+	@MonotonicNonNull protected BendingPlayer bPlayer;
+	@MonotonicNonNull protected FlightHandler flightHandler;
 
 	private final Map<String, Map<AttributePriority, Set<Pair<Number, AttributeModifier>>>> attributeModifiers = new HashMap<>();
 	private final Map<String, Object> attributeValues = new HashMap<>();
+	@Getter
 	private boolean started;
+	@Getter
 	private boolean removed;
 	private boolean hidden;
+	@Getter
 	private int id;
+	@Getter
 	private long startTime;
+	@Getter
 	private long startTick;
 	private boolean attributesModified;
 
@@ -127,6 +133,7 @@ public abstract class CoreAbility implements Ability {
 	public CoreAbility() {
 		for (final Field field : this.getClass().getDeclaredFields()) {
 			if (field.isAnnotationPresent(Attribute.class)) {
+				field.trySetAccessible();
 				final Attribute attribute = field.getAnnotation(Attribute.class);
 				if (!ATTRIBUTE_FIELDS.containsKey(this.getClass())) {
 					ATTRIBUTE_FIELDS.put(this.getClass(), new HashMap<>());
@@ -139,16 +146,20 @@ public abstract class CoreAbility implements Ability {
 	/**
 	 * Creates a new CoreAbility instance but does not start it.
 	 *
-	 * @param player the non-null player that created this instance
+	 * @param caster the non-null LivingEntity that created this instance
 	 * @see #start()
 	 */
-	public CoreAbility(final Player player) {
-		if (player == null || !this.isEnabled()) {
+	public CoreAbility(final LivingEntity caster) {
+		if (caster == null || !this.isEnabled()) {
 			return;
 		}
 
-		this.player = player;
-		this.bPlayer = BendingPlayer.getBendingPlayer(player);
+		this.caster = caster;
+		this.bender = Bender.of(caster);
+		if (caster instanceof Player p) {
+			this.player = p;
+			this.bPlayer = BendingPlayer.getBendingPlayer(p);
+		}
 		this.flightHandler = Manager.getManager(FlightHandler.class);
 		this.startTime = System.currentTimeMillis();
 		this.started = false;
@@ -172,10 +183,10 @@ public abstract class CoreAbility implements Ability {
 	 * @see #isRemoved()
 	 */
 	public void start() {
-		if (this.player == null || !this.isEnabled()) {
+		if (this.caster == null || !this.isEnabled()) {
 			return;
 		}
-		if (AbstractSkill.isLocked(getName(), player)) {
+		if (player != null && !bender.hasUnlocked(getName())) {
 			removed = true;
 			return;
 		}
@@ -193,19 +204,19 @@ public abstract class CoreAbility implements Ability {
 		this.startTime = System.currentTimeMillis();
 		this.startTick = getCurrentTick();
 		final Class<? extends CoreAbility> clazz = this.getClass();
-		final UUID uuid = this.player.getUniqueId();
+		final UUID uuid = this.caster.getUniqueId();
 
-		if (!INSTANCES_BY_PLAYER.containsKey(clazz)) {
-			INSTANCES_BY_PLAYER.put(clazz, new ConcurrentHashMap<>());
+		if (!INSTANCES_BY_CASTER.containsKey(clazz)) {
+			INSTANCES_BY_CASTER.put(clazz, new ConcurrentHashMap<>());
 		}
-		if (!INSTANCES_BY_PLAYER.get(clazz).containsKey(uuid)) {
-			INSTANCES_BY_PLAYER.get(clazz).put(uuid, new ConcurrentHashMap<>());
+		if (!INSTANCES_BY_CASTER.get(clazz).containsKey(uuid)) {
+			INSTANCES_BY_CASTER.get(clazz).put(uuid, new ConcurrentHashMap<>());
 		}
 		if (!INSTANCES_BY_CLASS.containsKey(clazz)) {
 			INSTANCES_BY_CLASS.put(clazz, Collections.newSetFromMap(new ConcurrentHashMap<>()));
 		}
 
-		INSTANCES_BY_PLAYER.get(clazz).get(uuid).put(this.id, this);
+		INSTANCES_BY_CASTER.get(clazz).get(uuid).put(this.id, this);
 		INSTANCES_BY_CLASS.get(clazz).add(this);
 		INSTANCES.add(this);
 	}
@@ -221,25 +232,25 @@ public abstract class CoreAbility implements Ability {
 	 */
 	@Override
 	public void remove() {
-		if (this.player == null) {
+		if (this.caster == null) {
 			return;
 		}
 
 		Bukkit.getServer().getPluginManager().callEvent(new AbilityEndEvent(this));
 		this.removed = true;
 
-		final Map<UUID, Map<Integer, CoreAbility>> classMap = INSTANCES_BY_PLAYER.get(this.getClass());
+		final Map<UUID, Map<Integer, CoreAbility>> classMap = INSTANCES_BY_CASTER.get(this.getClass());
 		if (classMap != null) {
-			final Map<Integer, CoreAbility> playerMap = classMap.get(this.player.getUniqueId());
-			if (playerMap != null) {
-				playerMap.remove(this.id);
-				if (playerMap.size() == 0) {
-					classMap.remove(this.player.getUniqueId());
+			final Map<Integer, CoreAbility> casterMap = classMap.get(this.caster.getUniqueId());
+			if (casterMap != null) {
+				casterMap.remove(this.id);
+				if (casterMap.size() == 0) {
+					classMap.remove(this.caster.getUniqueId());
 				}
 			}
 
 			if (classMap.size() == 0) {
-				INSTANCES_BY_PLAYER.remove(this.getClass());
+				INSTANCES_BY_CASTER.remove(this.getClass());
 			}
 		}
 
@@ -256,21 +267,25 @@ public abstract class CoreAbility implements Ability {
 	public static void progressAll() {
 		for (final Set<CoreAbility> setAbils : INSTANCES_BY_CLASS.values()) {
 			for (final CoreAbility abil : setAbils) {
+				var player = abil.getPlayer();
 				if (abil instanceof PassiveAbility passive) {
 					if (!passive.isProgressable()) {
 						continue;
 					}
 
-					if (!abil.getPlayer().isOnline()) { // This has to be before isDead as isDead.
+					if (player != null && abil.bPlayer != null && !player.isOnline()) { // This has to be before isDead as isDead.
+						PkLang.warning("removing passive " + abil.getName() + " because player is offline");
 						abil.remove(); // will return true if they are offline.
 						continue;
-					} else if (abil.getPlayer().isDead()) {
+					} else if (abil.getCaster().isDead()) {
 						continue;
 					}
-				} else if (abil.getPlayer().isDead()) {
+				} else if (abil.getCaster().isDead()) {
+					PkLang.warning("removing " + abil.getName() + " because caster is dead");
 					abil.remove();
 					continue;
-				} else if (!abil.getPlayer().isOnline()) {
+				} else if (player != null && abil.bPlayer != null && !player.isOnline()) {
+					PkLang.warning("removing " + abil.getName() + " because player is offline");
 					abil.remove();
 					continue;
 				}
@@ -336,12 +351,12 @@ public abstract class CoreAbility implements Ability {
 	 * Returns any T CoreAbility that has been started and not yet removed. May
 	 * return null if no such ability exists.
 	 *
-	 * @param player the player that created the CoreAbility instance
+	 * @param caster the caster that created the CoreAbility instance
 	 * @param clazz the class of the type of CoreAbility
 	 * @return a CoreAbility instance or null
 	 */
-	public static <T extends CoreAbility> T getAbility(final Player player, final Class<T> clazz) {
-		final Collection<T> abils = getAbilities(player, clazz);
+	public static <T extends CoreAbility> T getAbility(final LivingEntity caster, final Class<T> clazz) {
+		final Collection<T> abils = getAbilities(caster, clazz);
 		if (abils.iterator().hasNext()) {
 			return abils.iterator().next();
 		}
@@ -367,7 +382,7 @@ public abstract class CoreAbility implements Ability {
 	 * @param abilityName the name of a loaded CoreAbility
 	 * @return a "fake" CoreAbility instance, or null if no such ability exists
 	 */
-	public static CoreAbility getAbility(final String abilityName) {
+	public static @Nullable CoreAbility getAbility(final @Nullable String abilityName) {
 		return abilityName != null ? ABILITIES_BY_NAME.get(abilityName.toLowerCase()) : null;
 	}
 
@@ -377,7 +392,7 @@ public abstract class CoreAbility implements Ability {
 	 * @param clazz the class for the type of CoreAbility to be returned
 	 * @return a "fake" CoreAbility instance or null if the ability doesn't exist or <b>isn't enabled</b>
 	 */
-	public static CoreAbility getAbility(final Class<? extends CoreAbility> clazz) {
+	public static @Nullable CoreAbility getAbility(final @Nullable Class<? extends CoreAbility> clazz) {
 		return clazz != null ? ABILITIES_BY_CLASS.get(clazz) : null;
 	}
 
@@ -386,7 +401,7 @@ public abstract class CoreAbility implements Ability {
 	 *         {@link #registerAbilities()}
 	 */
 	public static ArrayList<CoreAbility> getAbilities() {
-		return new ArrayList<CoreAbility>(ABILITIES_BY_CLASS.values());
+		return new ArrayList<>(ABILITIES_BY_CLASS.values());
 	}
 
 	/**
@@ -394,7 +409,7 @@ public abstract class CoreAbility implements Ability {
 	 *         {@link #registerAbilities()}
 	 */
 	public static ArrayList<CoreAbility> getAbilitiesByName() {
-		return new ArrayList<CoreAbility>(ABILITIES_BY_NAME.values());
+		return new ArrayList<>(ABILITIES_BY_NAME.values());
 	}
 
 	/**
@@ -413,17 +428,17 @@ public abstract class CoreAbility implements Ability {
 
 	/**
 	 * Returns a Collection of specific CoreAbility instances that were created
-	 * by the specified player.
+	 * by the specified caster.
 	 *
-	 * @param player the player that created the instances
+	 * @param caster the caster that created the instances
 	 * @param clazz the class for the type of CoreAbilities
 	 * @return a Collection of real instances
 	 */
-	public static <T extends CoreAbility> Collection<T> getAbilities(final Player player, final Class<T> clazz) {
-		if (player == null || clazz == null || INSTANCES_BY_PLAYER.get(clazz) == null || INSTANCES_BY_PLAYER.get(clazz).get(player.getUniqueId()) == null) {
+	public static <T extends CoreAbility> Collection<T> getAbilities(final LivingEntity caster, final Class<T> clazz) {
+		if (caster == null || clazz == null || INSTANCES_BY_CASTER.get(clazz) == null || INSTANCES_BY_CASTER.get(clazz).get(caster.getUniqueId()) == null) {
 			return Collections.emptySet();
 		}
-		return (Collection<T>) INSTANCES_BY_PLAYER.get(clazz).get(player.getUniqueId()).values();
+		return (Collection<T>) INSTANCES_BY_CASTER.get(clazz).get(caster.getUniqueId()).values();
 	}
 
 	/**
@@ -471,13 +486,13 @@ public abstract class CoreAbility implements Ability {
 	}
 
 	/**
-	 * Returns true if the player has an active CoreAbility instance of type T.
+	 * Returns true if the caster has an active CoreAbility instance of type T.
 	 *
-	 * @param player the player that created the T instance
+	 * @param caster the caster that created the T instance
 	 * @param clazz the class for the type of CoreAbility
 	 */
-	public static <T extends CoreAbility> boolean hasAbility(final Player player, final Class<T> clazz) {
-		return getAbility(player, clazz) != null;
+	public static <T extends CoreAbility> boolean hasAbility(final LivingEntity caster, final Class<T> clazz) {
+		return getAbility(caster, clazz) != null;
 	}
 
 	/**
@@ -491,13 +506,13 @@ public abstract class CoreAbility implements Ability {
 		}
 		final String name = ABILITIES_BY_CLASS.get(clazz).getName();
 		for (final CoreAbility abil : INSTANCES) {
-			if (abil.getName() == name) {
+			if (abil.getName().equals(name)) {
 				abil.remove();
 			}
 		}
 		ABILITIES_BY_CLASS.remove(clazz);
 		ABILITIES_BY_NAME.remove(name);
-		ProjectKorra.log.info("Unloaded ability: " + name);
+		PkLang.info("Unloaded ability: " + name);
 	}
 
 	/**
@@ -509,7 +524,7 @@ public abstract class CoreAbility implements Ability {
 	public static Set<Player> getPlayers(final Class<? extends CoreAbility> clazz) {
 		final HashSet<Player> players = new HashSet<>();
 		if (clazz != null) {
-			final Map<UUID, Map<Integer, CoreAbility>> uuidMap = INSTANCES_BY_PLAYER.get(clazz);
+			final Map<UUID, Map<Integer, CoreAbility>> uuidMap = INSTANCES_BY_CASTER.get(clazz);
 			if (uuidMap != null) {
 				for (final UUID uuid : uuidMap.keySet()) {
 					final Player uuidPlayer = Bukkit.getPlayer(uuid);
@@ -543,7 +558,7 @@ public abstract class CoreAbility implements Ability {
 	 * @see #getAbility(String)
 	 */
 	public static void registerPluginAbilities(final JavaPlugin plugin, final String packageBase) {
-		final AbilityLoader<CoreAbility> abilityLoader = new AbilityLoader<CoreAbility>(plugin, packageBase);
+		final AbilityLoader<CoreAbility> abilityLoader = new AbilityLoader<>(plugin, packageBase);
 		final List<CoreAbility> loadedAbilities = abilityLoader.load(CoreAbility.class, CoreAbility.class);
 		final String entry = plugin.getName() + "::" + packageBase;
 		if (!ADDON_PLUGINS.contains(entry)) {
@@ -692,36 +707,12 @@ public abstract class CoreAbility implements Ability {
 		}
 	}
 
-	public long getStartTime() {
-		return this.startTime;
-	}
-
-	public long getStartTick() {
-		return this.startTick;
-	}
-
-	public static long getCurrentTick() {
-		return currentTick;
-	}
-
 	public long getRunningTicks() {
 		return currentTick - this.startTick;
 	}
 
-	public boolean isStarted() {
-		return this.started;
-	}
-
-	public boolean isRemoved() {
-		return this.removed;
-	}
-
 	public BendingPlayer getBendingPlayer() {
 		return this.bPlayer;
-	}
-
-	public int getId() {
-		return this.id;
 	}
 
 	@Override
@@ -818,7 +809,12 @@ public abstract class CoreAbility implements Ability {
 	}
 
 	@Override
-	public Player getPlayer() {
+	public LivingEntity getCaster() {
+		return this.caster;
+	}
+
+	@Override
+	public @MonotonicNonNull Player getPlayer() {
 		return this.player;
 	}
 
@@ -828,41 +824,41 @@ public abstract class CoreAbility implements Ability {
 	 *
 	 * @param target The player who now controls the ability
 	 */
-	public void setPlayer(final Player target) {
-		if (target == this.player) {
+	public void setCaster(final LivingEntity target) {
+		if (target == this.caster) {
 			return;
 		}
 
 		final Class<? extends CoreAbility> clazz = this.getClass();
 
 		// The mapping from player UUID to a map of the player's instances.
-		Map<UUID, Map<Integer, CoreAbility>> classMap = INSTANCES_BY_PLAYER.get(clazz);
+		Map<UUID, Map<Integer, CoreAbility>> classMap = INSTANCES_BY_CASTER.get(clazz);
 
 		if (classMap != null) {
 			// The map of AbilityId to Ability for the current player.
-			final Map<Integer, CoreAbility> playerMap = classMap.get(this.player.getUniqueId());
+			final Map<Integer, CoreAbility> casterMap = classMap.get(this.caster.getUniqueId());
 
-			if (playerMap != null) {
+			if (casterMap != null) {
 				// Remove the ability from the current player's map.
-				playerMap.remove(this.id);
+				casterMap.remove(this.id);
 
-				if (playerMap.isEmpty()) {
+				if (casterMap.isEmpty()) {
 					// Remove the player's empty ability map from global instances map.
-					classMap.remove(this.player.getUniqueId());
+					classMap.remove(this.caster.getUniqueId());
 				}
 			}
 
 			if (classMap.isEmpty()) {
-				INSTANCES_BY_PLAYER.remove(this.getClass());
+				INSTANCES_BY_CASTER.remove(this.getClass());
 			}
 		}
 
 		// Add a new map for the current ability if it doesn't exist in the global map.
-		if (!INSTANCES_BY_PLAYER.containsKey(clazz)) {
-			INSTANCES_BY_PLAYER.put(clazz, new ConcurrentHashMap<>());
+		if (!INSTANCES_BY_CASTER.containsKey(clazz)) {
+			INSTANCES_BY_CASTER.put(clazz, new ConcurrentHashMap<>());
 		}
 
-		classMap = INSTANCES_BY_PLAYER.get(clazz);
+		classMap = INSTANCES_BY_CASTER.get(clazz);
 
 		// Create an AbilityId to Ability map for the target player if it doesn't exist.
 		if (!classMap.containsKey(target.getUniqueId())) {
@@ -872,11 +868,11 @@ public abstract class CoreAbility implements Ability {
 		// Add the current instance to the target player's ability map.
 		classMap.get(target.getUniqueId()).put(this.getId(), this);
 
-		this.player = target;
-
-		final BendingPlayer newBendingPlayer = BendingPlayer.getBendingPlayer(target);
-		if (newBendingPlayer != null) {
-			this.bPlayer = newBendingPlayer;
+		this.caster = target;
+		this.bender = Bender.get(target);
+		if (target instanceof Player p) {
+			this.player = p;
+			this.bPlayer = BendingPlayer.getBendingPlayer(p);
 		}
 	}
 
@@ -970,11 +966,30 @@ public abstract class CoreAbility implements Ability {
 		return this;
 	}
 
+	public @Nullable Number getAttributeValue(final String attribute) {
+		Validate.notNull(attribute, "attribute cannot be null");
+		if (!ATTRIBUTE_FIELDS.containsKey(this.getClass()) || !ATTRIBUTE_FIELDS.get(this.getClass()).containsKey(attribute)) {
+			PkLang.warning("Attribute " + attribute + " is not a defined Attribute for " + this.getName());
+			return null;
+		}
+		final Field field = ATTRIBUTE_FIELDS.get(this.getClass()).get(attribute);
+		try {
+			final Object get = field.get(this);
+			if (!(get instanceof Number n)) {
+				PkLang.warning("The field " + field.getName() + " cannot algebraically be modified.");
+				return null;
+			}
+			PkLang.info("Attribute " + attribute + " for " + this.getName() + " is " + n);
+			return n;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
 	private void modifyAttributes() {
 		for (final String attribute : this.attributeModifiers.keySet()) {
 			final Field field = ATTRIBUTE_FIELDS.get(this.getClass()).get(attribute);
-			final boolean accessibility = field.isAccessible();
-			field.setAccessible(true);
 			try {
 				for (final AttributePriority priority : AttributePriority.values()) {
 					if (this.attributeModifiers.get(attribute).containsKey(priority)) {
@@ -987,23 +1002,17 @@ public abstract class CoreAbility implements Ability {
 						}
 					}
 				}
-			} catch (IllegalArgumentException | IllegalAccessException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
-			} finally {
-				field.setAccessible(accessibility);
 			}
 		}
 
 		this.attributeValues.forEach((attribute, value) -> {
 			final Field field = ATTRIBUTE_FIELDS.get(this.getClass()).get(attribute);
-			final boolean accessibility = field.isAccessible();
-			field.setAccessible(true);
 			try {
 				field.set(this, value);
-			} catch (IllegalArgumentException | IllegalAccessException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
-			} finally {
-				field.setAccessible(accessibility);
 			}
 		});
 
@@ -1024,6 +1033,18 @@ public abstract class CoreAbility implements Ability {
 		return ConfigManager.languageConfig.get();
 	}
 
+	public void info(String message) {
+		PkLang.info(getDisplayName() + ": " + message);
+	}
+
+	public void warning(String message) {
+		PkLang.warning(getDisplayName() + ": " + message);
+	}
+
+	public void severe(String message) {
+		PkLang.severe(getDisplayName() + ": " + message);
+	}
+
 	/**
 	 * Returns a String used to debug potential CoreAbility memory that can be
 	 * caused by a developer forgetting to call {@link #remove()}
@@ -1033,7 +1054,7 @@ public abstract class CoreAbility implements Ability {
 		int playerCounter = 0;
 		final HashMap<String, Integer> classCounter = new HashMap<>();
 
-		for (final Map<UUID, Map<Integer, CoreAbility>> map1 : INSTANCES_BY_PLAYER.values()) {
+		for (final Map<UUID, Map<Integer, CoreAbility>> map1 : INSTANCES_BY_CASTER.values()) {
 			playerCounter++;
 			for (final Map<Integer, CoreAbility> map2 : map1.values()) {
 				for (final CoreAbility coreAbil : map2.values()) {

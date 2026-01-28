@@ -213,7 +213,7 @@ public class PKListener implements Listener {
 	ProjectKorra plugin;
 
 	private static final HashMap<Entity, Ability> BENDING_ENTITY_DEATH = new HashMap<>(); // Entities killed by Bending.
-	private static final HashMap<Player, Pair<String, Player>> BENDING_PLAYER_DEATH = new HashMap<>(); // Player killed by Bending. Stores the victim (k), and a pair of the ability and killer (v)
+	private static final HashMap<Player, Pair<String, LivingEntity>> BENDING_PLAYER_DEATH = new HashMap<>(); // Player killed by Bending. Stores the victim (k), and a pair of the ability and killer (v)
 	private static final Set<UUID> RIGHT_CLICK_INTERACT = new HashSet<>(); // Player right click block.
 	@Deprecated
 	private static final ArrayList<UUID> TOGGLED_OUT = new ArrayList<>(); // Stands for toggled = false while logging out.
@@ -515,8 +515,8 @@ public class PKListener implements Listener {
 	public void onEntityCombust(final EntityCombustEvent event) {
 		final Entity entity = event.getEntity();
 		final Block block = entity.getLocation().getBlock();
-		if (FireAbility.getSourcePlayers().containsKey(block) && entity instanceof LivingEntity) {
-			new FireDamageTimer(entity, FireAbility.getSourcePlayers().get(block));
+		if (FireAbility.getSourceCasters().containsKey(block) && entity instanceof LivingEntity) {
+			new FireDamageTimer(entity, FireAbility.getSourceCasters().get(block));
 		}
 	}
 
@@ -547,8 +547,8 @@ public class PKListener implements Listener {
 		final Entity entity = event.getEntity();
 		double damage = event.getDamage();
 
-		if (event.getCause() == DamageCause.FIRE && FireAbility.getSourcePlayers().containsKey(entity.getLocation().getBlock())) {
-			new FireDamageTimer(entity, FireAbility.getSourcePlayers().get(entity.getLocation().getBlock()), null, true);
+		if (event.getCause() == DamageCause.FIRE && FireAbility.getSourceCasters().containsKey(entity.getLocation().getBlock())) {
+			new FireDamageTimer(entity, FireAbility.getSourceCasters().get(entity.getLocation().getBlock()), null, true);
 		}
 
 		if (FireDamageTimer.isEnflamed(entity) && event.getCause() == DamageCause.FIRE_TICK) {
@@ -801,14 +801,13 @@ public class PKListener implements Listener {
 	@EventHandler(priority = EventPriority.NORMAL)
 	public void onEntityBendingDeath(final EntityBendingDeathEvent event) {
 		BENDING_ENTITY_DEATH.put(event.getEntity(), event.getAbility());
-		if (event.getEntity() instanceof Player) {
+		if (event.getEntity() instanceof Player player) {
 			if (ConfigManager.languageConfig.get().getBoolean("DeathMessages.Enabled")) {
 				final Ability ability = event.getAbility();
 				if (ability == null) {
 					return;
 				}
 
-				final Player player = (Player) event.getEntity();
 				BENDING_PLAYER_DEATH.put(player, Pair.of(ability.getElement().getColor() + ability.getName(), event.getAttacker()));
 
 				new BukkitRunnable() {
@@ -1049,7 +1048,7 @@ public class PKListener implements Listener {
 			final CoreAbility coreAbil = CoreAbility.getAbility(tempAbility);
 			Element element = null;
 			final boolean isAvatarAbility = false;
-			final Player killer = BENDING_PLAYER_DEATH.get(event.getEntity()).getRight();
+			final LivingEntity killer = BENDING_PLAYER_DEATH.get(event.getEntity()).getRight();
 
 			if (coreAbil != null) {
 				element = coreAbil.getElement();
@@ -2076,7 +2075,7 @@ public class PKListener implements Listener {
 		WaterAbility.BLOCK_DATA_CUSTOM_ICE.put(block.getBaseBlockData().getAsString(), block.getNamespacedID());
 	}
 
-	public static HashMap<Player, Pair<String, Player>> getBendingPlayerDeath() {
+	public static HashMap<Player, Pair<String, LivingEntity>> getBendingPlayerDeath() {
 		return BENDING_PLAYER_DEATH;
 	}
 

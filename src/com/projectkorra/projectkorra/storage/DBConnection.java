@@ -9,6 +9,7 @@ import java.util.Map;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 public class DBConnection {
 
@@ -29,56 +30,56 @@ public class DBConnection {
 		DBConnection.user = ConfigManager.getConfig().getString("Storage.MySQL.user");
 
 		if (ProjectKorra.plugin.getConfig().getString("Storage.engine").equalsIgnoreCase("mysql")) {
-			sql = new MySQL(ProjectKorra.log, host, port, user, pass, db);
+			sql = new MySQL(ProjectKorra.plugin.getLogger(), host, port, user, pass, db);
 			if (((MySQL) sql).open() == null) {
-				ProjectKorra.log.severe("Disabling due to database error");
+				PkLang.severe("Disabling due to database error");
 				GeneralMethods.stopPlugin();
 				return;
 			}
 			isOpen = true;
-			ProjectKorra.log.info("Database connection established.");
+			PkLang.info("Database connection established.");
 
 			convertOldCooldownsTable();
 
 			if (!sql.tableExists("pk_players")) {
-				ProjectKorra.log.info("Creating pk_players table");
+				PkLang.info("Creating pk_players table");
 				final String query = "CREATE TABLE `pk_players` (" + "`uuid` varchar(36) NOT NULL," + "`player` varchar(16) NOT NULL," + "`element` varchar(255)," + "`subelement` varchar(255)," + "`permaremoved` varchar(5)," + "`slot1` varchar(255)," + "`slot2` varchar(255)," + "`slot3` varchar(255)," + "`slot4` varchar(255)," + "`slot5` varchar(255)," + "`slot6` varchar(255)," + "`slot7` varchar(255)," + "`slot8` varchar(255)," + "`slot9` varchar(255)," + " PRIMARY KEY (uuid));";
 				sql.modifyQuery(query, false);
 			} else {
 				try {
 					final DatabaseMetaData md = sql.connection.getMetaData();
 					if (!md.getColumns(null, null, "pk_players", "subelement").next()) {
-						ProjectKorra.log.info("Updating Database with subelements...");
+						PkLang.info("Updating Database with subelements...");
 						sql.getConnection().setAutoCommit(false);
 						sql.modifyQuery("ALTER TABLE `pk_players` ADD subelement varchar(255);", false);
 						sql.getConnection().commit();
 						sql.modifyQuery("UPDATE pk_players SET subelement = '-';", false);
 						sql.getConnection().setAutoCommit(true);
-						ProjectKorra.log.info("Database Updated.");
+						PkLang.info("Database Updated.");
 					}
 				} catch (final SQLException e) {
 					e.printStackTrace();
 				}
 			}
 			if (!sql.tableExists("pk_presets")) {
-				ProjectKorra.log.info("Creating pk_presets table");
+				PkLang.info("Creating pk_presets table");
 				final String query = "CREATE TABLE `pk_presets` (" + "`uuid` varchar(36) NOT NULL," + "`name` varchar(255) NOT NULL," + "`slot1` varchar(255)," + "`slot2` varchar(255)," + "`slot3` varchar(255)," + "`slot4` varchar(255)," + "`slot5` varchar(255)," + "`slot6` varchar(255)," + "`slot7` varchar(255)," + "`slot8` varchar(255)," + "`slot9` varchar(255)," + " PRIMARY KEY (uuid, name));";
 				sql.modifyQuery(query, false);
 			}
 			if (!sql.tableExists("pk_cooldowns")) {
-				ProjectKorra.log.info("Creating pk_cooldowns table");
+				PkLang.info("Creating pk_cooldowns table");
 				final String query = "CREATE TABLE `pk_cooldowns` (uuid VARCHAR(36) NOT NULL, cooldown VARCHAR(255) NOT NULL, value BIGINT, PRIMARY KEY (uuid, cooldown));";
 				sql.modifyQuery(query, false);
 			}
 			if (!sql.tableExists("pk_board")) {
-				ProjectKorra.log.info("Creating pk_board table");
+				PkLang.info("Creating pk_board table");
 				final String query = "CREATE TABLE `pk_board` (uuid VARCHAR(36) NOT NULL, enabled BOOLEAN NOT NULL, PRIMARY KEY (uuid));";
 				sql.modifyQuery(query, false);
 			}
 		} else {
-			sql = new SQLite(ProjectKorra.log, "projectkorra.db", ProjectKorra.plugin.getDataFolder().getAbsolutePath());
+			sql = new SQLite(ProjectKorra.plugin.getLogger(), "projectkorra.db", ProjectKorra.plugin.getDataFolder().getAbsolutePath());
 			if (((SQLite) sql).open() == null) {
-				ProjectKorra.log.severe("Disabling due to database error");
+				PkLang.severe("Disabling due to database error");
 				GeneralMethods.stopPlugin();
 				return;
 			}
@@ -87,20 +88,20 @@ public class DBConnection {
 			convertOldCooldownsTable();
 
 			if (!sql.tableExists("pk_players")) {
-				ProjectKorra.log.info("Creating pk_players table.");
+				PkLang.info("Creating pk_players table.");
 				final String query = "CREATE TABLE `pk_players` (" + "`uuid` TEXT(36) PRIMARY KEY," + "`player` TEXT(16)," + "`element` TEXT(255)," + "`subelement` TEXT(255)," + "`permaremoved` TEXT(5)," + "`slot1` TEXT(255)," + "`slot2` TEXT(255)," + "`slot3` TEXT(255)," + "`slot4` TEXT(255)," + "`slot5` TEXT(255)," + "`slot6` TEXT(255)," + "`slot7` TEXT(255)," + "`slot8` TEXT(255)," + "`slot9` TEXT(255));";
 				sql.modifyQuery(query, false);
 			} else {
 				try {
 					final DatabaseMetaData md = sql.connection.getMetaData();
 					if (!md.getColumns(null, null, "pk_players", "subelement").next()) {
-						ProjectKorra.log.info("Updating Database with subelements...");
+						PkLang.info("Updating Database with subelements...");
 						sql.getConnection().setAutoCommit(false);
 						sql.modifyQuery("ALTER TABLE `pk_players` ADD subelement TEXT(255);", false);
 						sql.getConnection().commit();
 						sql.modifyQuery("UPDATE pk_players SET subelement = '-';", false);
 						sql.getConnection().setAutoCommit(true);
-						ProjectKorra.log.info("Database Updated.");
+						PkLang.info("Database Updated.");
 					}
 
 				} catch (final SQLException e) {
@@ -108,17 +109,17 @@ public class DBConnection {
 				}
 			}
 			if (!sql.tableExists("pk_presets")) {
-				ProjectKorra.log.info("Creating pk_presets table");
+				PkLang.info("Creating pk_presets table");
 				final String query = "CREATE TABLE `pk_presets` (" + "`uuid` TEXT(36)," + "`name` TEXT(255)," + "`slot1` TEXT(255)," + "`slot2` TEXT(255)," + "`slot3` TEXT(255)," + "`slot4` TEXT(255)," + "`slot5` TEXT(255)," + "`slot6` TEXT(255)," + "`slot7` TEXT(255)," + "`slot8` TEXT(255)," + "`slot9` TEXT(255)," + "PRIMARY KEY (uuid, name));";
 				sql.modifyQuery(query, false);
 			}
 			if (!sql.tableExists("pk_cooldowns")) {
-				ProjectKorra.log.info("Creating pk_cooldowns table");
+				PkLang.info("Creating pk_cooldowns table");
 				final String query = "CREATE TABLE `pk_cooldowns` (uuid TEXT(36) NOT NULL, cooldown TEXT(255) NOT NULL, value BIGINT, PRIMARY KEY (uuid, cooldown));";
 				sql.modifyQuery(query, false);
 			}
 			if (!sql.tableExists("pk_board")) {
-				ProjectKorra.log.info("Creating pk_board table");
+				PkLang.info("Creating pk_board table");
 				final String query = "CREATE TABLE `pk_board` (uuid TEXT(36) NOT NULL, enabled INTEGER NOT NULL, PRIMARY KEY (uuid));";
 				sql.modifyQuery(query, false);
 			}
@@ -142,7 +143,7 @@ public class DBConnection {
 				}
 				rs.close();
 			} catch (final SQLException e) {
-				ProjectKorra.log.warning("Failed to get cooldown ids from database.");
+				PkLang.warning("Failed to get cooldown ids from database.");
 				e.printStackTrace();
 			}
 
@@ -161,7 +162,7 @@ public class DBConnection {
 					String cooldownName = oldCooldownIDs.get(cooldownID);
 
 					if (cooldownName == null || cooldownName.equals("")) {
-						ProjectKorra.log.warning("Failed to get cooldown name from database.");
+						PkLang.warning("Failed to get cooldown name from database.");
 						continue;
 					}
 
@@ -171,7 +172,7 @@ public class DBConnection {
 				rs.close();
 				sql.close();
 
-				ProjectKorra.log.info("Converting old cooldowns to new cooldowns table... The DB will reconnect a few times.");
+				PkLang.info("Converting old cooldowns to new cooldowns table... The DB will reconnect a few times.");
 
 				sql.open(); // Reconnect to the database.
 
@@ -197,9 +198,9 @@ public class DBConnection {
 					}
 				}
 				sql.getConnection().setAutoCommit(true);
-				ProjectKorra.log.info("Finished converting old cooldowns to new cooldowns table!");
+				PkLang.info("Finished converting old cooldowns to new cooldowns table!");
 			} catch (final SQLException e) {
-				ProjectKorra.log.warning("Failed to get cooldowns from database.");
+				PkLang.warning("Failed to get cooldowns from database.");
 				e.printStackTrace();
 			}
 		}

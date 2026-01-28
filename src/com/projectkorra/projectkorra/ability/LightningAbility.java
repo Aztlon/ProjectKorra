@@ -1,14 +1,16 @@
 package com.projectkorra.projectkorra.ability;
 
 import com.projectkorra.projectkorra.GeneralMethods;
+
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.Element;
 
 public abstract class LightningAbility extends FireAbility implements SubAbility {
 
-	public LightningAbility(final Player player) {
-		super(player);
+	public LightningAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	@Override

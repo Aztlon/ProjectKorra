@@ -2,6 +2,7 @@ package com.projectkorra.projectkorra.event;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -20,7 +21,7 @@ public class HorizontalVelocityChangeEvent extends Event implements Cancellable 
 	private boolean isCancelled;
 
 	private final Entity entity;
-	private final Player instigator;
+	private final LivingEntity instigator;
 	private final Vector from;
 	private final Vector to;
 	private final Vector difference;
@@ -37,7 +38,7 @@ public class HorizontalVelocityChangeEvent extends Event implements Cancellable 
 		this.difference = difference;
 	}
 
-	public HorizontalVelocityChangeEvent(final Entity entity, final Player instigator, final Vector from, final Vector to, final Vector difference, final Location start, final Location end, final Ability ability) {
+	public HorizontalVelocityChangeEvent(final Entity entity, final LivingEntity instigator, final Vector from, final Vector to, final Vector difference, final Location start, final Location end, final Ability ability) {
 		this.entity = entity;
 		this.instigator = instigator;
 		this.from = from;
@@ -52,7 +53,7 @@ public class HorizontalVelocityChangeEvent extends Event implements Cancellable 
 		return this.entity;
 	}
 
-	public Player getInstigator() {
+	public LivingEntity getInstigator() {
 		return this.instigator;
 	}
 

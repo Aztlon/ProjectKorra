@@ -209,10 +209,17 @@ public enum ParticleEffect {
 	 * @param extra extra data to affect the particle, usually affects speed or does nothing
 	 */
 	public void display(Location loc, int amount, double offsetX, double offsetY, double offsetZ, double extra) {
-		if (particle == Particle.ENTITY_EFFECT)
+		if (particle == Particle.ENTITY_EFFECT) {
 			display(loc, amount, 0, 0, 0, extra, Color.fromRGB((int) (offsetX * 255), (int) (offsetY * 255), (int) (offsetZ * 255)));
-		else
-			loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, null, true);
+			return;
+		}
+
+		Object data = null;
+		if (particle.getDataType() == Color.class) {
+			data = Color.fromARGB(0xFFFFFFFF); // default white color
+		}
+
+		loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data, true);
 	}
 	
 	/**

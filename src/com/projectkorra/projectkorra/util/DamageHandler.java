@@ -20,6 +20,7 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.event.AbilityDamageEntityEvent;
 import com.projectkorra.projectkorra.event.EntityBendingDeathEvent;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 import fr.neatmonster.nocheatplus.checks.CheckType;
 import fr.neatmonster.nocheatplus.hooks.NCPExemptionManager;
@@ -96,7 +97,7 @@ public class DamageHandler {
 
 	/**
 	 * Basically, what is happening here is: We execute Entity#damage on the entity
-	 * (in {@link #damageEntity(Entity, Player, double, Ability, boolean)}) and that produces an {@link EntityDamageEvent} amongst other events.
+	 * (in {@link #damageEntity(Entity, LivingEntity, double, Ability, boolean)}) and that produces an {@link EntityDamageEvent} amongst other events.
 	 * We catch that {@link EntityDamageEvent} in {@link com.projectkorra.projectkorra.PKListener}, and if an instance of damage is up for "armor ignoring" (checked with {@link #ignoreArmor(Entity)}),
 	 * then we call back to this function, where it tinkers with the damage modifiers, so we can achieve the armor ignoring effect.
 	 * <p>
@@ -148,7 +149,7 @@ public class DamageHandler {
 	 * @param entity The entity that is receiving the damage
 	 * @param damage The amount of damage to deal
 	 */
-	public static void damageEntity(final Entity entity, Player source, double damage, final Ability ability, boolean ignoreArmor, boolean doSourcelessDamage) {
+	public static void damageEntity(final Entity entity, LivingEntity source, double damage, final Ability ability, boolean ignoreArmor, boolean doSourcelessDamage) {
 		if (ability == null) {
 			return;
 		}
@@ -166,7 +167,7 @@ public class DamageHandler {
 		}
 
 		if (source == null) {
-			source = ability.getPlayer();
+			source = ability.getCaster();
 		}
 
 		double percentage = getIgnoreArmorPercentage(ability);
@@ -222,7 +223,7 @@ public class DamageHandler {
 
 				CoreAbility coreAbility = CoreAbility.getAbility(ability.getName());
 				if (coreAbility == null) {
-					ProjectKorra.log.warning("Tried to add damage to entity " + entity.getName() + " for ability " + ability.getName() + " but the ability was not found.");
+					PkLang.warning("Tried to add damage to entity " + entity.getName() + " for ability " + ability.getName() + " but the ability was not found.");
 					return;
 				}
 				if (entity instanceof Player) {
@@ -234,19 +235,19 @@ public class DamageHandler {
 
 	}
 	
-	public static void damageEntity(final Entity entity, final Player source, final double damage, final Ability ability, final boolean ignoreArmor) {
+	public static void damageEntity(final Entity entity, final LivingEntity source, final double damage, final Ability ability, final boolean ignoreArmor) {
 		damageEntity(entity, source, damage, ability, ignoreArmor, false);
 	}
 	
 	public static void damageEntity(final Entity entity, final double damage, final Ability ability, final boolean ignoreArmor) {
-		damageEntity(entity, ability.getPlayer(), damage, ability, ignoreArmor, false);
+		damageEntity(entity, ability.getCaster(), damage, ability, ignoreArmor, false);
 	}
 
-	public static void damageEntity(final Entity entity, final Player source, final double damage, final Ability ability) {
+	public static void damageEntity(final Entity entity, final LivingEntity source, final double damage, final Ability ability) {
 		damageEntity(entity, source, damage, ability, false, false);
 	}
 
 	public static void damageEntity(final Entity entity, final double damage, final Ability ability) {
-		damageEntity(entity, ability.getPlayer(), damage, ability);
+		damageEntity(entity, ability.getCaster(), damage, ability);
 	}
 }

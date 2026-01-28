@@ -59,11 +59,10 @@ public class BendingManager implements Runnable {
 	}
 
 	public void handleCooldowns() {
-		for (Map.Entry<UUID, BendingPlayer> entry : BendingPlayer.getPlayers().entrySet()) {
-			BendingPlayer bPlayer = entry.getValue();
-
+		for (final var bPlayer : BendingPlayer.getPlayers().values())
 			bPlayer.removeOldCooldowns();
-		}
+		for (final var bender : Bender.CACHE.values())
+			bender.removeOldCooldowns();
 	}
 
 	public void handleDayNight() {

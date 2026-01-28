@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.bukkit.Bukkit;
@@ -99,6 +100,7 @@ import com.projectkorra.projectkorra.util.TempArmor;
 import com.projectkorra.projectkorra.util.TempArmorStand;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempFallingBlock;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 import com.projectkorra.projectkorra.waterbending.WaterManipulation;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
 import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
@@ -877,25 +879,27 @@ public class GeneralMethods {
 		return location.clone().subtract(new Vector(Math.cos(angle), 0, Math.sin(angle)).normalize().multiply(distance));
 	}
 
-	public static Location getMainHandLocation(final Player player) {
-		double y = 1.2 - (player.isSneaking() ? 0.4 : 0);
-		if (player.getMainHand() == MainHand.LEFT) {
-			return GeneralMethods.getLeftSide(player.getLocation(), .55).add(0, y, 0)
-					.add(player.getLocation().getDirection().multiply(0.8));
+	public static Location getMainHandLocation(final LivingEntity caster) {
+		var opt = Optional.ofNullable(caster instanceof Player ? (Player) caster : null);
+		double y = 1.2 - (opt.map(Player::isSneaking).orElse(false) ? 0.4 : 0);
+		if (opt.map(p -> p.getMainHand() == MainHand.LEFT).orElse(false)) {
+			return GeneralMethods.getLeftSide(caster.getLocation(), .55).add(0, y, 0)
+					.add(caster.getLocation().getDirection().multiply(0.8));
 		} else {
-			return GeneralMethods.getRightSide(player.getLocation(), .55).add(0, y, 0)
-					.add(player.getLocation().getDirection().multiply(0.8));
+			return GeneralMethods.getRightSide(caster.getLocation(), .55).add(0, y, 0)
+					.add(caster.getLocation().getDirection().multiply(0.8));
 		}
 	}
 
-	public static Location getOffHandLocation(final Player player) {
-		double y = 1.2 - (player.isSneaking() ? 0.4 : 0);
-		if (player.getMainHand() == MainHand.RIGHT) {
-			return GeneralMethods.getLeftSide(player.getLocation(), .55).add(0, y, 0)
-					.add(player.getLocation().getDirection().multiply(0.8));
+	public static Location getOffHandLocation(final LivingEntity caster) {
+		var opt = Optional.ofNullable(caster instanceof Player ? (Player) caster : null);
+		double y = 1.2 - (opt.map(Player::isSneaking).orElse(false) ? 0.4 : 0);
+		if (opt.map(p -> p.getMainHand() == MainHand.RIGHT).orElse(false)) {
+			return GeneralMethods.getLeftSide(caster.getLocation(), .55).add(0, y, 0)
+					.add(caster.getLocation().getDirection().multiply(0.8));
 		} else {
-			return GeneralMethods.getRightSide(player.getLocation(), .55).add(0, y, 0)
-					.add(player.getLocation().getDirection().multiply(0.8));
+			return GeneralMethods.getRightSide(caster.getLocation(), .55).add(0, y, 0)
+					.add(caster.getLocation().getDirection().multiply(0.8));
 		}
 	}
 
@@ -947,11 +951,11 @@ public class GeneralMethods {
 		return;
 	}
 
-	public static Entity getTargetedEntity(final Player player, final double range, final List<Entity> avoid) {
+	public static Entity getTargetedEntity(final LivingEntity caster, final double range, final List<Entity> avoid) {
 		double longestr = range + 1;
 		Entity target = null;
-		final Location origin = player.getEyeLocation();
-		final Vector direction = player.getEyeLocation().getDirection().normalize();
+		final Location origin = caster.getEyeLocation();
+		final Vector direction = caster.getEyeLocation().getDirection().normalize();
 		for (final Entity entity : getEntitiesAroundPoint(origin, range)) {
 			if (entity instanceof Player) {
 				if (entity.isDead() || ((Player) entity).getGameMode().equals(GameMode.SPECTATOR)) {
@@ -962,7 +966,7 @@ public class GeneralMethods {
 				continue;
 			}
 			if (entity.getWorld().equals(origin.getWorld())) {
-				if (entity.getLocation().distanceSquared(origin) < longestr * longestr && getDistanceFromLine(direction, origin, entity.getLocation()) < 2 && (entity instanceof LivingEntity) && entity.getEntityId() != player.getEntityId() && entity.getLocation().distanceSquared(origin.clone().add(direction)) < entity.getLocation().distanceSquared(origin.clone().add(direction.clone().multiply(-1)))) {
+				if (entity.getLocation().distanceSquared(origin) < longestr * longestr && getDistanceFromLine(direction, origin, entity.getLocation()) < 2 && (entity instanceof LivingEntity) && entity.getEntityId() != caster.getEntityId() && entity.getLocation().distanceSquared(origin.clone().add(direction)) < entity.getLocation().distanceSquared(origin.clone().add(direction.clone().multiply(-1)))) {
 					target = entity;
 					longestr = entity.getLocation().distance(origin);
 				}
@@ -976,8 +980,8 @@ public class GeneralMethods {
 		return target;
 	}
 
-	public static Entity getTargetedEntity(final Player player, final double range) {
-		return getTargetedEntity(player, range, new ArrayList<>());
+	public static Entity getTargetedEntity(final LivingEntity caster, final double range) {
+		return getTargetedEntity(caster, range, new ArrayList<>());
 	}
 
 	public static BlockData blockDataFromId(final String id) {
@@ -1014,8 +1018,8 @@ public class GeneralMethods {
 		return block.getType().name().equalsIgnoreCase(id);
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Predicate<Block> transparentPredicate) {
-		final Location origin = player.getEyeLocation();
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Predicate<Block> transparentPredicate) {
+		final Location origin = caster.getEyeLocation();
 		final Vector direction = origin.getDirection();
 
 		final HashSet<String> transparent = new HashSet<>();
@@ -1049,24 +1053,24 @@ public class GeneralMethods {
 		return location;
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final String... blockTypes) {
-		return getTargetedLocation(player, range, ignoreTempBlocks, checkDiagonals, block -> Arrays.stream(blockTypes).anyMatch(s -> blockMatchesId(block, s)));
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final String... blockTypes) {
+		return getTargetedLocation(caster, range, ignoreTempBlocks, checkDiagonals, block -> Arrays.stream(blockTypes).anyMatch(s -> blockMatchesId(block, s)));
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Material... nonOpaque2) {
-		return getTargetedLocation(player, range, ignoreTempBlocks, checkDiagonals, nonOpaque2 == null ? new String[0] : Arrays.stream(nonOpaque2).filter(Objects::nonNull).map(Material::name).toArray(String[]::new));
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Material... nonOpaque2) {
+		return getTargetedLocation(caster, range, ignoreTempBlocks, checkDiagonals, nonOpaque2 == null ? new String[0] : Arrays.stream(nonOpaque2).filter(Objects::nonNull).map(Material::name).toArray(String[]::new));
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final Material... nonOpaque2) {
-		return getTargetedLocation(player, range, ignoreTempBlocks, true, nonOpaque2);
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final boolean ignoreTempBlocks, final Material... nonOpaque2) {
+		return getTargetedLocation(caster, range, ignoreTempBlocks, true, nonOpaque2);
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final Material... nonOpaque2) {
-		return getTargetedLocation(player, range, false, nonOpaque2);
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final Material... nonOpaque2) {
+		return getTargetedLocation(caster, range, false, nonOpaque2);
 	}
 
-	public static Location getTargetedLocation(final Player player, final int range) {
-		return getTargetedLocation(player, range, false);
+	public static Location getTargetedLocation(final LivingEntity caster, final int range) {
+		return getTargetedLocation(caster, range, false);
 	}
 
 	public static Block getTopBlock(final Location loc, final int range) {
@@ -1372,7 +1376,7 @@ public class GeneralMethods {
 	}
 
 	public static void reloadPlugin(final CommandSender sender) {
-		ProjectKorra.log.info("Reloading ProjectKorra and configuration");
+		PkLang.info("Reloading ProjectKorra and configuration");
 		final BendingReloadEvent event = new BendingReloadEvent(sender);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (event.isCancelled()) {
@@ -1423,7 +1427,7 @@ public class GeneralMethods {
 		DBConnection.init();
 
 		if (!DBConnection.isOpen()) {
-			ProjectKorra.log.severe("Unable to enable ProjectKorra due to the database not being open");
+			PkLang.severe("Unable to enable ProjectKorra due to the database not being open");
 			stopPlugin();
 		}
 		BendingPlayer.getOfflinePlayers().clear();
@@ -1436,7 +1440,7 @@ public class GeneralMethods {
 		}
 
 		plugin.updater.checkUpdate();
-		ProjectKorra.log.info("Reload complete");
+		PkLang.info("Reload complete");
 	}
 
 	public static void reloadAddonPlugins() {
@@ -1916,7 +1920,7 @@ public class GeneralMethods {
 	public static int getMCVersion() {
 		String version = Bukkit.getBukkitVersion().split("-", 2)[0];
 		if (!version.matches("\\d+\\.\\d+(\\.\\d+)?")) {
-			ProjectKorra.log.warning("Version not valid! Cannot parse version \"" + version + "\"");
+			PkLang.warning("Version not valid! Cannot parse version \"" + version + "\"");
 			return 1164; //1.16.4
 		}
 

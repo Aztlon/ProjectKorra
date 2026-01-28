@@ -3,6 +3,7 @@ package com.projectkorra.projectkorra.ability;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.bukkit.Location;
@@ -15,9 +16,12 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.block.data.type.NoteBlock;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
+import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
@@ -27,6 +31,7 @@ import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 import com.projectkorra.projectkorra.waterbending.SurgeWall;
 import com.projectkorra.projectkorra.waterbending.SurgeWave;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
@@ -41,8 +46,8 @@ public abstract class WaterAbility extends ElementalAbility {
 
 	public static final Map<String, String> BLOCK_DATA_CUSTOM_ICE = new HashMap<>(); // <block data string, namespaced id>
 
-	public WaterAbility(final Player player) {
-		super(player);
+	public WaterAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	public boolean canAutoSource() {
@@ -58,16 +63,16 @@ public abstract class WaterAbility extends ElementalAbility {
 		return Element.WATER;
 	}
 
-	public Block getIceSourceBlock(final double range) {
-		return getIceSourceBlock(this.player, range);
+	public @Nullable Block getIceSourceBlock(final double range) {
+		return getIceSourceBlock(this.caster, range);
 	}
 
-	public Block getPlantSourceBlock(final double range) {
+	public @Nullable Block getPlantSourceBlock(final double range) {
 		return this.getPlantSourceBlock(range, false, true);
 	}
 
-	public Block getPlantSourceBlock(final double range, final boolean onlyLeaves, final boolean allowDecayBlocks) {
-		return getPlantSourceBlock(this.player, range, onlyLeaves, allowDecayBlocks);
+	public @Nullable Block getPlantSourceBlock(final double range, final boolean onlyLeaves, final boolean allowDecayBlocks) {
+		return getPlantSourceBlock(this.caster, range, onlyLeaves, allowDecayBlocks);
 	}
 
 	@Override
@@ -89,15 +94,15 @@ public abstract class WaterAbility extends ElementalAbility {
 	}
 
 	public double getNightFactor(final double value) {
-		return this.player != null ? value * getNightFactor(player.getWorld()) : 1;
+		return this.caster != null ? value * getNightFactor(caster.getWorld()) : 1;
 	}
 
 	public static boolean isBendableWaterTempBlock(final Block block) {
-		return isBendableWaterTempBlock(TempBlock.get(block));
+		return Optional.ofNullable(TempBlock.get(block)).map(WaterAbility::isBendableWaterTempBlock).orElse(false);
 	}
 
 	public static boolean isBendableWaterTempBlock(final TempBlock tempBlock) {
-		return tempBlock != null && tempBlock.isBendableSource();
+		return tempBlock.isBendableSource();
 //		return WATERBENDABLE_TEMPBLOCKS.contains(tempBlock)
 //				|| PhaseChange.getFrozenBlocksMap().containsKey(tempBlock)
 //				|| HeatControl.getMeltedBlocks().contains(tempBlock)
@@ -112,11 +117,11 @@ public abstract class WaterAbility extends ElementalAbility {
 	}
 
 	public boolean isIcebendable(final Material material) {
-		return this.isIcebendable(this.player, material);
+		return this.isIcebendable(this.caster, material);
 	}
 
-	public boolean isIcebendable(final Player player, final Material material) {
-		return isIcebendable(player, material, false);
+	public boolean isIcebendable(final LivingEntity caster, final Material material) {
+		return isIcebendable(caster, material, false);
 	}
 
 	public boolean isPlantbendable(final Block block) {
@@ -124,19 +129,19 @@ public abstract class WaterAbility extends ElementalAbility {
 	}
 
 	public boolean isPlantbendable(final Material material) {
-		return this.isPlantbendable(this.player, material);
+		return this.isPlantbendable(this.caster, material);
 	}
 
-	public boolean isPlantbendable(final Player player, final Material material) {
-		return isPlantbendable(player, material, false, true);
+	public boolean isPlantbendable(final LivingEntity caster, final Material material) {
+		return isPlantbendable(caster, material, false, true);
 	}
 
 	public boolean isWaterbendable(final Block block) {
-		return this.isWaterbendable(this.player, block);
+		return this.isWaterbendable(this.caster, block);
 	}
 
-	public boolean isWaterbendable(final Player player, final Block block) {
-		return isWaterbendable(player, null, block);
+	public boolean isWaterbendable(final LivingEntity caster, final Block block) {
+		return isWaterbendable(caster, null, block);
 	}
 
 	public boolean allowBreakPlants() {
@@ -147,15 +152,15 @@ public abstract class WaterAbility extends ElementalAbility {
 		return isWater(material) || isIce(material) || isPlant(material) || isSnow(material) || isCauldron(material);
 	}
 
-	public static Block getIceSourceBlock(final Player player, final double range) {
-		final Location location = player.getEyeLocation();
+	public static @Nullable Block getIceSourceBlock(final LivingEntity caster, final double range) {
+		final Location location = caster.getEyeLocation();
 		final Vector vector = location.getDirection().clone().normalize();
 		for (double i = 0; i <= range; i++) {
 			final Block block = location.clone().add(vector.clone().multiply(i)).getBlock();
-			if (RegionProtection.isRegionProtected(player, location,"IceBlast")) {
+			if (RegionProtection.isRegionProtected(caster, location,"IceBlast")) {
 				continue;
 			}
-			if (isIcebendable(player, block.getType(), false)) {
+			if (isIcebendable(caster, block.getType(), false)) {
 				if (TempBlock.isTempBlock(block) && !isBendableWaterTempBlock(block)) {
 					continue;
 				}
@@ -181,15 +186,15 @@ public abstract class WaterAbility extends ElementalAbility {
 		return getNightFactor(1, world);
 	}
 
-	public static Block getPlantSourceBlock(final Player player, final double range, final boolean onlyLeaves, final boolean allowDecayBlocks) {
-		final Location location = player.getEyeLocation();
+	public static @Nullable Block getPlantSourceBlock(final LivingEntity caster, final double range, final boolean onlyLeaves, final boolean allowDecayBlocks) {
+		final Location location = caster.getEyeLocation();
 		final Vector vector = location.getDirection().clone().normalize();
 
 		for (double i = 0; i <= range; i++) {
 			final Block block = location.clone().add(vector.clone().multiply(i)).getBlock();
-			if (RegionProtection.isRegionProtected(player, location, "PlantDisc")) {
+			if (RegionProtection.isRegionProtected(caster, location, "PlantDisc")) {
 				continue;
-			} else if (isPlantbendable(player, block.getType(), onlyLeaves, allowDecayBlocks)) {
+			} else if (isPlantbendable(caster, block.getType(), onlyLeaves, allowDecayBlocks)) {
 				if (TempBlock.isTempBlock(block) && !isBendableWaterTempBlock(block)) {
 					continue;
 				}
@@ -203,19 +208,19 @@ public abstract class WaterAbility extends ElementalAbility {
 	 * Finds a valid Water source for a Player. To use dynamic source selection,
 	 * use BlockSource.getWaterSourceBlock() instead of this method. Dynamic
 	 * source selection saves the user's previous source for future use.
-	 * {@link BlockSource#getWaterSourceBlock(Player, double)}
+	 * {@link BlockSource#getWaterSourceBlock(LivingEntity, double)}
 	 *
-	 * @param player the player that is attempting to Waterbend.
+	 * @param caster the caster that is attempting to Waterbend.
 	 * @param range the maximum block selection range.
-	 * @param plantbending true if the player can bend plants.
+	 * @param plantbending true if the caster can bend plants.
 	 * @return a valid Water source block, or null if one could not be found.
 	 */
-	public static Block getWaterSourceBlock(final Player player, final double range, final boolean plantbending) {
-		final Location location = player.getEyeLocation();
+	public static @Nullable Block getWaterSourceBlock(final LivingEntity caster, final double range, final boolean plantbending) {
+		final Location location = caster.getEyeLocation();
 		final Vector vector = location.getDirection().clone().normalize();
 
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null) return null;
+		final Bender bender = Bender.get(caster);
+		if (bender == null) return null;
 
 		final Set<Material> trans = getTransparentMaterialSet();
 		if (plantbending) {
@@ -228,17 +233,17 @@ public abstract class WaterAbility extends ElementalAbility {
 			trans.removeAll(remove);
 		}
 
-		final Block testBlock = player.getTargetBlock(trans, Math.max(1, Math.min(3, (int)range)));
-		if (isWaterbendable(player, null, testBlock) && (plantbending || (!isPlant(testBlock) && !isDecayablePlant(testBlock)))) {
+		final Block testBlock = caster.getTargetBlock(trans, Math.max(1, Math.min(3, (int)range)));
+		if (isWaterbendable(caster, null, testBlock) && (plantbending || (!isPlant(testBlock) && !isDecayablePlant(testBlock)))) {
 			return testBlock;
 		}
 
 		for (double i = 0; i <= range; i++) {
 			final Block block = location.clone().add(vector.clone().multiply(i)).getBlock();
-			if ((!isTransparent(player, block) && !isIce(block) && !isPlant(block) && !isDecayablePlant(block) && !isSnow(block)) || RegionProtection.isRegionProtected(player, location, "WaterManipulation")) {
+			if ((!isTransparent(caster, block) && !isIce(block) && !isPlant(block) && !isDecayablePlant(block) && !isSnow(block)) || RegionProtection.isRegionProtected(caster, location, "WaterManipulation")) {
 				continue;
 			}
-			if (isWaterbendable(player, null, block) && (plantbending || (!isPlant(block) && !isDecayablePlant(block)))) {
+			if (isWaterbendable(caster, null, block) && (plantbending || (!isPlant(block) && !isDecayablePlant(block)))) {
 				if (TempBlock.isTempBlock(block) && !isBendableWaterTempBlock(block)) {
 					continue;
 				}
@@ -259,20 +264,20 @@ public abstract class WaterAbility extends ElementalAbility {
 		return adjacent;
 	}
 
-	public static boolean isIcebendable(final Player player, final Material material, final boolean onlyIce) {
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		return bPlayer == null ? null : isIce(material) && bPlayer.canIcebend() && (!onlyIce || material == Material.ICE);
+	public static boolean isIcebendable(final LivingEntity caster, final Material material, final boolean onlyIce) {
+		final Bender bender = Bender.get(caster);
+		return bender != null && isIce(material) && bender.canIcebend() && (!onlyIce || material == Material.ICE);
 	}
 
-	public static boolean isPlantbendable(final Player player, final Material material, final boolean onlyLeaves, final boolean allowDecayBlocks) {
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null) return false;
+	public static boolean isPlantbendable(final LivingEntity caster, final Material material, final boolean onlyLeaves, final boolean allowDecayBlocks) {
+		final Bender bender = Bender.get(caster);
+		if (bender == null) return false;
 		if (onlyLeaves) {
-			return isPlant(material) && bPlayer.canPlantbend() && isLeaves(material);
+			return isPlant(material) && bender.canPlantbend() && isLeaves(material);
 		} else if (allowDecayBlocks) {
-			return (isPlant(material) || isDecayablePlant(material)) && bPlayer.canPlantbend();
+			return (isPlant(material) || isDecayablePlant(material)) && bender.canPlantbend();
 		} else {
-			return isPlant(material) && bPlayer.canPlantbend();
+			return isPlant(material) && bender.canPlantbend();
 		}
 	}
 
@@ -300,9 +305,9 @@ public abstract class WaterAbility extends ElementalAbility {
 		return GeneralMethods.getMCVersion() >= 1170 && (material == Material.getMaterial("WATER_CAULDRON") || material == Material.getMaterial("POWDER_SNOW_CAULDRON"));
 	}
 
-	public static boolean isWaterbendable(final Player player, final String abilityName, final Block block) {
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null) return false;
+	public static boolean isWaterbendable(final LivingEntity caster, final String abilityName, final Block block) {
+		final Bender bender = Bender.get(caster);
+		if (bender == null) return false;
 
 		boolean waterbendable = isWater(block) || isIce(block) || isPlant(block) || isSnow(block) || isCauldron(block);
 		if (!waterbendable) return false;
@@ -311,12 +316,9 @@ public abstract class WaterAbility extends ElementalAbility {
 			return false;
 		} else if (isWater(block) && block.getBlockData() instanceof Levelled levelled && levelled.getLevel() == 0) {
 			return true;
-		} else if (isIce(block) && !bPlayer.canIcebend()) {
+		} else if (isIce(block) && !bender.canIcebend()) {
 			return false;
-		} else if ((isPlant(block) || isDecayablePlant(block)) && !bPlayer.canPlantbend()) {
-			return false;
-		}
-		return true;
+		} else return (!isPlant(block) && !isDecayablePlant(block)) || bender.canPlantbend();
 	}
 
 	public static void playFocusWaterEffect(final Block block) {
@@ -327,31 +329,35 @@ public abstract class WaterAbility extends ElementalAbility {
 		ParticleEffect.SMOKE_NORMAL.display(focusLoc.add(0.5, 0.5, 0.5), 4);
 	}
 
-	public static String iceMaterialName(Player player) {
-		String cosmeticIceMaterial = PlaceholderAPI.setPlaceholders(player, "%avatarverse_icematerial%");
-		if (!cosmeticIceMaterial.isEmpty()) {
-			CustomBlock custom = CustomBlock.getInstance(cosmeticIceMaterial);
-			if (custom != null && custom.getNamespacedID().startsWith("customice:")) {
-				return custom.getBaseBlockData().getAsString();
-			}
-			Material mat = Material.getMaterial(cosmeticIceMaterial);
-			if (mat != null) {
-				return mat.name();
+	public static String iceMaterialName(LivingEntity caster) {
+		if (caster instanceof Player player) {
+			String cosmeticIceMaterial = PlaceholderAPI.setPlaceholders(player, "%avatarverse_icematerial%");
+			if (!cosmeticIceMaterial.isEmpty()) {
+				CustomBlock custom = CustomBlock.getInstance(cosmeticIceMaterial);
+				if (custom != null && custom.getNamespacedID().startsWith("customice:")) {
+					return custom.getBaseBlockData().getAsString();
+				}
+				Material mat = Material.getMaterial(cosmeticIceMaterial);
+				if (mat != null) {
+					return mat.name();
+				}
 			}
 		}
 		return Material.ICE.name();
 	}
 
-	public static BlockData iceMaterial(Player player) {
-		String cosmeticIceMaterial = PlaceholderAPI.setPlaceholders(player, "%avatarverse_icematerial%");
-		if (!cosmeticIceMaterial.isEmpty()) {
-			CustomBlock custom = CustomBlock.getInstance(cosmeticIceMaterial);
-			if (custom != null && custom.getNamespacedID().startsWith("customice:")) {
-				return custom.getBaseBlockData();
-			}
-			Material mat = Material.getMaterial(cosmeticIceMaterial);
-			if (mat != null) {
-				return mat.createBlockData();
+	public static BlockData iceMaterial(LivingEntity caster) {
+		if (caster instanceof Player player) {
+			String cosmeticIceMaterial = PlaceholderAPI.setPlaceholders(player, "%avatarverse_icematerial%");
+			if (!cosmeticIceMaterial.isEmpty()) {
+				CustomBlock custom = CustomBlock.getInstance(cosmeticIceMaterial);
+				if (custom != null && custom.getNamespacedID().startsWith("customice:")) {
+					return custom.getBaseBlockData();
+				}
+				Material mat = Material.getMaterial(cosmeticIceMaterial);
+				if (mat != null) {
+					return mat.createBlockData();
+				}
 			}
 		}
 		return Material.ICE.createBlockData();
@@ -367,7 +373,7 @@ public abstract class WaterAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Properties.Water.IceSound.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Properties.Water.IceSound.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Properties.Water.IceSound.Sound' is not valid.");
 			} finally {
 				loc.getWorld().playSound(loc, sound, volume, pitch);
 			}
@@ -384,7 +390,7 @@ public abstract class WaterAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Properties.Water.PlantSound.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Properties.Water.PlantSound.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Properties.Water.PlantSound.Sound' is not valid.");
 			} finally {
 				loc.getWorld().playSound(loc, sound, volume, pitch);
 			}
@@ -401,7 +407,7 @@ public abstract class WaterAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Properties.Water.WaterSound.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Properties.Water.WaterSound.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Properties.Water.WaterSound.Sound' is not valid.");
 			} finally {
 				loc.getWorld().playSound(loc, sound, volume, pitch);
 			}
@@ -419,7 +425,7 @@ public abstract class WaterAbility extends ElementalAbility {
 	 * @param source The player causing the removal
 	 */
 	@Deprecated
-	public static void removeWaterSpouts(final Location loc, final double radius, final Player source) {
+	public static void removeWaterSpouts(final Location loc, final double radius, final LivingEntity source) {
 		WaterSpout.removeSpouts(loc, radius, source);
 	}
 
@@ -433,7 +439,7 @@ public abstract class WaterAbility extends ElementalAbility {
 	 * @param source The player causing the removal
 	 */
 	@Deprecated
-	public static void removeWaterSpouts(final Location loc, final Player source) {
+	public static void removeWaterSpouts(final Location loc, final LivingEntity source) {
 		removeWaterSpouts(loc, 1.5, source);
 	}
 

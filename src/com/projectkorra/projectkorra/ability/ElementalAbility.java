@@ -17,6 +17,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Waterlogged;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 
@@ -54,8 +55,8 @@ public abstract class ElementalAbility extends CoreAbility {
 		setupBendableMaterials();
 	}
 
-	public ElementalAbility(final Player player) {
-		super(player);
+	public ElementalAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	public boolean isTransparent(final Block block) {
@@ -238,12 +239,12 @@ public abstract class ElementalAbility extends CoreAbility {
 		return SAND_BLOCKS.contains(material.toString());
 	}
 
-	public static boolean isTransparent(final Player player, final Block block) {
-		return isTransparent(player, null, block);
+	public static boolean isTransparent(final LivingEntity caster, final Block block) {
+		return isTransparent(caster, null, block);
 	}
 
-	public static boolean isTransparent(final Player player, final String abilityName, final Block block) {
-		return Arrays.asList(getTransparentMaterials()).contains(block.getType()) && !RegionProtection.isRegionProtected(player, block.getLocation(), CoreAbility.getAbility(abilityName));
+	public static boolean isTransparent(final LivingEntity caster, final String abilityName, final Block block) {
+		return Arrays.asList(getTransparentMaterials()).contains(block.getType()) && !RegionProtection.isRegionProtected(caster, block.getLocation(), CoreAbility.getAbility(abilityName));
 	}
 
 	public static boolean isWater(final Block block) {

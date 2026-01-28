@@ -56,21 +56,27 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * Class that presents a player and stores all bending information about the
  * player.
  */
 public class BendingPlayer extends OfflineBendingPlayer {
 
-	protected static Map<JavaPlugin, CanBendHook> HOOKS = new HashMap<>();
-
 	private long slowTime;
+	@Getter
 	private final Player player;
+	@Getter
 	private ChiAbility stance;
 
 	protected boolean tremorSense;
 	protected boolean illumination;
+	@Getter
 	protected boolean chiBlocked;
+	@Setter
+	@Getter
 	protected boolean queueAirBlastStop;
 
 	public BendingPlayer(Player player) {
@@ -110,10 +116,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		}
 	}
 
-	public Map<String, Cooldown> loadCooldowns() {
-		return new ConcurrentHashMap<>();
-	}
-
 	/**
 	 * Checks to see if a Player is effected by BloodBending.
 	 *
@@ -129,68 +131,14 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		return !this.canBendIgnoreBindsCooldowns(CoreAbility.getAbility("Bloodbending")) || !this.isToggled();
 	}
 
-	public boolean canBend(final CoreAbility ability) {
-		return this.canBend(ability, false, false);
-	}
-
-	private boolean canBend(@NotNull final CoreAbility ability, final boolean ignoreBinds, final boolean ignoreCooldowns) {
-
-		final List<String> disabledWorlds = getConfig().getStringList("Properties.DisabledWorlds");
-		final Location playerLoc = this.player.getLocation();
-
-		//Loop through all hooks and test them
-		for (JavaPlugin plugin : HOOKS.keySet()) {
-			CanBendHook hook = HOOKS.get(plugin);
-			try {
-				Optional<Boolean> bool = hook.canBend(this, ability, ignoreBinds, ignoreCooldowns);
-				if (bool.isPresent()) return bool.get(); //If the hook didn't return
-			} catch (Exception e) {
-				ProjectKorra.log.severe("An error occurred while running CanBendHook registered by " + plugin.getName() + ".");
-				e.printStackTrace();
-			}
-		}
-
-		if (!this.player.isOnline() || this.player.isDead()) {
-			return false;
-		} else if (!this.canBind(ability)) {
-			return false;
-		} else if (ability.getPlayer() != null && ability.getLocation() != null && !ability.getLocation().getWorld().equals(this.player.getWorld())) {
-			return false;
-		} else if (!ignoreCooldowns && this.isOnCooldown(ability.getName())) {
-			return false;
-		} else if (!ignoreBinds && (!ability.getName().equals(this.getBoundAbilityName()))) {
-			return false;
-		} else if (disabledWorlds.contains(this.player.getWorld().getName())) {
-			return false;
-		} else if (Commands.isToggledForAll || !this.isToggled() || !this.isElementToggled(ability.getElement())) {
-			return false;
-		} else if (this.player.getGameMode() == GameMode.SPECTATOR) {
-			return false;
-		}
-
-		if (!ignoreCooldowns && this.cooldowns.containsKey(ability.getName())) {
-			if (this.cooldowns.get(ability.getName()).getCooldown() + getConfig().getLong("Properties.GlobalCooldown") >= System.currentTimeMillis()) {
-				return false;
-			}
-
-			this.cooldowns.remove(ability.getName());
-		}
-
-		if (!isAvatarState() && (this.isChiBlocked() || this.isParalyzed() || (this.isBloodbent() && !ability.getName().equalsIgnoreCase("AvatarState")) || this.isControlledByMetalClips())) {
-			return false;
-		} else return !RegionProtection.isRegionProtected(this.player, playerLoc, ability);
-	}
-
-	public boolean canBendIgnoreBinds(final CoreAbility ability) {
-		return this.canBend(ability, true, false);
-	}
-
-	public boolean canBendIgnoreBindsCooldowns(final CoreAbility ability) {
-		return this.canBend(ability, true, true);
-	}
-
-	public boolean canBendIgnoreCooldowns(final CoreAbility ability) {
-		return this.canBend(ability, false, true);
+	@Override
+	protected boolean canBend(@NotNull final CoreAbility ability, final boolean ignoreBinds, final boolean ignoreCooldowns) {
+		if (!super.canBend(ability, ignoreBinds, ignoreCooldowns)) return false;
+		if (this.player.getGameMode() == GameMode.SPECTATOR) return false;
+		if (isAvatarState()) return true;
+		boolean immobilized = isChiBlocked() || isParalyzed() || isBloodbent() || isControlledByMetalClips();
+		if (!immobilized) return true;
+		return ability.getName().equals("AvatarState"); // Allow AvatarState to be used while immobilized (canBind was already checked in super.canBend)
 	}
 
 	public boolean canBendPassive(final CoreAbility ability) {
@@ -253,26 +201,12 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		return (System.currentTimeMillis() > this.slowTime);
 	}
 
+	@Override
 	public boolean canBind(final CoreAbility ability) {
-		if (ability == null || !this.player.isOnline() || !ability.isEnabled()) {
-			return false;
-		} else if (AbstractSkill.isLocked(ability.getName(), player)) {
-			return false;
-		} else if (!this.player.hasPermission("bending.ability." + ability.getName())) {
-			return false;
-		} else if (!this.hasElement(ability.getElement()) && !(ability instanceof AvatarAbility && !((AvatarAbility) ability).requireAvatar())) {
-			return false;
-		} else if (ability.getElement() instanceof SubElement subElement) {
-			if (subElement instanceof MultiSubElement) {
-				for (Element parent : ((MultiSubElement) subElement).getParentElements()) {
-					if (!this.hasElement(parent)) return false;
-				}
-			} else if (!this.hasElement(subElement.getParentElement())) {
-				return false;
-			}
-			return this.hasSubElement(subElement);
-		}
-		return true;
+		if (!super.canBind(ability)) return false;
+		if (!this.player.isOnline()) return false;
+		if (AbstractSkill.isLocked(ability.getName(), player)) return false;
+		return this.player.hasPermission("bending.ability." + ability.getName());
 	}
 
 	/**
@@ -280,7 +214,8 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	 * @param oPlayer The player
 	 * @return The BendingPlayer instance
 	 */
-	public static BendingPlayer getBendingPlayer(@NotNull final OfflinePlayer oPlayer) {
+	public static BendingPlayer getBendingPlayer(final OfflinePlayer oPlayer) {
+		if (oPlayer == null) return null;
 		return OfflineBendingPlayer.ONLINE_PLAYERS.get(oPlayer.getUniqueId());
 	}
 
@@ -324,7 +259,8 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	 * @param player The player
 	 * @return The BendingPlayer instance
 	 */
-	public static BendingPlayer getBendingPlayer(@NotNull final Player player) {
+	public static BendingPlayer getBendingPlayer(final Player player) {
+		if (player == null) return null;
 		return getBendingPlayer((OfflinePlayer)player);
 	}
 
@@ -392,15 +328,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	}
 
 	/**
-	 * Gets the bukkit Player this {@link BendingPlayer} is wrapping.
-	 *
-	 * @return Player object this BendingPlayer is wrapping.
-	 */
-	public Player getPlayer() {
-		return this.player;
-	}
-
-	/**
 	 * Gets the map of {@link BendingPlayer}s.
 	 *
 	 * @return {@link #ONLINE_PLAYERS}
@@ -423,15 +350,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	}
 
 	/**
-	 * Gets the {@link ChiAbility Chi stance} the player is in
-	 *
-	 * @return The player's stance object
-	 */
-	public ChiAbility getStance() {
-		return this.stance;
-	}
-
-	/**
 	 * Returns whether the player has permission to bend the subelement
 	 *
 	 * @param sub The SubElement
@@ -451,6 +369,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		return this.player.hasPermission("bending." + sub.getParentElement().getName().toLowerCase() + "." + sub.getName().toLowerCase() + sub.getType().getBending());
 	}
 
+	@Override
 	public boolean isAvatarState() {
 		return CoreAbility.hasAbility(this.player, AvatarState.class);
 	}
@@ -463,32 +382,23 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		return MetalClips.isControlled(this.player);
 	}
 
-	/**
-	 * Checks to see if a specific ability is on cooldown.
-	 *
-	 * @param ability The ability name to check
-	 * @return true if the cooldown map contains the ability
-	 */
-	@Override
-	public boolean isOnCooldown(final String ability) {
-		if (this.cooldowns.containsKey(ability)) {
-			return System.currentTimeMillis() < this.cooldowns.get(ability).getCooldown();
-		}
-
-		return false;
-	}
+//	/**
+//	 * Checks to see if a specific ability is on cooldown.
+//	 *
+//	 * @param ability The ability name to check
+//	 * @return true if the cooldown map contains the ability
+//	 */
+//	@Override
+//	public boolean isOnCooldown(final String ability) {
+//		if (this.cooldowns.containsKey(ability)) {
+//			return System.currentTimeMillis() < this.cooldowns.get(ability).getCooldown();
+//		}
+//
+//		return false;
+//	}
 
 	public boolean isParalyzed() {
 		return MovementHandler.isStopped(this.player);
-	}
-
-	/**
-	 * Checks to see if the {@link BendingPlayer} is chi blocked.
-	 *
-	 * @return true If the player is chi blocked
-	 */
-	public boolean isChiBlocked() {
-		return this.chiBlocked;
 	}
 
 	/**
@@ -548,7 +458,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 
 	/**
 	 * Removes all cooldowns that have expired.
-	 *
+	 * <p>
 	 * We cannot call the {@link #removeCooldown(String)} method here because it
 	 * would cause a ConcurrentModificationException. That's why we have to copy
 	 * most of the method here so the event is still called, but we remove from
@@ -762,11 +672,4 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		if (save) this.saveSubElements();
 	}
 
-	public boolean isQueueAirBlastStop() {
-		return this.queueAirBlastStop;
-	}
-
-	public void setQueueAirBlastStop(boolean queueAirBlastStop) {
-		this.queueAirBlastStop = queueAirBlastStop;
-	}
 }

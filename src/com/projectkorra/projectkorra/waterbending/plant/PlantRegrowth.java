@@ -9,6 +9,7 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -28,8 +29,8 @@ public class PlantRegrowth extends PlantAbility {
 	private static ArrayList<TempBlock> decayedBlocks = new ArrayList<>();
 	private boolean willRevertNearbyPlants;
 
-	public PlantRegrowth(final Player player, final Block block, final double radius) {
-		super(player);
+	public PlantRegrowth(final LivingEntity caster, final Block block, final double radius) {
+		super(caster);
 
 		this.regrowTime = getConfig().getLong("Abilities.Water.Plantbending.RegrowTime");
 		if (this.regrowTime != 0) {
@@ -107,8 +108,8 @@ public class PlantRegrowth extends PlantAbility {
 		return new TempBlock(b, newMaterial);
 	}
 
-	public PlantRegrowth(final Player player, final Block block) {
-		this(player, block, 0);
+	public PlantRegrowth(final LivingEntity caster, final Block block) {
+		this(caster, block, 0);
 	}
 
 	@Override

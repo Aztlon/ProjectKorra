@@ -10,6 +10,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.type.Snow;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
@@ -327,10 +328,10 @@ public class WaterSpout extends WaterAbility {
 	 * {@link Collision} for the new system.
 	 */
 	@Deprecated
-	public static boolean removeSpouts(final Location loc0, final double radius, final Player sourcePlayer) {
+	public static boolean removeSpouts(final Location loc0, final double radius, final LivingEntity source) {
 		boolean removed = false;
 		for (final WaterSpout spout : getAbilities(WaterSpout.class)) {
-			if (!spout.player.equals(sourcePlayer)) {
+			if (!spout.caster.equals(source)) {
 				final Location top = spout.getLocation();
 				final Location base = spout.getBase().getLocation();
 				final double dist = top.getBlockY() - base.getBlockY();

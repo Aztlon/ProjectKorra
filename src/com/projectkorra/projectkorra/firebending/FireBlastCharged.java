@@ -65,7 +65,7 @@ public class FireBlastCharged extends FireAbility {
 
 		if (AbstractSkill.isLocked("FireBlastCharged", player)) return;
 
-		if (!this.bPlayer.canBend(this)) {
+		if (!this.bPlayer.canBendIgnoreBinds(this) || !this.bPlayer.getBoundAbilityName().equals("FireBlast")) {
 			return;
 		}
 
@@ -125,7 +125,7 @@ public class FireBlastCharged extends FireAbility {
 		this.range += rangeMod;
 	}
 
-	public static boolean annihilateBlasts(final Location location, final double radius, final Player source) {
+	public static boolean annihilateBlasts(final Location location, final double radius, final LivingEntity source) {
 		boolean broke = false;
 		for (final FireBlastCharged chargedBlast : getAbilities(FireBlastCharged.class)) {
 			if (!chargedBlast.launched) {
@@ -133,7 +133,7 @@ public class FireBlastCharged extends FireAbility {
 			}
 
 			final Location fireBlastLocation = chargedBlast.location;
-			if (location.getWorld().equals(fireBlastLocation.getWorld()) && !source.equals(chargedBlast.player)) {
+			if (location.getWorld().equals(fireBlastLocation.getWorld()) && !source.equals(chargedBlast.caster)) {
 				if (location.distanceSquared(fireBlastLocation) <= radius * radius) {
 					chargedBlast.explode();
 					broke = true;
@@ -147,8 +147,8 @@ public class FireBlastCharged extends FireAbility {
 		return entity != null ? EXPLOSIONS.get(entity) : null;
 	}
 
-	public static boolean isCharging(final Player player) {
-		for (final FireBlastCharged chargedBlast : getAbilities(player, FireBlastCharged.class)) {
+	public static boolean isCharging(final LivingEntity caster) {
+		for (final FireBlastCharged chargedBlast : getAbilities(caster, FireBlastCharged.class)) {
 			if (!chargedBlast.launched) {
 				return true;
 			}
@@ -353,7 +353,7 @@ public class FireBlastCharged extends FireAbility {
 
 	@Override
 	public String getName() {
-		return "FireBlast";
+		return "FireBlastCharged";
 	}
 
 	@Override
