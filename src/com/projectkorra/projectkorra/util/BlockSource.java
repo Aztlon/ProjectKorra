@@ -1,6 +1,8 @@
 package com.projectkorra.projectkorra.util;
 
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.function.Predicate;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -8,13 +10,16 @@ import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import com.projectkorra.projectkorra.BendingPlayer;
+import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.region.RegionProtection;
 
 /**
  * BlockSource is a class that handles water and earth bending sources. When a
@@ -169,6 +174,25 @@ public class BlockSource {
 			return info.getBlock();
 		}
 		return null;
+	}
+
+	public static @Nullable Block getNearestSourceBlock(final LivingEntity caster, final double range, final Predicate<Block> filter) {
+		return GeneralMethods.getBlocksAroundPoint(caster.getEyeLocation(), range).stream()
+				.filter(block -> filter.test(block) && RegionProtection.isRegionProtected(caster, block.getLocation()))
+				.min(Comparator.comparingDouble(b -> b.getLocation().add(0.5, 0.5, 0.5).distanceSquared(caster.getEyeLocation())))
+				.orElse(null);
+	}
+
+	public static @Nullable Block getNearestEarthSourceBlock(final LivingEntity caster, final double range) {
+		return getNearestSourceBlock(caster, range, b -> EarthAbility.isEarthbendable(caster, b));
+	}
+
+	public static @Nullable Block getNearestWaterSourceBlock(final LivingEntity caster, final double range) {
+		return getNearestSourceBlock(caster, range, b -> WaterAbility.isWaterbendable(caster, null, b));
+	}
+
+	public static @Nullable Block getNearestLavaSourceBlock(final LivingEntity caster, final double range) {
+		return getNearestSourceBlock(caster, range, EarthAbility::isLavabendable);
 	}
 
 	/**

@@ -34,8 +34,10 @@ import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class WaterManipulation extends WaterAbility {
 
 	private static final Map<Block, Block> AFFECTED_BLOCKS = new ConcurrentHashMap<>();

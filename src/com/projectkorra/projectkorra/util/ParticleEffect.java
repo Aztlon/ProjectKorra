@@ -218,6 +218,9 @@ public enum ParticleEffect {
 		if (particle.getDataType() == Color.class) {
 			data = Color.fromARGB(0xFFFFFFFF); // default white color
 		}
+		if (particle.getDataType() == Float.class) {
+			data = 1.0f; // default size
+		}
 
 		loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data, true);
 	}

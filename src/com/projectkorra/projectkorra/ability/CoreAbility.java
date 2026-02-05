@@ -17,26 +17,22 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.jar.JarFile;
 
-import com.projectkorra.projectkorra.Bender;
-import com.projectkorra.projectkorra.command.CooldownCommand;
-
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.permissions.Permission;
-
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.commons.lang3.tuple.Pair;
-
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.permissions.Permission;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.Element.SubElement;
@@ -53,6 +49,7 @@ import com.projectkorra.projectkorra.ability.util.PassiveManager;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.attribute.AttributeModifier;
 import com.projectkorra.projectkorra.attribute.AttributePriority;
+import com.projectkorra.projectkorra.command.CooldownCommand;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.AbilityEndEvent;
 import com.projectkorra.projectkorra.event.AbilityProgressEvent;
@@ -274,18 +271,15 @@ public abstract class CoreAbility implements Ability {
 					}
 
 					if (player != null && abil.bPlayer != null && !player.isOnline()) { // This has to be before isDead as isDead.
-						PkLang.warning("removing passive " + abil.getName() + " because player is offline");
 						abil.remove(); // will return true if they are offline.
 						continue;
 					} else if (abil.getCaster().isDead()) {
 						continue;
 					}
 				} else if (abil.getCaster().isDead()) {
-					PkLang.warning("removing " + abil.getName() + " because caster is dead");
 					abil.remove();
 					continue;
 				} else if (player != null && abil.bPlayer != null && !player.isOnline()) {
-					PkLang.warning("removing " + abil.getName() + " because player is offline");
 					abil.remove();
 					continue;
 				}

@@ -97,6 +97,7 @@ public class HelpCommand extends PKCommand {
 		}
 
 		final String arg = args.get(0).toLowerCase();
+		var ability = CoreAbility.getAbility(arg);
 
 		if (this.isNumeric(arg)) {
 			final List<String> strings = new ArrayList<>();
@@ -118,8 +119,7 @@ public class HelpCommand extends PKCommand {
 			sender.sendMessage(ChatColor.GOLD + this.properUsage.replace("{command1}", ChatColor.RED + "/bending display " + arg + ChatColor.GOLD).replace("{command2}", ChatColor.RED + "/bending help <Combo Name>" + ChatColor.GOLD));
 		} else if (Arrays.asList(Commands.passivealiases).contains(arg)) { // bending help elementpassive.
 			sender.sendMessage(ChatColor.GOLD + this.properUsage.replace("{command1}", ChatColor.RED + "/bending display " + arg + ChatColor.GOLD).replace("{command2}", ChatColor.RED + "/bending help <Passive Name>" + ChatColor.RED));
-		} else if (CoreAbility.getAbility(arg) != null && !(CoreAbility.getAbility(arg) instanceof ComboAbility) && CoreAbility.getAbility(arg).isEnabled() && !CoreAbility.getAbility(arg).isHiddenAbility() || CoreAbility.getAbility(arg) instanceof PassiveAbility) { // bending help ability.
-			final CoreAbility ability = CoreAbility.getAbility(arg);
+		} else if (ability != null && !(ability instanceof ComboAbility) && ability.isEnabled() && !ability.isHiddenAbility() || ability instanceof PassiveAbility) { // bending help ability.
 			final ChatColor color = ability.getElement().getColor();
 			final boolean isAddonAbility = ability instanceof AddonAbility;
 			final boolean isPassiveAbility = ability instanceof PassiveAbility;
@@ -177,7 +177,7 @@ public class HelpCommand extends PKCommand {
 			// combos - handled differently because they're stored in CamelCase in ComboManager.
 			for (final String combo : ComboManager.getDescriptions().keySet()) {
 				if (combo.equalsIgnoreCase(arg)) {
-					final CoreAbility ability = CoreAbility.getAbility(combo);
+					ability = CoreAbility.getAbility(combo);
 					final ChatColor color = ability != null ? ability.getElement().getColor() : null;
 
 					if (ability instanceof AddonAbility) {

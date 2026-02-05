@@ -1,5 +1,6 @@
 package com.projectkorra.projectkorra.ability;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -233,8 +234,9 @@ public abstract class WaterAbility extends ElementalAbility {
 			trans.removeAll(remove);
 		}
 
-		final Block testBlock = caster.getTargetBlock(trans, Math.max(1, Math.min(3, (int)range)));
-		if (isWaterbendable(caster, null, testBlock) && (plantbending || (!isPlant(testBlock) && !isDecayablePlant(testBlock)))) {
+		boolean npc = !(caster instanceof Player player) || !player.isOnline();
+		final Block testBlock = npc ? getNearestWaterBlock(caster, range) : caster.getTargetBlock(trans, Math.max(1, Math.min(3, (int)range)));
+		if (testBlock == null || isWaterbendable(caster, null, testBlock) && (plantbending || (!isPlant(testBlock) && !isDecayablePlant(testBlock)))) {
 			return testBlock;
 		}
 
@@ -251,6 +253,13 @@ public abstract class WaterAbility extends ElementalAbility {
 			}
 		}
 		return null;
+	}
+
+	public static @Nullable Block getNearestWaterBlock(final LivingEntity caster, final double range) {
+		return GeneralMethods.getBlocksAroundPoint(caster.getEyeLocation(), range).stream()
+				.filter(b -> isWaterbendable(caster, null, b))
+				.min(Comparator.comparingDouble(b -> b.getLocation().add(0.5, 0.5, 0.5).distanceSquared(caster.getEyeLocation())))
+				.orElse(null);
 	}
 
 	public static boolean isAdjacentToFrozenBlock(final Block block) {

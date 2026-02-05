@@ -2,6 +2,7 @@ package com.projectkorra.projectkorra.ability;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -369,6 +370,11 @@ public abstract class EarthAbility extends ElementalAbility {
 			return null;
 		}
 
+		final boolean npc = !(caster instanceof Player player) || !player.isOnline();
+		if (npc) {
+			return BlockSource.getNearestEarthSourceBlock(caster, range);
+		}
+
 		final Location location = caster.getEyeLocation();
 		final Vector vector = location.getDirection().clone().normalize();
 
@@ -397,6 +403,11 @@ public abstract class EarthAbility extends ElementalAbility {
 	 * @return a valid Lava source block, or null if one could not be found.
 	 */
 	public static @Nullable Block getLavaSourceBlock(final LivingEntity caster, final String abilityName, final double range) {
+		final boolean npc = !(caster instanceof Player player) || !player.isOnline();
+		if (npc) {
+			return BlockSource.getNearestLavaSourceBlock(caster, range);
+		}
+
 		final Location location = caster.getEyeLocation();
 		final Vector vector = location.getDirection().clone().normalize();
 
