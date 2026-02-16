@@ -28,6 +28,11 @@ import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class FireWheel extends FireAbility implements ComboAbility {
 
 	private Location origin;
@@ -48,10 +53,10 @@ public class FireWheel extends FireAbility implements ComboAbility {
 	private double damage;
 	private ArrayList<LivingEntity> affectedEntities;
 
-	public FireWheel(final Player player) {
-		super(player);
+	public FireWheel(final LivingEntity caster) {
+		super(caster);
 
-		if (this.bPlayer.isOnCooldown("FireWheel") && !this.bPlayer.isAvatarState()) {
+		if (this.bender.isOnCooldown("FireWheel") && !this.bender.isAvatarState()) {
 			this.remove();
 			return;
 		}
@@ -65,17 +70,17 @@ public class FireWheel extends FireAbility implements ComboAbility {
 
 		this.affectedEntities = new ArrayList<>();
 
-		if (GeneralMethods.getTopBlock(player.getLocation(), 3, 3) == null) {
+		if (GeneralMethods.getTopBlock(caster.getLocation(), 3, 3) == null) {
 			this.remove();
 			return;
 		}
 
-		this.location = player.getLocation().clone();
+		this.location = caster.getLocation().clone();
 		this.location.setPitch(0);
 		this.direction = this.location.getDirection().clone().normalize();
 		this.direction.setY(0);
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.cooldown = 0;
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireWheel.Damage");
 			this.range = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireWheel.Range");
@@ -85,11 +90,11 @@ public class FireWheel extends FireAbility implements ComboAbility {
 		}
 
 		this.radius = this.height / 2;
-		this.origin = player.getLocation().clone().add(0, this.radius, 0);
+		this.origin = caster.getLocation().clone().add(0, this.radius, 0);
 
 		this.start();
 		if (!isRemoved()) {
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 		}
 	}
 
@@ -106,7 +111,7 @@ public class FireWheel extends FireAbility implements ComboAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this) || RegionProtection.isRegionProtected(this.player, this.location)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this) || RegionProtection.isRegionProtected(this.caster, this.location)) {
 			this.remove();
 			return;
 		}
@@ -148,12 +153,12 @@ public class FireWheel extends FireAbility implements ComboAbility {
 		}
 
 		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, this.radius + 0.5)) {
-			if (entity instanceof LivingEntity && !entity.equals(this.player)) {
+			if (entity instanceof LivingEntity && !entity.equals(this.caster)) {
 				if (!this.affectedEntities.contains(entity)) {
 					this.affectedEntities.add((LivingEntity) entity);
 					DamageHandler.damageEntity(entity, this.damage, this);
 					entity.setFireTicks((int) (this.fireTicks * 20));
-					new FireDamageTimer(entity, this.player, this);
+					new FireDamageTimer(entity, this.caster, this);
 				}
 			}
 		}
@@ -185,9 +190,5 @@ public class FireWheel extends FireAbility implements ComboAbility {
 	@Override
 	public boolean isHarmlessAbility() {
 		return false;
-	}
-
-	public ArrayList<LivingEntity> getAffectedEntities() {
-		return this.affectedEntities;
 	}
 }

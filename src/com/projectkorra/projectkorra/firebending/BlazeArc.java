@@ -3,12 +3,9 @@ package com.projectkorra.projectkorra.firebending;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.util.Vector;
 
-import com.projectkorra.projectkorra.Element.SubElement;
-import com.projectkorra.projectkorra.GeneralMethods;
-import com.projectkorra.projectkorra.ability.BlueFireAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.region.RegionProtection;
@@ -28,8 +25,8 @@ public class BlazeArc extends FireAbility {
 	private Location location;
 	private Vector direction;
 
-	public BlazeArc(final Player player, final Location location, final Vector direction, final double range) {
-		super(player);
+	public BlazeArc(final LivingEntity caster, final Location location, final Vector direction, final double range) {
+		super(caster);
 		this.range = applyModifiersRange(range);
 		this.speed = getConfig().getLong("Abilities.Fire.Blaze.Speed");
 		this.interval = (long) (1000.0 / this.speed);
@@ -54,7 +51,7 @@ public class BlazeArc extends FireAbility {
 		if (!isFire(block.getType()) && !isAir(block.getType())) {
 			if (canFireGrief()) {
 				if (isPlant(block) || isSnow(block)) {
-					new PlantRegrowth(this.player, block);
+					new PlantRegrowth(this.caster, block);
 				}
 			}
 		}
@@ -66,9 +63,8 @@ public class BlazeArc extends FireAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
-			return;
 		} else if (System.currentTimeMillis() - this.time >= this.interval) {
 			this.location = this.location.clone().add(this.direction);
 			this.time = System.currentTimeMillis();
@@ -91,7 +87,6 @@ public class BlazeArc extends FireAbility {
 				this.location.add(0, difference, 0);
 			} else {
 				remove();
-				return;
 			}
 		}
 	}

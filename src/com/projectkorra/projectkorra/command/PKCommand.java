@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.projectkorra.projectkorra.util.ChatUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.util.ChatUtil;
 
 /**
  * Abstract representation of a command executor. Implements {@link SubCommand}.
@@ -48,7 +48,7 @@ public abstract class PKCommand implements SubCommand {
 	/**
 	 * List of all command executors which extends PKCommand
 	 */
-	public static Map<String, PKCommand> instances = new HashMap<String, PKCommand>();
+	public static Map<String, PKCommand> instances = new HashMap<>();
 
 	public PKCommand(final String name, final String properUse, final String description, final String[] aliases) {
 		this.name = name;
@@ -210,7 +210,6 @@ public abstract class PKCommand implements SubCommand {
 	/**
 	 * Returns a boolean if the string provided is numerical.
 	 *
-	 * @param id
 	 * @return boolean
 	 */
 	protected boolean isNumeric(final String id) {
@@ -229,7 +228,7 @@ public abstract class PKCommand implements SubCommand {
 	 * @return
 	 */
 	protected List<String> getPage(final List<String> entries, final String title, int page, final boolean sort) {
-		final List<String> strings = new ArrayList<String>();
+		final List<String> strings = new ArrayList<>();
 		if (sort) {
 			Collections.sort(entries);
 		}
@@ -238,7 +237,7 @@ public abstract class PKCommand implements SubCommand {
 			page = 1;
 		}
 		if ((page * 8) - 8 >= entries.size()) {
-			page = Math.round(entries.size() / 8) + 1;
+			page = Math.round((float) entries.size() / 8) + 1;
 			if (page < 1) {
 				page = 1;
 			}
@@ -260,7 +259,7 @@ public abstract class PKCommand implements SubCommand {
 
 	/** Gets a list of valid arguments that can be used in tabbing. */
 	protected List<String> getTabCompletion(final CommandSender sender, final List<String> args) {
-		return new ArrayList<String>();
+		return new ArrayList<>();
 	}
 
 	/**

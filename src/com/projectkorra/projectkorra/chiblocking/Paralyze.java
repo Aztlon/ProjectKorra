@@ -12,9 +12,15 @@ import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.airbending.Suffocate;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.chiblocking.passive.ChiPassive;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.util.MovementHandler;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class Paralyze extends ChiAbility {
 
 	@Attribute(Attribute.COOLDOWN)
@@ -23,9 +29,13 @@ public class Paralyze extends ChiAbility {
 	private long duration;
 	private Entity target;
 
-	public Paralyze(final Player sourceplayer, final Entity targetentity) {
-		super(sourceplayer);
-		if (!this.bPlayer.canBend(this)) {
+	public Paralyze(final LivingEntity caster) {
+		this(caster, ChiPassive.findTarget(caster));
+	}
+
+	public Paralyze(final LivingEntity caster, final Entity targetentity) {
+		super(caster);
+		if (!this.bender.canBend(this)) {
 			return;
 		}
 		this.target = targetentity;
@@ -39,7 +49,7 @@ public class Paralyze extends ChiAbility {
 
 	@Override
 	public void progress() {
-		if (this.bPlayer.canBend(this)) {
+		if (this.bender.canBend(this)) {
 			if (this.target instanceof Player) {
 				if (Commands.invincible.contains(this.target.getName())) {
 					this.remove();
@@ -47,7 +57,7 @@ public class Paralyze extends ChiAbility {
 				}
 			}
 			this.paralyze(this.target);
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 		}
 		this.remove();
 	}
@@ -90,17 +100,5 @@ public class Paralyze extends ChiAbility {
 	@Override
 	public boolean isHarmlessAbility() {
 		return false;
-	}
-
-	public Entity getTarget() {
-		return this.target;
-	}
-
-	public void setTarget(final Entity target) {
-		this.target = target;
-	}
-
-	public long getDuration() {
-		return this.duration;
 	}
 }

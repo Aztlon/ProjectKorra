@@ -38,6 +38,7 @@ import com.projectkorra.projectkorra.util.Cooldown;
 import com.projectkorra.projectkorra.util.logging.PkLang;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 public class Bender {
@@ -64,6 +65,7 @@ public class Bender {
 	protected boolean permaRemoved;
 	protected boolean toggled;
 	protected boolean allPassivesToggled;
+	@Setter private boolean sneaking;
 	protected final List<Element> elements = new ArrayList<>();
 	protected final List<Element.SubElement> subelements = new ArrayList<>();
 	protected HashMap<Integer, String> abilities = new HashMap<>();
@@ -102,7 +104,7 @@ public class Bender {
 	}
 
 	public boolean isSneaking() {
-		return asBukkitPlayer().map(Player::isSneaking).orElse(false);
+		return asBukkitPlayer().map(Player::isSneaking).orElse(sneaking);
 	}
 
 	public boolean hasUnlocked(String abilityName) {

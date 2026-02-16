@@ -39,7 +39,7 @@ public class WhoCommand extends PKCommand {
 	/**
 	 * Map storage of all ProjectKorra staffs' UUIDs and titles
 	 */
-	final Map<String, String> staff = new HashMap<String, String>(), playerInfoWords = new HashMap<String, String>();
+	final Map<String, String> staff = new HashMap<>(), playerInfoWords = new HashMap<>();
 
 	private final String databaseOverload, noPlayersOnline, playerOffline, playerUnknown;
 
@@ -54,7 +54,7 @@ public class WhoCommand extends PKCommand {
 		new BukkitRunnable() {
 			@Override
 			public void run() {
-				final Map<String, String> updatedstaff = new HashMap<String, String>();
+				final Map<String, String> updatedstaff = new HashMap<>();
 				try {
 
 					// Create a URL for the desired page.
@@ -100,27 +100,27 @@ public class WhoCommand extends PKCommand {
 				}
 				
 				final String playerName = player.getName();
-				String result = "";
+				StringBuilder result = new StringBuilder();
 				BendingPlayer bp = BendingPlayer.getBendingPlayer(playerName);
 
 				for (final Element element : bp.getElements()) {
-					if (result == "") {
-						result = ChatColor.WHITE + playerName + " - " + (((!bp.isElementToggled(element) || !bp.isToggled()) ? element.getColor() + "" + ChatColor.STRIKETHROUGH : element.getColor()) + element.getName().substring(0, 1));
+					if (result.toString().equals("")) {
+						result = new StringBuilder(ChatColor.WHITE + playerName + " - " + (((!bp.isElementToggled(element) || !bp.isToggled()) ? element.getColor() + "" + ChatColor.STRIKETHROUGH : element.getColor()) + element.getName().substring(0, 1)));
 					} else {
-						result = result + ChatColor.WHITE + " | " + (((!bp.isElementToggled(element) || !bp.isToggled()) ? element.getColor() + "" + ChatColor.STRIKETHROUGH : element.getColor()) + element.getName().substring(0, 1));
+						result.append(ChatColor.WHITE).append(" | ").append((!bp.isElementToggled(element) || !bp.isToggled()) ? element.getColor() + "" + ChatColor.STRIKETHROUGH : element.getColor()).append(element.getName().substring(0, 1));
 					}
 				}
 				if (this.staff.containsKey(player.getUniqueId().toString())) {
-					if (result == "") {
-						result = ChatColor.WHITE + playerName + " | " + this.staff.get(player.getUniqueId().toString());
+					if (result.toString().equals("")) {
+						result = new StringBuilder(ChatColor.WHITE + playerName + " | " + this.staff.get(player.getUniqueId().toString()));
 					} else {
-						result = result + ChatColor.WHITE + " | " + this.staff.get(player.getUniqueId().toString());
+						result.append(ChatColor.WHITE).append(" | ").append(this.staff.get(player.getUniqueId().toString()));
 					}
 				}
-				if (result == "") {
-					result = ChatColor.WHITE + playerName;
+				if (result.toString().equals("")) {
+					result = new StringBuilder(ChatColor.WHITE + playerName);
 				}
-				players.add(result);
+				players.add(result.toString());
 			}
 			if (players.isEmpty()) {
 				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.noPlayersOnline);

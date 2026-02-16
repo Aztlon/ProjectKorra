@@ -2,6 +2,7 @@ package com.projectkorra.projectkorra.chiblocking;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.ability.ChiAbility;
@@ -9,6 +10,11 @@ import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.chiblocking.passive.ChiPassive;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class QuickStrike extends ChiAbility {
 
 	@Attribute(Attribute.DAMAGE)
@@ -19,9 +25,13 @@ public class QuickStrike extends ChiAbility {
 	@Attribute(Attribute.COOLDOWN)
 	private long cooldown;
 
-	public QuickStrike(final Player sourceplayer, final Entity targetentity) {
-		super(sourceplayer);
-		if (!this.bPlayer.canBend(this)) {
+	public QuickStrike(final LivingEntity caster) {
+		this(caster, ChiPassive.findTarget(caster));
+	}
+
+	public QuickStrike(final LivingEntity caster, final Entity targetentity) {
+		super(caster);
+		if (!this.bender.canBend(this)) {
 			return;
 		}
 		this.damage = getConfig().getDouble("Abilities.Chi.QuickStrike.Damage");
@@ -36,7 +46,7 @@ public class QuickStrike extends ChiAbility {
 
 	@Override
 	public void progress() {
-		if (this.bPlayer.isOnCooldown(this)) {
+		if (this.bender.isOnCooldown(this)) {
 			this.remove();
 			return;
 		}
@@ -46,10 +56,10 @@ public class QuickStrike extends ChiAbility {
 			return;
 		}
 
-		this.bPlayer.addCooldown(this);
+		this.bender.addCooldown(this);
 		DamageHandler.damageEntity(this.target, this.damage, this);
 
-		if (this.target instanceof Player && ChiPassive.willChiBlock(this.player, (Player) this.target)) {
+		if (this.target instanceof Player && ChiPassive.willChiBlock(this.caster, (Player) this.target)) {
 			ChiPassive.blockChi((Player) this.target);
 		}
 
@@ -63,7 +73,7 @@ public class QuickStrike extends ChiAbility {
 
 	@Override
 	public Location getLocation() {
-		return this.player != null ? this.player.getLocation() : null;
+		return this.caster != null ? this.caster.getLocation() : null;
 	}
 
 	@Override
@@ -79,29 +89,5 @@ public class QuickStrike extends ChiAbility {
 	@Override
 	public boolean isHarmlessAbility() {
 		return false;
-	}
-
-	public double getDamage() {
-		return this.damage;
-	}
-
-	public void setDamage(final double damage) {
-		this.damage = damage;
-	}
-
-	public int getBlockChance() {
-		return this.blockChance;
-	}
-
-	public void setBlockChance(final int blockChance) {
-		this.blockChance = blockChance;
-	}
-
-	public Entity getTarget() {
-		return this.target;
-	}
-
-	public void setTarget(final Entity target) {
-		this.target = target;
 	}
 }

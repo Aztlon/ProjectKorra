@@ -3,9 +3,6 @@ package com.projectkorra.projectkorra.airbending.combo;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.projectkorra.projectkorra.ability.util.ComboUtil;
-import com.projectkorra.projectkorra.configuration.ConfigManager;
-import com.projectkorra.projectkorra.object.HorizontalVelocityTracker;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -20,13 +17,20 @@ import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.ComboAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
+import com.projectkorra.projectkorra.ability.util.ComboUtil;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.firebending.combo.FireComboStream;
+import com.projectkorra.projectkorra.object.HorizontalVelocityTracker;
 import com.projectkorra.projectkorra.region.RegionProtection;
-import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class AirSweep extends AirAbility implements ComboAbility {
 
 	private int progressCounter;
@@ -48,17 +52,17 @@ public class AirSweep extends AirAbility implements ComboAbility {
 	private ArrayList<BukkitRunnable> tasks;
 	private double radius;
 
-	public AirSweep(final Player player) {
-		super(player);
+	public AirSweep(final LivingEntity caster) {
+		super(caster);
 
 		this.affectedEntities = new ArrayList<>();
 		this.tasks = new ArrayList<>();
 
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			return;
 		}
 
-		if (this.bPlayer.isOnCooldown(this)) {
+		if (this.bender.isOnCooldown(this)) {
 			return;
 		}
 
@@ -69,7 +73,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 		this.cooldown = getConfig().getLong("Abilities.Air.AirSweep.Cooldown");
 		this.radius = getConfig().getDouble("Abilities.Air.AirSweep.Radius");
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.cooldown = 0;
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Air.AirSweep.Damage");
 			this.range = getConfig().getDouble("Abilities.Avatar.AvatarState.Air.AirSweep.Range");
@@ -78,7 +82,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 
 		this.start();
 		if (!isRemoved())
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 	}
 
 	@Override
@@ -99,8 +103,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 			// Remove all of the streams that are by this specific ourLocation.
 			// Don't just do a single stream at a time or this algorithm becomes O(n^2) with Collision's detection algorithm.
 			for (final BukkitRunnable task : this.getTasks()) {
-				if (task instanceof FireComboStream) {
-					final FireComboStream stream = (FireComboStream) task;
+				if (task instanceof FireComboStream stream) {
 					if (stream.getLocation().distanceSquared(collision.getLocationSecond()) > collisionDistanceSquared) {
 						newTasks.add(stream);
 					} else {
@@ -118,8 +121,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 	public List<Location> getLocations() {
 		final ArrayList<Location> locations = new ArrayList<>();
 		for (final BukkitRunnable task : this.getTasks()) {
-			if (task instanceof FireComboStream) {
-				final FireComboStream stream = (FireComboStream) task;
+			if (task instanceof FireComboStream stream) {
 				locations.add(stream.getLocation());
 			}
 		}
@@ -129,7 +131,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 	@Override
 	public void progress() {
 		this.progressCounter++;
-		if (this.player.isDead() || !this.player.isOnline()) {
+		if (this.caster.isDead()) {
 			this.remove();
 			return;
 		} else if (this.currentLoc != null && RegionProtection.isRegionProtected(this, this.currentLoc)) {
@@ -138,7 +140,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 		}
 
 		if (this.origin == null) {
-			this.direction = this.player.getEyeLocation().getDirection().normalize();
+			this.direction = this.caster.getEyeLocation().getDirection().normalize();
 			this.origin = GeneralMethods.getMainHandLocation(player).add(this.direction.clone().multiply(10));
 		}
 		if (this.progressCounter < 8) {
@@ -156,7 +158,7 @@ public class AirSweep extends AirAbility implements ComboAbility {
 				final Vector vec = GeneralMethods.getDirection(hand, endLoc);
 
 				String hexVal = particleColor(player);
-				final FireComboStream fs = new FireComboStream(this.player, this, vec, hand, this.range, this.speed);
+				final FireComboStream fs = new FireComboStream(this.caster, this, vec, hand, this.range, this.speed);
 				fs.setDensity(1);
 				fs.setAir(true);
 				fs.setXSpread(Integer.valueOf(hexVal.substring(0, 2), 16) / 255D);
@@ -173,12 +175,12 @@ public class AirSweep extends AirAbility implements ComboAbility {
 
 	public void manageAirVectors() {
 		for (int i = 0; i < this.tasks.size(); i++) {
-			if (((FireComboStream) this.tasks.get(i)).isCancelled()) {
+			if (this.tasks.get(i).isCancelled()) {
 				this.tasks.remove(i);
 				i--;
 			}
 		}
-		if (this.tasks.size() == 0) {
+		if (this.tasks.isEmpty()) {
 			this.remove();
 			return;
 		}
@@ -203,14 +205,14 @@ public class AirSweep extends AirAbility implements ComboAbility {
 						this.remove();
 						return;
 					}
-					if (!entity.equals(this.player) && !(entity instanceof Player && Commands.invincible.contains(((Player) entity).getName()))) {
+					if (!entity.equals(this.caster) && !(entity instanceof Player && Commands.invincible.contains(entity.getName()))) {
 						if (this.knockback != 0) {
 							final Vector force = fstream.getLocation().getDirection();
 							GeneralMethods.setVelocity(this, entity, force.clone().multiply(this.knockback));
-							new HorizontalVelocityTracker(entity, this.player, 200l, this);
+							new HorizontalVelocityTracker(entity, this.caster, 200L, this);
 							entity.setFallDistance(0);
 						}
-						if(!this.affectedEntities.contains(entity)) {
+						if (!this.affectedEntities.contains(entity)) {
 							this.affectedEntities.add(entity);
 							if (this.damage != 0) {
 								if (entity instanceof LivingEntity) {
@@ -261,89 +263,5 @@ public class AirSweep extends AirAbility implements ComboAbility {
 	@Override
 	public ArrayList<AbilityInformation> getCombination() {
 		return ComboUtil.generateCombinationFromList(this, ConfigManager.defaultConfig.get().getStringList("Abilities.Air.AirSweep.Combination"));
-	}
-
-	public Location getOrigin() {
-		return this.origin;
-	}
-
-	public void setOrigin(final Location origin) {
-		this.origin = origin;
-	}
-
-	public Location getCurrentLoc() {
-		return this.currentLoc;
-	}
-
-	public void setCurrentLoc(final Location currentLoc) {
-		this.currentLoc = currentLoc;
-	}
-
-	public Location getDestination() {
-		return this.destination;
-	}
-
-	public void setDestination(final Location destination) {
-		this.destination = destination;
-	}
-
-	public Vector getDirection() {
-		return this.direction;
-	}
-
-	public void setDirection(final Vector direction) {
-		this.direction = direction;
-	}
-
-	public int getProgressCounter() {
-		return this.progressCounter;
-	}
-
-	public void setProgressCounter(final int progressCounter) {
-		this.progressCounter = progressCounter;
-	}
-
-	public double getDamage() {
-		return this.damage;
-	}
-
-	public void setDamage(final double damage) {
-		this.damage = damage;
-	}
-
-	public double getSpeed() {
-		return this.speed;
-	}
-
-	public void setSpeed(final double speed) {
-		this.speed = speed;
-	}
-
-	public double getRange() {
-		return this.range;
-	}
-
-	public void setRange(final double range) {
-		this.range = range;
-	}
-
-	public double getKnockback() {
-		return this.knockback;
-	}
-
-	public void setKnockback(final double knockback) {
-		this.knockback = knockback;
-	}
-
-	public ArrayList<Entity> getAffectedEntities() {
-		return this.affectedEntities;
-	}
-
-	public ArrayList<BukkitRunnable> getTasks() {
-		return this.tasks;
-	}
-
-	public void setTasks(final ArrayList<BukkitRunnable> tasks) {
-		this.tasks = tasks;
 	}
 }

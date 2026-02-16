@@ -5,6 +5,7 @@ package com.projectkorra.projectkorra.airbending;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -41,6 +42,11 @@ import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class AirBlast extends AirAbility {
 	private static final int MAX_TICKS = 10000;
 	private static final Map<LivingEntity, Location> ORIGINS = new ConcurrentHashMap<>();
@@ -82,7 +88,7 @@ public class AirBlast extends AirAbility {
 
 	public AirBlast(LivingEntity caster) {
 		super(caster);
-		if (this.bPlayer.isOnCooldown(this)) {
+		if (this.bender.isOnCooldown(this)) {
 			return;
 		}
 		if (caster.getEyeLocation().getBlock().isLiquid()) {
@@ -103,7 +109,7 @@ public class AirBlast extends AirAbility {
 			return;
 		}
 		this.location = this.origin.clone();
-		this.bPlayer.addCooldown(this);
+		this.bender.addCooldown(this);
 		this.start();
 	}
 
@@ -122,7 +128,7 @@ public class AirBlast extends AirAbility {
 		this.canOpenDoors = false;
 		this.canPressButtons = false;
 		this.canFlickLevers = false;
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.pushFactor = AirBlast.getConfig().getDouble("Abilities.Avatar.AvatarState.Air.AirBlast.Push.Self");
 			this.pushFactorForOthers = AirBlast.getConfig().getDouble("Abilities.Avatar.AvatarState.Air.AirBlast.Push.Entities");
 		}
@@ -146,8 +152,8 @@ public class AirBlast extends AirAbility {
 		this.isFromOtherOrigin = false;
 		this.showParticles = true;
 		this.random = new Random();
-		this.affectedLevers = new ArrayList();
-		this.affectedEntities = new ArrayList();
+		this.affectedLevers = new ArrayList<>();
+		this.affectedEntities = new ArrayList<>();
 	}
 
 	private static void playOriginEffect(LivingEntity caster) {
@@ -181,11 +187,15 @@ public class AirBlast extends AirAbility {
 	}
 
 	public static void setOrigin(LivingEntity caster) {
+		Location location = GeneralMethods.getTargetedLocation(caster, AirBlast.getSelectRange(), AirBlast.getTransparentMaterials());
+		setOrigin(caster, location);
+	}
+
+	public static void setOrigin(LivingEntity caster, Location location) {
 		Bender bender = Bender.get(caster);
 		if (bender == null) {
 			return;
 		}
-		Location location = GeneralMethods.getTargetedLocation(caster, AirBlast.getSelectRange(), AirBlast.getTransparentMaterials());
 		if (location.getBlock().isLiquid() || GeneralMethods.isSolid(location.getBlock())) {
 			return;
 		}
@@ -234,7 +244,7 @@ public class AirBlast extends AirAbility {
 	}
 
 	private void oldPkEffect(Entity entity) {
-		boolean isUser = entity.getUniqueId() == this.player.getUniqueId();
+		boolean isUser = entity.getUniqueId() == this.caster.getUniqueId();
 		if (this.isFromOtherOrigin || !isUser) {
 			double comp;
 			Vector velocity = entity.getVelocity();
@@ -249,7 +259,7 @@ public class AirBlast extends AirAbility {
 				}
 			}
 			factor *= 1.0 - this.location.distance(this.origin) / (2.0 * this.range);
-			if (isUser && GeneralMethods.isSolid(this.player.getLocation().add(0.0, -0.5, 0.0).getBlock())) {
+			if (isUser && GeneralMethods.isSolid(this.caster.getLocation().add(0.0, -0.5, 0.0).getBlock())) {
 				factor *= 0.5;
 			}
 			if ((comp = velocity.dot(push.clone().normalize())) > factor) {
@@ -271,16 +281,16 @@ public class AirBlast extends AirAbility {
 
 	@Override
 	public void progress() {
-		if (this.player.isDead() || !this.player.isOnline()) {
+		if (this.caster.isDead()) {
 			this.remove();
 			return;
 		}
-		if (GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
+		if (RegionProtection.isRegionProtected(this, this.location)) {
 			this.remove();
 			return;
 		}
 
-		if (bPlayer.isQueueAirBlastStop()) {
+		if (bPlayer != null && bPlayer.isQueueAirBlastStop()) {
 			this.remove();
 			bPlayer.setQueueAirBlastStop(false);
 			return;
@@ -292,7 +302,6 @@ public class AirBlast extends AirAbility {
 			this.remove();
 			return;
 		}
-		Block block = this.location.getBlock();
 		for (Block testblock : GeneralMethods.getBlocksAroundPoint(this.location, this.getRadius())) {
 			if (this.processBlock(testblock.getLocation())) continue;
 			this.remove();
@@ -338,7 +347,7 @@ public class AirBlast extends AirAbility {
 		if (Arrays.asList(DOORS).contains(testblock.getType())) {
 			if (testblock.getBlockData() instanceof Door door) {
 				BlockFace face = door.getFacing();
-				Vector toPlayer = GeneralMethods.getDirection(testblock.getLocation(), this.player.getLocation().getBlock().getLocation());
+				Vector toPlayer = GeneralMethods.getDirection(testblock.getLocation(), this.caster.getLocation().getBlock().getLocation());
 				double[] dims = new double[]{toPlayer.getX(), toPlayer.getY(), toPlayer.getZ()};
 				for (int i = 0; i < 3; ++i) {
 					BlockFace bf;
@@ -378,8 +387,7 @@ public class AirBlast extends AirAbility {
 				testblock.getWorld().playSound(testblock.getLocation(), Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 0.5f, 0.0f);
 			}
 		} else if (testblock.getType() == Material.LEVER) {
-			if (testblock.getBlockData() instanceof Switch) {
-				final Switch lever = (Switch) testblock.getBlockData();
+			if (testblock.getBlockData() instanceof Switch lever) {
 				lever.setPowered(!lever.isPowered());
 				testblock.setBlockData(lever);
 				this.affectedLevers.add(testblock);
@@ -411,7 +419,7 @@ public class AirBlast extends AirAbility {
 		if (entity instanceof Player && Commands.invincible.contains(entity.getName())) {
 			return;
 		}
-		boolean isUser = entity.getUniqueId() == this.player.getUniqueId();
+		boolean isUser = entity.getUniqueId() == this.caster.getUniqueId();
 		double knockback = this.getPushFactorForOthers();
 		if (isUser) {
 			if (this.isFromOtherOrigin) {
@@ -440,17 +448,9 @@ public class AirBlast extends AirAbility {
 			push.normalize().add(entity.getVelocity()).multiply(knockback);
 		}
 		GeneralMethods.setVelocity(this, entity, push);
-		if (this.source != null) {
-			new HorizontalVelocityTracker(entity, this.player, 200L, this.source);
-		} else {
-			new HorizontalVelocityTracker(entity, this.player, 200L, this);
-		}
-		if (this.damage > 0.0 && entity instanceof LivingEntity && !entity.equals(this.player) && !this.affectedEntities.contains(entity)) {
-			if (this.source != null) {
-				DamageHandler.damageEntity(entity, this.damage, this.source);
-			} else {
-				DamageHandler.damageEntity(entity, this.damage, this);
-			}
+		new HorizontalVelocityTracker(entity, this.caster, 200L, Objects.requireNonNullElse(this.source, this));
+		if (this.damage > 0.0 && entity instanceof LivingEntity && !entity.equals(this.caster) && !this.affectedEntities.contains(entity)) {
+			DamageHandler.damageEntity(entity, this.damage, Objects.requireNonNullElse(this.source, this));
 			this.affectedEntities.add(entity);
 		}
 		if (entity.getFireTicks() > 0) {
@@ -490,175 +490,11 @@ public class AirBlast extends AirAbility {
 		return this.getRadius();
 	}
 
-	public Location getOrigin() {
-		return this.origin;
-	}
-
-	public void setOrigin(Location origin) {
-		this.origin = origin;
-	}
-
-	public Vector getDirection() {
-		return this.direction;
-	}
-
-	public void setDirection(Vector direction) {
-		this.direction = direction;
-	}
-
-	public int getTicks() {
-		return this.ticks;
-	}
-
-	public void setTicks(int ticks) {
-		this.ticks = ticks;
-	}
-
-	public double getSpeedFactor() {
-		return this.speedFactor;
-	}
-
-	public void setSpeedFactor(double speedFactor) {
-		this.speedFactor = speedFactor;
-	}
-
-	public double getRange() {
-		return this.range;
-	}
-
-	public void setRange(double range) {
-		this.range = range;
-	}
-
-	public double getPushFactor() {
-		return this.pushFactor;
-	}
-
-	public void setPushFactor(double pushFactor) {
-		this.pushFactor = pushFactor;
-	}
-
-	public double getPushFactorForOthers() {
-		return this.pushFactorForOthers;
-	}
-
-	public void setPushFactorForOthers(double pushFactorForOthers) {
-		this.pushFactorForOthers = pushFactorForOthers;
-	}
-
-	public double getDamage() {
-		return this.damage;
-	}
-
-	public void setDamage(double damage) {
-		this.damage = damage;
-	}
-
-	public double getSpeed() {
-		return this.speed;
-	}
-
-	public void setSpeed(double speed) {
-		this.speed = speed;
-	}
-
-	public double getRadius() {
-		return this.radius;
-	}
-
-	public void setRadius(double radius) {
-		this.radius = radius;
-	}
-
-	public boolean isCanFlickLevers() {
-		return this.canFlickLevers;
-	}
-
-	public void setCanFlickLevers(boolean canFlickLevers) {
-		this.canFlickLevers = canFlickLevers;
-	}
-
-	public boolean isCanOpenDoors() {
-		return this.canOpenDoors;
-	}
-
-	public void setCanOpenDoors(boolean canOpenDoors) {
-		this.canOpenDoors = canOpenDoors;
-	}
-
-	public boolean isCanPressButtons() {
-		return this.canPressButtons;
-	}
-
-	public void setCanPressButtons(boolean canPressButtons) {
-		this.canPressButtons = canPressButtons;
-	}
-
-	public boolean isCanCoolLava() {
-		return this.canCoolLava;
-	}
-
-	public void setCanCoolLava(boolean canCoolLava) {
-		this.canCoolLava = canCoolLava;
-	}
-
-	public boolean isFromOtherOrigin() {
-		return this.isFromOtherOrigin;
-	}
-
-	public void setFromOtherOrigin(boolean isFromOtherOrigin) {
-		this.isFromOtherOrigin = isFromOtherOrigin;
-	}
-
-	public boolean isShowParticles() {
-		return this.showParticles;
-	}
-
-	public void setShowParticles(boolean showParticles) {
-		this.showParticles = showParticles;
-	}
-
-	public AirBurst getSource() {
-		return this.source;
-	}
-
-	public void setSource(AirBurst source) {
-		this.source = source;
-	}
-
-	public ArrayList<Block> getAffectedLevers() {
-		return this.affectedLevers;
-	}
-
-	public ArrayList<Entity> getAffectedEntities() {
-		return this.affectedEntities;
-	}
-
-	public void setLocation(Location location) {
-		this.location = location;
-	}
-
-	public void setCooldown(long cooldown) {
-		this.cooldown = cooldown;
-	}
-
-	public int getParticles() {
-		return this.particles;
-	}
-
-	public void setParticles(int particles) {
-		this.particles = particles;
-	}
-
 	public static int getSelectParticles() {
 		return getConfig().getInt("Abilities.Air.AirBlast.SelectParticles");
 	}
 
 	public static double getSelectRange() {
 		return getConfig().getDouble("Abilities.Air.AirBlast.SelectRange");
-	}
-
-	public double getPushFactorSlide() {
-		return this.pushFactorSlide;
 	}
 }

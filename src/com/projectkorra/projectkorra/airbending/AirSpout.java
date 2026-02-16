@@ -7,6 +7,7 @@ import java.util.Random;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.GeneralMethods;
@@ -15,6 +16,11 @@ import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class AirSpout extends AirAbility {
 
 	private static final Integer[] DIRECTIONS = { 0, 1, 2, 3, 5, 6, 7, 8 };
@@ -29,16 +35,16 @@ public class AirSpout extends AirAbility {
 	@Attribute(Attribute.HEIGHT)
 	private double height;
 
-	public AirSpout(final Player player) {
-		super(player);
+	public AirSpout(final LivingEntity caster) {
+		super(caster);
 
-		final AirSpout spout = getAbility(player, AirSpout.class);
+		final AirSpout spout = getAbility(caster, AirSpout.class);
 		if (spout != null) {
 			spout.remove();
 			return;
 		}
 
-		if (!this.bPlayer.canBend(this)) {
+		if (!this.bender.canBend(this)) {
 			return;
 		}
 
@@ -54,15 +60,16 @@ public class AirSpout extends AirAbility {
 			return;
 		}
 
-		this.flightHandler.createInstance(player, this.getName());
+		if (this.bPlayer != null)
+			this.flightHandler.createInstance(this.player, this.getName());
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.height = getConfig().getDouble("Abilities.Avatar.AvatarState.Air.AirSpout.Height");
 		}
 
 		this.start();
 		if (!isRemoved()) {
-			AirScooter scooter = getAbility(player, AirScooter.class);
+			AirScooter scooter = getAbility(caster, AirScooter.class);
 			if (scooter != null) {
 				scooter.remove();
 			}
@@ -74,11 +81,11 @@ public class AirSpout extends AirAbility {
 	 * {@link Collision} for the new system.
 	 */
 	@Deprecated
-	public static boolean removeSpouts(Location loc0, final double radius, final Player sourceplayer) {
+	public static boolean removeSpouts(Location loc0, final double radius, final LivingEntity caster) {
 		boolean removed = false;
 		for (final AirSpout spout : getAbilities(AirSpout.class)) {
-			if (!spout.player.equals(sourceplayer)) {
-				final Location loc1 = spout.player.getLocation().getBlock().getLocation();
+			if (!spout.caster.equals(caster)) {
+				final Location loc1 = spout.caster.getLocation().getBlock().getLocation();
 				loc0 = loc0.getBlock().getLocation();
 				final double dx = loc1.getX() - loc0.getX();
 				final double dy = loc1.getY() - loc0.getY();
@@ -96,6 +103,7 @@ public class AirSpout extends AirAbility {
 	}
 
 	private void allowFlight() {
+		if (this.player == null) return;
 		if (!this.player.getAllowFlight()) {
 			this.player.setAllowFlight(true);
 		}
@@ -105,6 +113,7 @@ public class AirSpout extends AirAbility {
 	}
 
 	private void removeFlight() {
+		if (this.player == null) return;
 		if (this.player.isFlying()) {
 			this.player.setFlying(false);
 		}
@@ -118,15 +127,12 @@ public class AirSpout extends AirAbility {
 		if (ground == null) {
 			return false;
 		}
-		final double playerHeight = this.player.getLocation().getY();
-		if (playerHeight > ground.getLocation().getY() + this.height + threshold) {
-			return false;
-		}
-		return true;
+		final double casterHeight = this.caster.getLocation().getY();
+		return !(casterHeight > ground.getLocation().getY() + this.height + threshold);
 	}
 
 	private Block getGround() {
-		final Block standingblock = this.player.getLocation().getBlock();
+		final Block standingblock = this.caster.getLocation().getBlock();
 		for (int i = 0; i <= this.height + 5; i++) {
 			final Block block = standingblock.getRelative(BlockFace.DOWN, i);
 			if (GeneralMethods.isSolid(block) || ElementalAbility.isWater(block)) {
@@ -138,37 +144,38 @@ public class AirSpout extends AirAbility {
 
 	@Override
 	public void progress() {
-		if (this.player.isDead() || !this.player.isOnline() || !this.bPlayer.canBendIgnoreBinds(this) || !this.bPlayer.canBind(this)) {
+		if (this.caster.isDead() || (this.bPlayer != null && !this.player.isOnline()) || !this.bender.canBendIgnoreBinds(this) || !this.bender.canBind(this)) {
 			this.remove();
 			return;
 		} else if (this.duration != 0 && System.currentTimeMillis() > this.getStartTime() + this.duration) {
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 			this.remove();
 			return;
 		}
 
 		final double heightRemoveThreshold = 2;
 		if (!this.isWithinMaxSpoutHeight(heightRemoveThreshold)) {
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 			this.remove();
 			return;
 		}
 
-		final Block eyeBlock = this.player.getEyeLocation().getBlock();
+		final Block eyeBlock = this.caster.getEyeLocation().getBlock();
 		if (ElementalAbility.isWater(eyeBlock) || GeneralMethods.isSolid(eyeBlock)) {
 			this.remove();
 			return;
 		}
 
-		this.player.setFallDistance(0);
-		this.player.setSprinting(false);
+		this.caster.setFallDistance(0);
+		if (this.bPlayer != null)
+			this.player.setSprinting(false);
 		if ((new Random()).nextInt(4) == 0) {
-			playAirbendingSound(this.player.getLocation());
+			playAirbendingSound(this.caster.getLocation());
 		}
 
 		final Block block = this.getGround();
 		if (block != null) {
-			final double dy = this.player.getLocation().getY() - block.getY();
+			final double dy = this.caster.getLocation().getY() - block.getY();
 			if (dy > this.height) {
 				this.removeFlight();
 			} else {
@@ -183,21 +190,22 @@ public class AirSpout extends AirAbility {
 	@Override
 	public void remove() {
 		super.remove();
-		this.flightHandler.removeInstance(this.player, this.getName());
+		if (this.bPlayer != null)
+			this.flightHandler.removeInstance(this.player, this.getName());
 	}
 
 	private void rotateAirColumn(final Block block) {
-		if (!this.player.getWorld().equals(block.getWorld())) {
+		if (!this.caster.getWorld().equals(block.getWorld())) {
 			return;
 		}
 		if (System.currentTimeMillis() >= this.animTime + this.interval) {
 			this.animTime = System.currentTimeMillis();
 			Location location = block.getLocation();
-			final Location playerloc = this.player.getLocation();
-			location = new Location(location.getWorld(), playerloc.getX(), location.getY(), playerloc.getZ());
+			final Location casterLoc = this.caster.getLocation();
+			location = new Location(location.getWorld(), casterLoc.getX(), location.getY(), casterLoc.getZ());
 
 			int index = this.angle;
-			final double dy = Math.min(playerloc.getY() - block.getY(), this.height);
+			final double dy = Math.min(casterLoc.getY() - block.getY(), this.height);
 			this.angle = this.angle >= DIRECTIONS.length ? 0 : this.angle + 1;
 
 			for (int i = 1; i <= dy; i++) {
@@ -215,7 +223,7 @@ public class AirSpout extends AirAbility {
 
 	@Override
 	public Location getLocation() {
-		return this.player != null ? this.player.getLocation() : null;
+		return this.caster != null ? this.caster.getLocation() : null;
 	}
 
 	@Override
@@ -234,11 +242,6 @@ public class AirSpout extends AirAbility {
 	}
 
 	@Override
-	public boolean isCollidable() {
-		return true;
-	}
-
-	@Override
 	public List<Location> getLocations() {
 		final ArrayList<Location> locations = new ArrayList<>();
 		final Location topLoc = this.player.getLocation().getBlock().getLocation();
@@ -247,42 +250,6 @@ public class AirSpout extends AirAbility {
 			locations.add(topLoc.clone().add(0, -i, 0));
 		}
 		return locations;
-	}
-
-	public int getAngle() {
-		return this.angle;
-	}
-
-	public void setAngle(final int angle) {
-		this.angle = angle;
-	}
-
-	public long getAnimTime() {
-		return this.animTime;
-	}
-
-	public void setAnimTime(final long animTime) {
-		this.animTime = animTime;
-	}
-
-	public long getInterval() {
-		return this.interval;
-	}
-
-	public void setInterval(final long interval) {
-		this.interval = interval;
-	}
-
-	public double getHeight() {
-		return this.height;
-	}
-
-	public void setHeight(final double height) {
-		this.height = height;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
 	}
 
 }

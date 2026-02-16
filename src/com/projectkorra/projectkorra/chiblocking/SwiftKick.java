@@ -2,6 +2,7 @@ package com.projectkorra.projectkorra.chiblocking;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.ability.ChiAbility;
@@ -10,6 +11,11 @@ import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.chiblocking.passive.ChiPassive;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class SwiftKick extends ChiAbility {
 
 	@Attribute(Attribute.DAMAGE)
@@ -20,9 +26,13 @@ public class SwiftKick extends ChiAbility {
 	private long cooldown;
 	private Entity target;
 
-	public SwiftKick(final Player sourceplayer, final Entity targetentity) {
-		super(sourceplayer);
-		if (!this.bPlayer.canBend(this)) {
+	public SwiftKick(final LivingEntity caster) {
+		this(caster, ChiPassive.findTarget(caster));
+	}
+
+	public SwiftKick(final LivingEntity caster, final Entity targetentity) {
+		super(caster);
+		if (!this.bender.canBend(this)) {
 			return;
 		}
 		this.damage = getConfig().getDouble("Abilities.Chi.SwiftKick.Damage");
@@ -38,15 +48,15 @@ public class SwiftKick extends ChiAbility {
 			this.remove();
 			return;
 		}
-		if (!ElementalAbility.isAir(this.player.getLocation().subtract(0, 0.5, 0).getBlock().getType())) {
+		if (!ElementalAbility.isAir(this.caster.getLocation().subtract(0, 0.5, 0).getBlock().getType())) {
 			this.remove();
 			return;
 		}
 		DamageHandler.damageEntity(this.target, this.damage, this);
-		if (this.target instanceof Player && ChiPassive.willChiBlock(this.player, (Player) this.target)) {
-			ChiPassive.blockChi((Player) this.target);
+		if (this.target instanceof Player p && ChiPassive.willChiBlock(this.caster, p)) {
+			ChiPassive.blockChi(p);
 		}
-		this.bPlayer.addCooldown(this);
+		this.bender.addCooldown(this);
 		this.remove();
 	}
 
@@ -57,7 +67,7 @@ public class SwiftKick extends ChiAbility {
 
 	@Override
 	public Location getLocation() {
-		return this.player != null ? this.player.getLocation() : null;
+		return this.caster != null ? this.caster.getLocation() : null;
 	}
 
 	@Override
@@ -74,33 +84,4 @@ public class SwiftKick extends ChiAbility {
 	public boolean isHarmlessAbility() {
 		return false;
 	}
-
-	public double getDamage() {
-		return this.damage;
-	}
-
-	public void setDamage(final double damage) {
-		this.damage = damage;
-	}
-
-	public int getBlockChance() {
-		return this.blockChance;
-	}
-
-	public void setBlockChance(final int blockChance) {
-		this.blockChance = blockChance;
-	}
-
-	public Entity getTarget() {
-		return this.target;
-	}
-
-	public void setTarget(final Entity target) {
-		this.target = target;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
-	}
-
 }

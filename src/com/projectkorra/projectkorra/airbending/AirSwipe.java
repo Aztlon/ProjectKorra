@@ -34,8 +34,10 @@ import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class AirSwipe extends AirAbility {
 
 	// Limiting the entities reduces the risk of crashing.
@@ -76,7 +78,7 @@ public class AirSwipe extends AirAbility {
 
 		if (charging && !bender.hasUnlocked("AirSwipeCharged")) return;
 
-		if (CoreAbility.hasAbility(caster, AirSwipe.class)) {
+		if (hasAbility(caster, AirSwipe.class)) {
 			for (final AirSwipe ability : CoreAbility.getAbilities(caster, AirSwipe.class)) {
 				if (ability.charging) {
 					ability.launch();
@@ -103,7 +105,7 @@ public class AirSwipe extends AirAbility {
 		this.streams = new ConcurrentHashMap<>();
 		this.affectedEntities = new ArrayList<>();
 
-		if (this.bender.isOnCooldown(this) || caster.getEyeLocation().getBlock().isLiquid()) {
+		if (caster.getEyeLocation().getBlock().isLiquid()) {
 			this.remove();
 			return;
 		}
@@ -111,10 +113,6 @@ public class AirSwipe extends AirAbility {
 		if (!this.bender.canBend(this)) {
 			this.remove();
 			return;
-		}
-
-		if (!charging) {
-			this.launch();
 		}
 
 		if (this.bender.asPlayer().map(BendingPlayer::isAvatarState).orElse(false)) {
@@ -126,6 +124,9 @@ public class AirSwipe extends AirAbility {
 		}
 
 		this.start();
+		if (!isRemoved() && !charging) {
+			this.launch();
+		}
 	}
 
 	/**
@@ -290,7 +291,7 @@ public class AirSwipe extends AirAbility {
 			return;
 		}
 
-		if (this.caster.isDead() || Optional.ofNullable(this.player).map(p -> !p.isOnline()).orElse(false)) {
+		if (this.caster.isDead() || (bPlayer != null && !player.isOnline())) {
 			this.remove();
 			return;
 		}

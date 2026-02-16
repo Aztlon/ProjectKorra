@@ -2,30 +2,29 @@ package com.projectkorra.projectkorra.waterbending;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.projectkorra.projectkorra.ProjectKorra;
-import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Levelled;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
-import com.projectkorra.projectkorra.BendingPlayer;
+import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.FireBlast;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.ParticleEffect;
@@ -33,10 +32,15 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class SurgeWall extends WaterAbility {
 
 	private static final Map<Block, Block> AFFECTED_BLOCKS = new ConcurrentHashMap<>();
-	private static final Map<Block, Player> WALL_BLOCKS = new ConcurrentHashMap<>();
+	private static final Map<Block, LivingEntity> WALL_BLOCKS = new ConcurrentHashMap<>();
 	public static final List<TempBlock> SOURCE_BLOCKS = new ArrayList<>();
 
 	private boolean progressing;
@@ -53,6 +57,7 @@ public class SurgeWall extends WaterAbility {
 	private long obsidianDuration;
 	@Attribute(Attribute.RADIUS)
 	private double radius;
+	private double defaultRadius;
 	@Attribute(Attribute.RANGE)
 	private double range;
 	private Block sourceBlock;
@@ -64,63 +69,77 @@ public class SurgeWall extends WaterAbility {
 	private Vector targetDirection;
 	private Map<Block, Material> oldTemps;
 
-	public SurgeWall(final Player player) {
-		super(player);
+	public SurgeWall(final LivingEntity caster) {
+		this(caster, true);
+	}
+
+	public SurgeWall(final LivingEntity caster, boolean needsSource) {
+		super(caster);
 
 		this.interval = getConfig().getLong("Abilities.Water.Surge.Wall.Interval");
 		this.cooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.Surge.Wall.Cooldown"));
 		this.duration = applyModifiers(getConfig().getLong("Abilities.Water.Surge.Wall.Duration"));
 		this.range = applyModifiers(getConfig().getDouble("Abilities.Water.Surge.Wall.Range"));
-		this.radius = applyModifiers(getConfig().getDouble("Abilities.Water.Surge.Wall.Radius"));
+		this.radius = this.defaultRadius = applyModifiers(getConfig().getDouble("Abilities.Water.Surge.Wall.Radius"));
 		this.solidifyLava = getConfig().getBoolean("Abilities.Water.Surge.Wall.SolidifyLava.Enabled");
 		this.obsidianDuration = getConfig().getLong("Abilities.Water.Surge.Wall.SolidifyLava.Duration");
 		this.locations = new ArrayList<>();
 		this.oldTemps = new HashMap<>();
 
-		SurgeWave wave = getAbility(player, SurgeWave.class);
-		if (wave != null && !wave.isProgressing() && !this.bPlayer.isOnCooldown("SurgeWave")) {
+		SurgeWave wave = getAbility(caster, SurgeWave.class);
+		if (wave != null && !wave.isProgressing() && !this.bender.isOnCooldown("SurgeWave")) {
 			wave.moveWater();
 			return;
 		}
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.radius = getConfig().getDouble("Abilities.Avatar.AvatarState.Water.Surge.Wall.Radius");
 		}
 
-		final SurgeWall wall = getAbility(player, SurgeWall.class);
+		final SurgeWall wall = getAbility(caster, SurgeWall.class);
 		if (wall != null) {
 			if (wall.progressing) {
 				wall.freezeThaw();
-				return;
-			} else if (this.prepare()) {
+			} else if (this.prepare()) { // reselect source
 				wall.remove();
 				this.start();
 				this.time = System.currentTimeMillis();
 			}
-		} else if (!this.bPlayer.isOnCooldown("SurgeWall") && this.prepare()) {
+			return;
+		}
+
+		if (this.bender.isOnCooldown("SurgeWall")) {
+			return;
+		}
+
+		if (needsSource && this.prepare()) {
 			this.start();
 			this.time = System.currentTimeMillis();
 			return;
 		}
 
-		if (this.bPlayer.isOnCooldown("SurgeWave") || player.isSneaking()) {
+		if (!needsSource) {
+			this.start();
+			this.time = System.currentTimeMillis();
 			return;
-		} else if (wall == null && WaterReturn.hasWaterBottle(player)) {
-			final Location eyeLoc = player.getEyeLocation();
+		}
+
+		if (bPlayer != null && WaterReturn.hasWaterBottle(player)) {
+			final Location eyeLoc = caster.getEyeLocation();
 			final Block block = eyeLoc.add(eyeLoc.getDirection().normalize()).getBlock();
 
-			if (isTransparent(player, block) && isTransparent(player, eyeLoc.getBlock())) {
+			if (isTransparent(caster, block) && isTransparent(caster, eyeLoc.getBlock())) {
 				final TempBlock tempBlock = new TempBlock(block, Material.WATER);
 				tempBlock.setBendableSource(true);
 				SOURCE_BLOCKS.add(tempBlock);
 
-				wave = new SurgeWave(player);
+				wave = new SurgeWave(caster);
 				wave.setCanHitSelf(false);
 				wave.moveWater();
 
 				if (!wave.isProgressing()) {
 					wave.remove();
-				} else {
+				} else if (bPlayer != null) {
 					WaterReturn.emptyWaterBottle(player);
 				}
 
@@ -130,8 +149,8 @@ public class SurgeWall extends WaterAbility {
 		}
 	}
 
-	private void freezeThaw() {
-		if (!this.bPlayer.canIcebend()) {
+	public void freezeThaw() {
+		if (!this.bender.canIcebend()) {
 			return;
 		} else if (this.frozen) {
 			this.thaw();
@@ -140,20 +159,20 @@ public class SurgeWall extends WaterAbility {
 		}
 	}
 
-	private void freeze() {
+	public void freeze() {
 		this.frozen = true;
 		for (final Block block : WALL_BLOCKS.keySet()) {
-			if (WALL_BLOCKS.get(block) == this.player) {
-				new TempBlock(block, iceMaterial(this.player));
+			if (WALL_BLOCKS.get(block) == this.caster) {
+				new TempBlock(block, iceMaterial(this.caster));
 				playIcebendingSound(block.getLocation());
 			}
 		}
 	}
 
-	private void thaw() {
+	public void thaw() {
 		this.frozen = false;
 		for (final Block block : WALL_BLOCKS.keySet()) {
-			if (WALL_BLOCKS.get(block) == this.player) {
+			if (WALL_BLOCKS.get(block) == this.caster) {
 				new TempBlock(block, Material.WATER);
 			}
 		}
@@ -161,7 +180,7 @@ public class SurgeWall extends WaterAbility {
 
 	public boolean prepare() {
 		this.cancelPrevious();
-		final Block block = BlockSource.getWaterSourceBlock(this.player, this.range, ClickType.LEFT_CLICK, true, true, this.bPlayer.canPlantbend());
+		final Block block = BlockSource.getWaterSourceBlock(this.caster, this.range, ClickType.LEFT_CLICK, true, true, this.bender.canPlantbend());
 
 		if (block != null && !RegionProtection.isRegionProtected(this, block.getLocation())) {
 			this.sourceBlock = block;
@@ -172,7 +191,7 @@ public class SurgeWall extends WaterAbility {
 	}
 
 	private void cancelPrevious() {
-		final SurgeWall oldWave = getAbility(this.player, SurgeWall.class);
+		final SurgeWall oldWave = getAbility(this.caster, SurgeWall.class);
 		if (oldWave != null) {
 			if (oldWave.progressing) {
 				oldWave.removeWater(oldWave.sourceBlock);
@@ -188,13 +207,13 @@ public class SurgeWall extends WaterAbility {
 
 	public void moveWater() {
 		if (this.sourceBlock != null) {
-			this.targetDestination = this.player.getTargetBlock(getTransparentMaterialSet(), (int) this.range).getLocation();
+			this.targetDestination = this.caster.getTargetBlock(getTransparentMaterialSet(), (int) this.range).getLocation();
 
 			if (this.targetDestination.distanceSquared(this.location) <= 1) {
 				this.progressing = false;
 				this.targetDestination = null;
 			} else {
-				this.bPlayer.addCooldown("SurgeWall", this.cooldown);
+				this.bender.addCooldown("SurgeWall", this.cooldown);
 				this.progressing = true;
 				this.settingUp = true;
 				this.firstDestination = this.getToEyeLevel();
@@ -202,9 +221,9 @@ public class SurgeWall extends WaterAbility {
 				this.targetDirection = this.getDirection(this.firstDestination, this.targetDestination);
 
 				if (isDecayablePlant(this.sourceBlock)) {
-					new PlantRegrowth(this.player, this.sourceBlock, 3);
+					new PlantRegrowth(this.caster, this.sourceBlock, 3);
 				} else if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
-					new PlantRegrowth(this.player, this.sourceBlock);
+					new PlantRegrowth(this.caster, this.sourceBlock);
 					this.sourceBlock.setType(Material.AIR, false);
 				} else if (isCauldron(this.sourceBlock)) {
 					GeneralMethods.setCauldronData(this.sourceBlock, ((Levelled) this.sourceBlock.getBlockData()).getLevel() - 1);
@@ -238,11 +257,18 @@ public class SurgeWall extends WaterAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (progressing) {
+			WaterAbility transformTo = WaterAbility.transformer.apply(this, this.bender.getBoundAbilityName());
+			if (transformTo != null) {
+				return;
+			}
+		}
+
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
 			return;
 		} else if (this.duration != 0 && System.currentTimeMillis() > this.getStartTime() + this.duration) {
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 			this.remove();
 			return;
 		} else if (!isWaterbendable(this.sourceBlock) && !this.settingUp && !this.forming && !this.progressing) {
@@ -254,12 +280,12 @@ public class SurgeWall extends WaterAbility {
 
 		if (System.currentTimeMillis() - this.time >= this.interval) {
 			this.time = System.currentTimeMillis();
-			final boolean matchesName = this.bPlayer.getBoundAbilityName().equals(this.getName());
+			final boolean matchesName = this.bender.boundAbilityMatches("Surge");
 
 			if (!this.progressing && !matchesName) {
 				this.remove();
 				return;
-			} else if (this.progressing && (!this.player.isSneaking() || !matchesName)) {
+			} else if (this.progressing && (!this.bender.isSneaking() || !matchesName)) {
 				this.remove();
 				return;
 			} else if (!this.progressing) {
@@ -273,9 +299,9 @@ public class SurgeWall extends WaterAbility {
 				}
 
 				final ArrayList<Block> blocks = new ArrayList<>();
-				final Location targetLoc = GeneralMethods.getTargetedLocation(this.player, (int) this.range, false, false, b -> isWater(b) || isIcebendable(b));
+				final Location targetLoc = GeneralMethods.getTargetedLocation(this.caster, (int) this.range, false, false, b -> isWater(b) || isIcebendable(b));
 				this.location = targetLoc.clone();
-				final Vector eyeDir = this.player.getEyeLocation().getDirection();
+				final Vector eyeDir = this.caster.getEyeLocation().getDirection();
 				Vector vector;
 				Block block;
 				for (double i = 0; i <= this.getNightFactor(this.radius); i += 0.5) {
@@ -288,7 +314,7 @@ public class SurgeWall extends WaterAbility {
 						} else if (WALL_BLOCKS.containsKey(block)) {
 							blocks.add(block);
 						} else if (!blocks.contains(block) && (ElementalAbility.isAir(block.getType()) || FireAbility.isFire(block.getType()) || this.isWaterbendable(block)) && this.isTransparent(block)) {
-							WALL_BLOCKS.put(block, this.player);
+							WALL_BLOCKS.put(block, this.caster);
 							this.addWallBlock(block);
 							blocks.add(block);
 							this.locations.add(block.getLocation());
@@ -298,7 +324,7 @@ public class SurgeWall extends WaterAbility {
 				}
 
 				for (final Block blocki : WALL_BLOCKS.keySet()) {
-					if (WALL_BLOCKS.get(blocki) == this.player && !blocks.contains(blocki)) {
+					if (WALL_BLOCKS.get(blocki) == this.caster && !blocks.contains(blocki)) {
 						this.finalRemoveWater(blocki);
 					}
 
@@ -368,7 +394,7 @@ public class SurgeWall extends WaterAbility {
 		}
 
 		if (this.frozen) {
-			new TempBlock(block, iceMaterial(this.player));
+			new TempBlock(block, iceMaterial(this.caster));
 		} else {
 			new TempBlock(block, Material.WATER);
 		}
@@ -381,7 +407,7 @@ public class SurgeWall extends WaterAbility {
 		this.finalRemoveWater(this.sourceBlock);
 
 		for (final Block block : WALL_BLOCKS.keySet()) {
-			if (WALL_BLOCKS.get(block) == this.player) {
+			if (WALL_BLOCKS.get(block) == this.caster) {
 				this.finalRemoveWater(block);
 			}
 		}
@@ -447,20 +473,20 @@ public class SurgeWall extends WaterAbility {
 		return false;
 	}
 
-	public static void form(final Player player) {
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null) {
+	public static void form(final LivingEntity caster) {
+		final Bender bender = Bender.get(caster);
+		if (bender == null) {
 			return;
 		}
 
-		final double range = WaterAbility.getNightFactor(player.getWorld()) * getConfig().getDouble("Abilities.Water.Surge.Wall.Range");
-		SurgeWall wall = getAbility(player, SurgeWall.class);
-		SurgeWave wave = getAbility(player, SurgeWave.class);
+		final double range = WaterAbility.getNightFactor(caster.getWorld()) * getConfig().getDouble("Abilities.Water.Surge.Wall.Range");
+		SurgeWall wall = getAbility(caster, SurgeWall.class);
+		SurgeWave wave = getAbility(caster, SurgeWave.class);
 
 		if (wave != null) {
 			if (wave.isProgressing() && !wave.isFreezing()) {
 				// Freeze the wave.
-				new SurgeWave(player);
+				new SurgeWave(caster);
 			} else if (wave.isActivateFreeze()) {
 				wave.remove();
 				return;
@@ -468,22 +494,22 @@ public class SurgeWall extends WaterAbility {
 		}
 
 		if (wall == null) {
-			final Block source = BlockSource.getWaterSourceBlock(player, range, ClickType.SHIFT_DOWN, true, true, bPlayer.canPlantbend());
+			final Block source = BlockSource.getWaterSourceBlock(caster, range, ClickType.SHIFT_DOWN, true, true, bender.canPlantbend());
 
-			if (wave == null && source == null && WaterReturn.hasWaterBottle(player)) {
-				if (bPlayer.isOnCooldown("SurgeWall")) {
+			if (wave == null && source == null && caster instanceof Player p && p.isOnline() && WaterReturn.hasWaterBottle(p)) {
+				if (bender.isOnCooldown("SurgeWall")) {
 					return;
 				}
 
-				final Location eyeLoc = player.getEyeLocation();
+				final Location eyeLoc = caster.getEyeLocation();
 				final Block block = eyeLoc.add(eyeLoc.getDirection().normalize()).getBlock();
 
-				if (isTransparent(player, block) && isTransparent(player, eyeLoc.getBlock())) {
+				if (isTransparent(caster, block) && isTransparent(caster, eyeLoc.getBlock())) {
 					final TempBlock tempBlock = new TempBlock(block, Material.WATER);
 					tempBlock.setBendableSource(true);
 					SOURCE_BLOCKS.add(tempBlock);
 
-					wall = new SurgeWall(player);
+					wall = new SurgeWall(caster);
 					wall.moveWater();
 
 					if (!wall.progressing) {
@@ -491,7 +517,7 @@ public class SurgeWall extends WaterAbility {
 						tempBlock.revertBlock();
 						wall.remove();
 					} else {
-						WaterReturn.emptyWaterBottle(player);
+						WaterReturn.emptyWaterBottle(p);
 					}
 
 					SOURCE_BLOCKS.remove(tempBlock);
@@ -501,20 +527,18 @@ public class SurgeWall extends WaterAbility {
 			}
 
 			// If SurgeWall isn't being created, then try to source SurgeWave.
-			if (!bPlayer.isOnCooldown("SurgeWave")) {
-				wave = new SurgeWave(player);
+			if (!bender.isOnCooldown("SurgeWave")) {
+				wave = new SurgeWave(caster);
 			}
 			return;
 		} else {
-			if (isWaterbendable(player, null, player.getTargetBlock((HashSet<Material>) null, Math.min(1, (int)range)))) {
-				wave = new SurgeWave(player);
+			if (isWaterbendable(caster, null, caster.getTargetBlock(null, Math.min(1, (int)range)))) {
+				wave = new SurgeWave(caster);
 				return;
 			}
 		}
 
-		if (wall != null) {
-			wall.moveWater();
-		}
+		wall.moveWater();
 	}
 
 	public static void removeAllCleanup() {
@@ -547,13 +571,15 @@ public class SurgeWall extends WaterAbility {
 			if (this.frozen) {
 				this.thaw();
 			}
-			new WaterReturn(this.player, this.location.getBlock());
+			if (bPlayer != null) {
+				new WaterReturn(this.player, this.location.getBlock());
+			}
 		}
 	}
 
 	@Override
 	public String getName() {
-		return "Surge";
+		return "SurgeWall";
 	}
 
 	@Override
@@ -563,7 +589,7 @@ public class SurgeWall extends WaterAbility {
 		} else if (this.sourceBlock != null) {
 			return this.sourceBlock.getLocation();
 		}
-		return this.player != null ? this.player.getLocation() : null;
+		return this.caster != null ? this.caster.getLocation() : null;
 	}
 
 	@Override
@@ -586,124 +612,12 @@ public class SurgeWall extends WaterAbility {
 		return this.locations;
 	}
 
-	public boolean isProgressing() {
-		return this.progressing;
-	}
-
-	public void setProgressing(final boolean progressing) {
-		this.progressing = progressing;
-	}
-
-	public boolean isSettingUp() {
-		return this.settingUp;
-	}
-
-	public void setSettingUp(final boolean settingUp) {
-		this.settingUp = settingUp;
-	}
-
-	public boolean isForming() {
-		return this.forming;
-	}
-
-	public void setForming(final boolean forming) {
-		this.forming = forming;
-	}
-
-	public boolean isFrozen() {
-		return this.frozen;
-	}
-
-	public void setFrozen(final boolean frozen) {
-		this.frozen = frozen;
-	}
-
-	public long getTime() {
-		return this.time;
-	}
-
-	public void setTime(final long time) {
-		this.time = time;
-	}
-
-	public long getInterval() {
-		return this.interval;
-	}
-
-	public void setInterval(final long interval) {
-		this.interval = interval;
-	}
-
-	public double getRadius() {
-		return this.radius;
-	}
-
-	public void setRadius(final double radius) {
-		this.radius = radius;
-	}
-
-	public double getRange() {
-		return this.range;
-	}
-
-	public void setRange(final double range) {
-		this.range = range;
-	}
-
-	public Block getSourceBlock() {
-		return this.sourceBlock;
-	}
-
-	public void setSourceBlock(final Block sourceBlock) {
-		this.sourceBlock = sourceBlock;
-	}
-
-	public Location getFirstDestination() {
-		return this.firstDestination;
-	}
-
-	public void setFirstDestination(final Location firstDestination) {
-		this.firstDestination = firstDestination;
-	}
-
-	public Location getTargetDestination() {
-		return this.targetDestination;
-	}
-
-	public void setTargetDestination(final Location targetDestination) {
-		this.targetDestination = targetDestination;
-	}
-
-	public Vector getFirstDirection() {
-		return this.firstDirection;
-	}
-
-	public void setFirstDirection(final Vector firstDirection) {
-		this.firstDirection = firstDirection;
-	}
-
-	public Vector getTargetDirection() {
-		return this.targetDirection;
-	}
-
-	public void setTargetDirection(final Vector targetDirection) {
-		this.targetDirection = targetDirection;
-	}
-
 	public static Map<Block, Block> getAffectedBlocks() {
 		return AFFECTED_BLOCKS;
 	}
 
-	public static Map<Block, Player> getWallBlocks() {
+	public static Map<Block, LivingEntity> getWallBlocks() {
 		return WALL_BLOCKS;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
-	}
-
-	public void setLocation(final Location location) {
-		this.location = location;
 	}
 
 }

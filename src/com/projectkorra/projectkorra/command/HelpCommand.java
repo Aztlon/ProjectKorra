@@ -105,7 +105,7 @@ public class HelpCommand extends PKCommand {
 				strings.add(command.getProperUse());
 			}
 			
-			for (final String s : this.getPage(strings, ChatColor.GOLD + "Commands: <" + this.required + "> [" + this.optional + "]", Integer.valueOf(arg), true)) {
+			for (final String s : this.getPage(strings, ChatColor.GOLD + "Commands: <" + this.required + "> [" + this.optional + "]", Integer.parseInt(arg), true)) {
 				if (firstMessage) {
 					ChatUtil.sendBrandingMessage(sender, s);
 					firstMessage = false;
@@ -113,7 +113,7 @@ public class HelpCommand extends PKCommand {
 					sender.sendMessage(ChatColor.YELLOW + s);
 				}
 			}
-		} else if (instances.keySet().contains(arg)) {// bending help command.
+		} else if (instances.containsKey(arg)) {// bending help command.
 			instances.get(arg).help(sender, true);
 		} else if (Arrays.asList(Commands.comboaliases).contains(arg)) { // bending help elementcombo.
 			sender.sendMessage(ChatColor.GOLD + this.properUsage.replace("{command1}", ChatColor.RED + "/bending display " + arg + ChatColor.GOLD).replace("{command2}", ChatColor.RED + "/bending help <Combo Name>" + ChatColor.GOLD));

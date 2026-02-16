@@ -23,8 +23,10 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempFallingBlock;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class EarthBlast extends EarthAbility {
 	private boolean isProgressing;
 	private boolean isAtDestination;
@@ -209,7 +211,7 @@ public class EarthBlast extends EarthAbility {
 	public boolean prepare() {
 		final Block block = getTargetEarthBlock(caster, (int) selectRange);
 
-		if (!this.isEarthbendable(block)) {
+		if (block == null || !this.isEarthbendable(block)) {
 			return false;
 		} else if (TempBlock.isTempBlock(block) && !isBendableEarthTempBlock(block)) {
 			Optional.ofNullable(TempBlock.get(block)).ifPresent(tb -> {
@@ -360,7 +362,10 @@ public class EarthBlast extends EarthAbility {
 				return;
 			}
 
-			this.destination = this.getTargetLocation();
+			boolean npc = bPlayer == null;
+			if (!npc) {
+				this.destination = this.getTargetLocation();
+			}
 			this.firstDestination = this.location.clone();
 			if (this.destination.getY() - this.location.getY() > 2) {
 				this.firstDestination.setY(this.destination.getY() - 1);

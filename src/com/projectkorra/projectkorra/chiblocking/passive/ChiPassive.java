@@ -1,11 +1,16 @@
 package com.projectkorra.projectkorra.chiblocking.passive;
 
+import java.util.Comparator;
+
 import org.bukkit.Sound;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
+import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
@@ -17,7 +22,7 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.ActionBar;
 
 public class ChiPassive {
-	public static boolean willChiBlock(final Player attacker, final Player player) {
+	public static boolean willChiBlock(final LivingEntity attacker, final Player player) {
 		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 		if (bPlayer == null) {
 			return false;
@@ -71,6 +76,13 @@ public class ChiPassive {
 				}
 			}
 		}.runTaskTimer(ProjectKorra.plugin, 0, 1);
+	}
+
+	public static Entity findTarget(final LivingEntity caster) {
+		// nearest entity within 5 blocks that is not the caster
+		return GeneralMethods.getEntitiesAroundPoint(caster.getLocation(), 5, e -> e instanceof LivingEntity && e != caster).stream()
+				.min(Comparator.comparingDouble(e -> e.getLocation().distanceSquared(caster.getLocation())))
+				.orElse(null);
 	}
 
 	public static double getChance() {

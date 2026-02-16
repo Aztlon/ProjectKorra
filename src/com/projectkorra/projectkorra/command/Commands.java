@@ -5,19 +5,25 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 
 import com.projectkorra.projectkorra.ProjectKorra;
+
+import lombok.Setter;
 
 public class Commands {
 
 	private final ProjectKorra plugin;
 
-	public static Set<String> invincible = new HashSet<String>();
+	public static Set<String> invincible = new HashSet<>();
 	public static boolean debugEnabled = false;
 	public static boolean isToggledForAll = false;
+	@Setter public static Function<CommandSender, Boolean> noArgsHook;
 
 	public Commands(final ProjectKorra plugin) {
 		this.plugin = plugin;
@@ -74,12 +80,10 @@ public class Commands {
 	private void init() {
 		final PluginCommand projectkorra = this.plugin.getCommand("projectkorra");
 
-		/**
-		 * Set of all of the Classes which extend Command
-		 */
+		 // Set of all of the Classes which extend Command
 		initializeCommands();
 
-		final CommandExecutor exe = (s, c, label, args) -> {
+		projectkorra.setExecutor((s, c, label, args) -> {
 			if (Arrays.asList(commandaliases).contains(label.toLowerCase())) {
 				if (args.length > 0) {
 					final List<String> sendingArgs = Arrays.asList(args).subList(1, args.length);
@@ -91,13 +95,13 @@ public class Commands {
 					}
 				}
 
-				PKCommand.instances.get("help").execute(s, new ArrayList<String>());
+				if (noArgsHook != null && noArgsHook.apply(s)) return true;
+				else PKCommand.instances.get("help").execute(s, new ArrayList<>());
 				return true;
 			}
 
 			return false;
-		};
-		projectkorra.setExecutor(exe);
+		});
 		projectkorra.setTabCompleter(new BendingTabComplete());
 	}
 

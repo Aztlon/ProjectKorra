@@ -10,13 +10,11 @@ import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.util.Vector;
 
-import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.Element.SubElement;
-import com.projectkorra.projectkorra.ability.AbstractSkill;
+import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.BlueFireAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
@@ -27,6 +25,11 @@ import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class FireBlastCharged extends FireAbility {
 
 	private static final Map<Entity, FireBlastCharged> EXPLOSIONS = new ConcurrentHashMap<>();
@@ -60,12 +63,12 @@ public class FireBlastCharged extends FireAbility {
 	private Location location;
 	private Vector direction;
 
-	public FireBlastCharged(final Player player) {
-		super(player);
+	public FireBlastCharged(final LivingEntity caster) {
+		super(caster);
 
-		if (AbstractSkill.isLocked("FireBlastCharged", player)) return;
+		if (!bender.hasUnlocked("FireBlastCharged")) return;
 
-		if (!this.bPlayer.canBendIgnoreBinds(this) || !this.bPlayer.getBoundAbilityName().equals("FireBlast")) {
+		if (!this.bender.canBendIgnoreBinds(this) || !this.bender.getBoundAbilityName().equals("FireBlast")) {
 			return;
 		}
 
@@ -89,7 +92,7 @@ public class FireBlastCharged extends FireAbility {
 
 		//this.applyModifiers();
 
-		if (!player.getEyeLocation().getBlock().isLiquid()) {
+		if (!caster.getEyeLocation().getBlock().isLiquid()) {
 			this.start();
 		}
 	}
@@ -101,19 +104,19 @@ public class FireBlastCharged extends FireAbility {
 		double maxDamageMod = 0;
 		double rangeMod = 0;
 
-		if (isDay(player.getWorld())) {
+		if (isDay(caster.getWorld())) {
 			chargeTimeMod = (long) (this.chargeTime / getDayFactor() - this.chargeTime);
 			minDamageMod = this.getDayFactor(this.minDamage) - this.minDamage;
 			maxDamageMod = this.getDayFactor(this.maxDamage) - this.maxDamage;
 			rangeMod = this.getDayFactor(this.range) - this.range;
 		}
 
-		chargeTimeMod = (long) (bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? (chargeTime / BlueFireAbility.getCooldownFactor() - chargeTime) + chargeTimeMod : chargeTimeMod);
-		minDamageMod = (bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getDamageFactor() * minDamage - minDamage) + minDamageMod : minDamageMod);
-		maxDamageMod = (bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getDamageFactor() * maxDamage - maxDamage) + maxDamageMod : maxDamageMod);
-		rangeMod =  (bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getRangeFactor() * range - range) + rangeMod : rangeMod);
+		chargeTimeMod = (long) (bender.canUseSubElement(SubElement.BLUE_FIRE) ? (chargeTime / BlueFireAbility.getCooldownFactor() - chargeTime) + chargeTimeMod : chargeTimeMod);
+		minDamageMod = (bender.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getDamageFactor() * minDamage - minDamage) + minDamageMod : minDamageMod);
+		maxDamageMod = (bender.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getDamageFactor() * maxDamage - maxDamage) + maxDamageMod : maxDamageMod);
+		rangeMod =  (bender.canUseSubElement(SubElement.BLUE_FIRE) ? (BlueFireAbility.getRangeFactor() * range - range) + rangeMod : rangeMod);
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.chargeTime = getConfig().getLong("Abilities.Avatar.AvatarState.Fire.FireBlast.Charged.ChargeTime");
 			this.minDamage = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireBlast.Charged.MinimumDamage");
 			this.maxDamage = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireBlast.Charged.MaximumDamage");
@@ -207,12 +210,12 @@ public class FireBlastCharged extends FireAbility {
 
 		if (explode) {
 			if (this.canDamageBlocks && this.explosionRadius > 0 && canFireGrief()) {
-				this.explosion = this.player.getWorld().spawn(this.location, TNTPrimed.class);
+				this.explosion = this.caster.getWorld().spawn(this.location, TNTPrimed.class);
 				this.explosion.setFuseTicks(0);
 				double yield = this.explosionRadius;
 
-				if (!this.bPlayer.isAvatarState()) {
-					yield = getDayFactor(yield, this.player.getWorld());
+				if (!this.bender.isAvatarState()) {
+					yield = getDayFactor(yield, this.caster.getWorld());
 				} else {
 					yield = AvatarState.getValue(yield);
 				}
@@ -260,7 +263,7 @@ public class FireBlastCharged extends FireAbility {
 
 		boolean exploded = false;
 		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, this.collisionRadius)) {
-			if (entity.getEntityId() == this.player.getEntityId() || RegionProtection.isRegionProtected(this, entity.getLocation())) {
+			if (entity.getEntityId() == this.caster.getEntityId() || RegionProtection.isRegionProtected(this, entity.getLocation())) {
 				continue;
 			}
 			entity.setFireTicks((int) (this.fireTicks * 20));
@@ -284,13 +287,13 @@ public class FireBlastCharged extends FireAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBinds(this) && !this.launched) {
+		if (!this.bender.canBendIgnoreBinds(this) && !this.launched) {
 			this.remove();
 			return;
-		} else if (!this.bPlayer.canBendIgnoreCooldowns(CoreAbility.getAbility("FireBlast")) && !this.launched) {
+		} else if (!this.bender.canBendIgnoreCooldowns(CoreAbility.getAbility("FireBlast")) && !this.launched) {
 			this.remove();
 			return;
-		} else if (!this.player.isSneaking() && !this.charged) {
+		} else if (!this.bender.isSneaking() && !this.charged) {
 			this.remove();
 			return;
 		}
@@ -298,9 +301,9 @@ public class FireBlastCharged extends FireAbility {
 		if (System.currentTimeMillis() > this.getStartTime() + this.chargeTime) {
 			this.charged = true;
 		}
-		if (!this.player.isSneaking() && !this.launched) {
+		if (!this.bender.isSneaking() && !this.launched) {
 			this.launched = true;
-			this.location = this.player.getEyeLocation();
+			this.location = this.caster.getEyeLocation();
 			this.origin = this.location.clone();
 			this.direction = this.location.getDirection().normalize().multiply(this.collisionRadius);
 		}
@@ -318,7 +321,7 @@ public class FireBlastCharged extends FireAbility {
 			if (!this.launched && !this.charged) {
 				return;
 			} else if (!this.launched) {
-				playFirebendingParticles(this.player.getEyeLocation().clone().add(this.player.getEyeLocation().getDirection().clone()), 3, .001, .001, .001);
+				playFirebendingParticles(this.caster.getEyeLocation().clone().add(this.caster.getEyeLocation().getDirection().clone()), 3, .001, .001, .001);
 				return;
 			}
 
@@ -347,7 +350,7 @@ public class FireBlastCharged extends FireAbility {
 	public void remove() {
 		super.remove();
 		if (this.charged) {
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 		}
 	}
 
@@ -386,152 +389,8 @@ public class FireBlastCharged extends FireAbility {
 		return this.collisionRadius;
 	}
 
-	public boolean isCharged() {
-		return this.charged;
-	}
-
-	public void setCharged(final boolean charged) {
-		this.charged = charged;
-	}
-
-	public boolean isLaunched() {
-		return this.launched;
-	}
-
-	public void setLaunched(final boolean launched) {
-		this.launched = launched;
-	}
-
-	public boolean isCanDamageBlocks() {
-		return this.canDamageBlocks;
-	}
-
-	public void setCanDamageBlocks(final boolean canDamageBlocks) {
-		this.canDamageBlocks = canDamageBlocks;
-	}
-
-	public boolean isDissipate() {
-		return this.dissipate;
-	}
-
-	public void setDissipate(final boolean dissipate) {
-		this.dissipate = dissipate;
-	}
-
-	public long getTime() {
-		return this.time;
-	}
-
-	public void setTime(final long time) {
-		this.time = time;
-	}
-
-	public long getChargeTime() {
-		return this.chargeTime;
-	}
-
-	public void setChargeTime(final long chargeTime) {
-		this.chargeTime = chargeTime;
-	}
-
-	public long getInterval() {
-		return this.interval;
-	}
-
-	public void setInterval(final long interval) {
-		this.interval = interval;
-	}
-
-	public double getMaxDamage() {
-		return this.maxDamage;
-	}
-
-	public void setMaxDamage(final double maxDamage) {
-		this.maxDamage = maxDamage;
-	}
-
-	public double getMinDamage() {
-		return this.minDamage;
-	}
-
-	public void setMinDamage(final double minDamage) {
-		this.minDamage = minDamage;
-	}
-
-	public double getRange() {
-		return this.range;
-	}
-
-	public void setRange(final double range) {
-		this.range = range;
-	}
-
-	public void setCollisionRadius(final double collisionRadius) {
-		this.collisionRadius = collisionRadius;
-	}
-
-	public double getDamageRadius() {
-		return this.damageRadius;
-	}
-
-	public void setDamageRadius(final double damageRadius) {
-		this.damageRadius = damageRadius;
-	}
-
-	public double getExplosionRadius() {
-		return this.explosionRadius;
-	}
-
-	public void setExplosionRadius(final double explosionRadius) {
-		this.explosionRadius = explosionRadius;
-	}
-
-	public double getInnerRadius() {
-		return this.innerRadius;
-	}
-
-	public void setInnerRadius(final double innerRadius) {
-		this.innerRadius = innerRadius;
-	}
-
-	public double getFireTicks() {
-		return this.fireTicks;
-	}
-
-	public void setFireTicks(final double fireTicks) {
-		this.fireTicks = fireTicks;
-	}
-
-	public TNTPrimed getExplosion() {
-		return this.explosion;
-	}
-
-	public void setExplosion(final TNTPrimed explosion) {
-		this.explosion = explosion;
-	}
-
-	public Location getOrigin() {
-		return this.origin;
-	}
-
-	public void setOrigin(final Location origin) {
-		this.origin = origin;
-	}
-
-	public Vector getDirection() {
-		return this.direction;
-	}
-
-	public void setDirection(final Vector direction) {
-		this.direction = direction;
-	}
-
 	public static Map<Entity, FireBlastCharged> getExplosions() {
 		return EXPLOSIONS;
-	}
-
-	public void setLocation(final Location location) {
-		this.location = location;
 	}
 
 }

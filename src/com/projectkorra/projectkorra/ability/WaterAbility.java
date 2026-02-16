@@ -16,17 +16,14 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
-import org.bukkit.block.data.type.NoteBlock;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import com.projectkorra.projectkorra.Bender;
-import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
-import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
@@ -39,6 +36,7 @@ import com.projectkorra.projectkorra.waterbending.WaterSpout;
 import com.projectkorra.projectkorra.waterbending.ice.PhaseChange;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
+import com.projectkorra.projectkorra.waterbending.util.IWaterAbilityTransformer;
 
 import dev.lone.itemsadder.api.CustomBlock;
 import me.clip.placeholderapi.PlaceholderAPI;
@@ -46,6 +44,7 @@ import me.clip.placeholderapi.PlaceholderAPI;
 public abstract class WaterAbility extends ElementalAbility {
 
 	public static final Map<String, String> BLOCK_DATA_CUSTOM_ICE = new HashMap<>(); // <block data string, namespaced id>
+	public static IWaterAbilityTransformer transformer;
 
 	public WaterAbility(final LivingEntity caster) {
 		super(caster);
@@ -236,7 +235,7 @@ public abstract class WaterAbility extends ElementalAbility {
 
 		boolean npc = !(caster instanceof Player player) || !player.isOnline();
 		final Block testBlock = npc ? getNearestWaterBlock(caster, range) : caster.getTargetBlock(trans, Math.max(1, Math.min(3, (int)range)));
-		if (testBlock == null || isWaterbendable(caster, null, testBlock) && (plantbending || (!isPlant(testBlock) && !isDecayablePlant(testBlock)))) {
+		if (testBlock != null && isWaterbendable(caster, null, testBlock) && (plantbending || (!isPlant(testBlock) && !isDecayablePlant(testBlock)))) {
 			return testBlock;
 		}
 

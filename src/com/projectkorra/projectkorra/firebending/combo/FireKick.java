@@ -21,6 +21,11 @@ import com.projectkorra.projectkorra.ability.util.ComboUtil;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class FireKick extends FireAbility implements ComboAbility {
 
 	@Attribute(Attribute.COOLDOWN)
@@ -36,10 +41,10 @@ public class FireKick extends FireAbility implements ComboAbility {
 	private ArrayList<LivingEntity> affectedEntities;
 	private ArrayList<BukkitRunnable> tasks;
 
-	public FireKick(final Player player) {
-		super(player);
+	public FireKick(final LivingEntity caster) {
+		super(caster);
 
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			return;
 		}
 
@@ -51,7 +56,7 @@ public class FireKick extends FireAbility implements ComboAbility {
 		this.cooldown = applyModifiersCooldown(getConfig().getLong("Abilities.Fire.FireKick.Cooldown"));
 		this.speed = getConfig().getLong("Abilities.Fire.FireKick.Speed");
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.cooldown = 0;
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireKick.Damage");
 			this.range = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireKick.Range");
@@ -76,29 +81,29 @@ public class FireKick extends FireAbility implements ComboAbility {
 			}
 		}
 
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
 			return;
 		}
 
 		if (this.destination == null) {
-			if (this.bPlayer.isOnCooldown("FireKick") && !this.bPlayer.isAvatarState()) {
+			if (this.bender.isOnCooldown("FireKick") && !this.bender.isAvatarState()) {
 				this.remove();
 				return;
 			}
 
-			this.bPlayer.addCooldown("FireKick", this.cooldown);
-			final Vector eyeDir = this.player.getEyeLocation().getDirection().normalize().multiply(this.range);
-			this.destination = this.player.getEyeLocation().add(eyeDir);
+			this.bender.addCooldown("FireKick", this.cooldown);
+			final Vector eyeDir = this.caster.getEyeLocation().getDirection().normalize().multiply(this.range);
+			this.destination = this.caster.getEyeLocation().add(eyeDir);
 
-			this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_HORSE_JUMP, 0.5f, 0f);
-			this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 0.5f, 1f);
+			this.caster.getWorld().playSound(this.caster.getLocation(), Sound.ENTITY_HORSE_JUMP, 0.5f, 0f);
+			this.caster.getWorld().playSound(this.caster.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 0.5f, 1f);
 			for (int i = -30; i <= 30; i += 5) {
-				this.location = this.player.getLocation().clone().add(0, 0.1, 0); // to account for dirt paths and other low blocks
+				this.location = this.caster.getLocation().clone().add(0, 0.1, 0); // to account for dirt paths and other low blocks
 				Vector vec = GeneralMethods.getDirection(this.location, this.destination.clone());
 				vec = GeneralMethods.rotateXZ(vec, i);
 
-				final FireComboStream fs = new FireComboStream(this.player, this, vec, this.location, this.range, this.speed);
+				final FireComboStream fs = new FireComboStream(this.caster, this, vec, this.location, this.range, this.speed);
 				fs.setSpread(0.2F);
 				fs.setDensity(5);
 				fs.setUseNewParticles(true);
@@ -108,7 +113,7 @@ public class FireKick extends FireAbility implements ComboAbility {
 				}
 				fs.runTaskTimer(ProjectKorra.plugin, 0, 1L);
 				this.tasks.add(fs);
-				this.player.getWorld().playSound(this.player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 0.5f, 1f);
+				this.caster.getWorld().playSound(this.caster.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 0.5f, 1f);
 			}
 		} else if (this.tasks.isEmpty()) {
 			this.remove();
@@ -185,17 +190,5 @@ public class FireKick extends FireAbility implements ComboAbility {
 	@Override
 	public ArrayList<AbilityInformation> getCombination() {
 		return ComboUtil.generateCombinationFromList(this, ConfigManager.defaultConfig.get().getStringList("Abilities.Fire.FireKick.Combination"));
-	}
-
-	public ArrayList<LivingEntity> getAffectedEntities() {
-		return this.affectedEntities;
-	}
-
-	public ArrayList<BukkitRunnable> getTasks() {
-		return this.tasks;
-	}
-
-	public void setTasks(final ArrayList<BukkitRunnable> tasks) {
-		this.tasks = tasks;
 	}
 }

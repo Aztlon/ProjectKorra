@@ -31,6 +31,9 @@ public class WaterReturn extends WaterAbility {
 
 	public WaterReturn(final Player player, final Block block) {
 		super(player);
+		if (this.bPlayer == null) {
+			return;
+		}
 		if (hasAbility(player, WaterReturn.class)) {
 			return;
 		}

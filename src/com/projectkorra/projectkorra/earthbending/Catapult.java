@@ -41,9 +41,13 @@ public class Catapult extends EarthAbility {
 	private boolean cancelWithAngle;
 	private BlockData bentBlockData;
 
+	public Catapult(final LivingEntity caster) {
+		this(caster, true);
+	}
+
 	public Catapult(final LivingEntity caster, final boolean sneak) {
 		super(caster);
-		if (sneak && player != null && AbstractSkill.isLocked("ChargedCatapult", player)) return;
+		if (sneak && !bender.hasUnlocked("ChargedCatapult")) return;
 		this.setFields();
 		final Block b = caster.getLocation().getBlock().getRelative(BlockFace.DOWN, 1);
 		if (!(isEarth(b) || isSand(b) || isMetal(b))) {

@@ -8,7 +8,6 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.tuple.Pair;
-
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -19,6 +18,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
+import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.AirAbility;
@@ -35,10 +35,15 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class Torrent extends WaterAbility {
 
 	private static final double CLEANUP_RANGE = 50;
-	private static final Map<TempBlock, Pair<Player, Integer>> FROZEN_BLOCKS = new ConcurrentHashMap<>();
+	private static final Map<TempBlock, Pair<LivingEntity, Integer>> FROZEN_BLOCKS = new ConcurrentHashMap<>();
 
 	private boolean sourceSelected;
 	private boolean settingUp;
@@ -73,6 +78,7 @@ public class Torrent extends WaterAbility {
 	private double deflectDamage;
 	@Attribute(Attribute.RANGE)
 	private double range;
+	private double defaultRange;
 	@Attribute(Attribute.SELECT_RANGE)
 	private double selectRange;
 	private Block sourceBlock;
@@ -82,8 +88,8 @@ public class Torrent extends WaterAbility {
 	private ArrayList<TempBlock> launchedBlocks;
 	private ArrayList<Entity> hurtEntities;
 
-	public Torrent(final Player player, boolean needSource) {
-		super(player);
+	public Torrent(final LivingEntity caster, boolean needSource) {
+		super(caster);
 
 		this.layer = 0;
 		this.startAngle = 0;
@@ -97,7 +103,7 @@ public class Torrent extends WaterAbility {
 		this.successiveDamage = applyModifiers(getConfig().getDouble("Abilities.Water.Torrent.SuccessiveDamage"));
 		this.maxHits = getConfig().getInt("Abilities.Water.Torrent.MaxHits");
 		this.deflectDamage = applyModifiers(getConfig().getDouble("Abilities.Water.Torrent.DeflectDamage"));
-		this.range = applyModifiers(getConfig().getDouble("Abilities.Water.Torrent.Range"));
+		this.range = this.defaultRange = applyModifiers(getConfig().getDouble("Abilities.Water.Torrent.Range"));
 		this.selectRange = applyModifiers(getConfig().getDouble("Abilities.Water.Torrent.SelectRange"));
 		this.cooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.Torrent.Cooldown"));
 		this.revert = getConfig().getBoolean("Abilities.Water.Torrent.Revert");
@@ -106,22 +112,22 @@ public class Torrent extends WaterAbility {
 		this.launchedBlocks = new ArrayList<>();
 		this.hurtEntities = new ArrayList<>();
 
-		final Torrent oldTorrent = getAbility(player, Torrent.class);
+		final Torrent oldTorrent = getAbility(caster, Torrent.class);
 		if (oldTorrent != null) {
 			if (!oldTorrent.sourceSelected) {
-				oldTorrent.use();
-				this.bPlayer.addCooldown("Torrent", oldTorrent.cooldown);
+				oldTorrent.onClick();
+				this.bender.addCooldown("Torrent", oldTorrent.cooldown);
 				return;
 			} else {
 				oldTorrent.remove();
 			}
 		}
 
-		if (this.bPlayer.isOnCooldown("Torrent") && needSource) {
+		if (this.bender.isOnCooldown("Torrent") && needSource) {
 			return;
 		}
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.knockback = getConfig().getDouble("Abilities.Avatar.AvatarState.Water.Torrent.Push");
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Water.Torrent.InitialDamage");
 			this.successiveDamage = getConfig().getDouble("Abilities.Avatar.AvatarState.Water.Torrent.SuccessiveDamage");
@@ -130,31 +136,31 @@ public class Torrent extends WaterAbility {
 
 		this.time = System.currentTimeMillis();
 		if (needSource) {
-			this.sourceBlock = BlockSource.getWaterSourceBlock(player, this.selectRange, ClickType.LEFT_CLICK, true, true, this.bPlayer.canPlantbend());
+			this.sourceBlock = BlockSource.getWaterSourceBlock(caster, this.selectRange, ClickType.LEFT_CLICK, true, true, this.bender.canPlantbend());
 			if (this.sourceBlock != null && !RegionProtection.isRegionProtected(this, this.sourceBlock.getLocation())) {
 				this.sourceSelected = true;
 				this.start();
 			}
 		} else {
-			this.location = player.getEyeLocation().add(this.radius, 0, 0);
+			this.location = caster.getEyeLocation().add(this.radius, 0, 0);
 			start();
 		}
 	}
 
-	public Torrent(Player player) {
-		this(player, true);
+	public Torrent(LivingEntity caster) {
+		this(caster, true);
 	}
 
 	private void freeze() {
 		if (this.layer == 0) {
 			return;
-		} else if (!this.bPlayer.canBendIgnoreBindsCooldowns(getAbility("PhaseChange"))) {
+		} else if (!this.bender.canBendIgnoreBindsCooldowns(getAbility("PhaseChange"))) {
 			return;
 		}
 		final List<Block> ice = GeneralMethods.getBlocksAroundPoint(this.location, this.layer);
 		final List<Entity> trapped = GeneralMethods.getEntitiesAroundPoint(this.location, this.layer);
 		ICE_SETTING: for (final Block block : ice) {
-			if (isTransparent(this.player, block) && !isIce(block)) {
+			if (isTransparent(this.caster, block) && !isIce(block)) {
 				for (final Entity entity : trapped) {
 					if (entity instanceof Player) {
 						if (Commands.invincible.contains(entity.getName())) {
@@ -168,9 +174,9 @@ public class Torrent extends WaterAbility {
 						}
 					}
 				}
-				final TempBlock tblock = new TempBlock(block, iceMaterial(this.player));
+				final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster));
 				tblock.setBendableSource(true);
-				FROZEN_BLOCKS.put(tblock, Pair.of(this.player, this.getId()));
+				FROZEN_BLOCKS.put(tblock, Pair.of(this.caster, this.getId()));
 				if (this.revert) {
 					tblock.setRevertTime(this.revertTime + (new Random().nextInt((500 + 500) + 1) - 500));
 				}
@@ -181,7 +187,12 @@ public class Torrent extends WaterAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreCooldowns(this)) {
+		WaterAbility transformTo = WaterAbility.transformer.apply(this, this.bender.getBoundAbilityName());
+		if (transformTo != null) {
+			return;
+		}
+
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
 			return;
 		} 
@@ -190,16 +201,16 @@ public class Torrent extends WaterAbility {
 			this.time = System.currentTimeMillis();
 
 			if (this.sourceSelected) {
-				if (this.sourceBlock.getLocation().getWorld() != this.player.getWorld()) {
+				if (this.sourceBlock.getLocation().getWorld() != this.caster.getWorld()) {
 					this.remove();
 					return;
 				}
 
-				if (this.sourceBlock.getLocation().distanceSquared(this.player.getLocation()) > this.selectRange * this.selectRange) {
+				if (this.sourceBlock.getLocation().distanceSquared(this.caster.getLocation()) > this.selectRange * this.selectRange) {
 					return;
 				}
 
-				if (this.player.isSneaking()) {
+				if (this.bender.isSneaking()) {
 					this.sourceSelected = false;
 					this.settingUp = true;
 
@@ -214,9 +225,9 @@ public class Torrent extends WaterAbility {
 					}
 
 					if (isDecayablePlant(this.sourceBlock)) {
-						new PlantRegrowth(this.player, this.sourceBlock, 3);
+						new PlantRegrowth(this.caster, this.sourceBlock, 3);
 					} else if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
-						new PlantRegrowth(this.player, this.sourceBlock);
+						new PlantRegrowth(this.caster, this.sourceBlock);
 						this.sourceBlock.setType(Material.AIR);
 					} else if (!GeneralMethods.isAdjacentToThreeOrMoreSources(this.sourceBlock) && !isCauldron(this.sourceBlock)) {
 						this.sourceBlock.setType(Material.AIR);
@@ -225,7 +236,7 @@ public class Torrent extends WaterAbility {
 					}
 					
 					Block upBlock = this.sourceBlock.getRelative(BlockFace.UP);
-					if (!isTransparent(player, upBlock)) {
+					if (!isTransparent(caster, upBlock)) {
 						this.remove();
 						return;
 					}
@@ -239,20 +250,20 @@ public class Torrent extends WaterAbility {
 			}
 
 			if (this.settingUp) {
-				if (!this.player.isSneaking()) {
+				if (!this.bender.isSneaking()) {
 					this.location = this.source.getLocation();
 					this.remove();
 					return;
 				}
 
-				final Location eyeLoc = this.player.getEyeLocation();
-				final double startAngle = this.player.getEyeLocation().getDirection().angle(new Vector(1, 0, 0));
+				final Location eyeLoc = this.caster.getEyeLocation();
+				final double startAngle = this.caster.getEyeLocation().getDirection().angle(new Vector(1, 0, 0));
 				final double dx = this.radius * Math.cos(startAngle);
 				final double dy = 0;
 				final double dz = this.radius * Math.sin(startAngle);
 				final Location setup = eyeLoc.clone().add(dx, dy, dz);
 
-				if (!this.location.getWorld().equals(this.player.getWorld())) {
+				if (!this.location.getWorld().equals(this.caster.getWorld())) {
 					this.remove();
 					return;
 				} else if (this.location.distanceSquared(setup) > this.range * this.range) {
@@ -280,7 +291,7 @@ public class Torrent extends WaterAbility {
 					this.source.revertBlock();
 					this.source = null;
 					final Block block = this.location.getBlock();
-					if (!isTransparent(this.player, block) && !isDecayablePlant(block)) {
+					if (!isTransparent(this.caster, block) && !isDecayablePlant(block)) {
 						if (!(TempBlock.isTempBlock(block) && PlantRegrowth.getDecayedBlocks().contains(TempBlock.get(block)))) {
 							this.remove();
 							return;
@@ -289,8 +300,8 @@ public class Torrent extends WaterAbility {
 					this.source = new TempBlock(this.location.getBlock(), isCauldron(this.location.getBlock()) ? this.location.getBlock().getBlockData() : Material.WATER.createBlockData());
 				}
 			}
-			if (this.forming && !this.player.isSneaking()) {
-				this.location = this.player.getEyeLocation().add(this.radius, 0, 0);
+			if (this.forming && !this.bender.isSneaking()) {
+				this.location = this.caster.getEyeLocation().add(this.radius, 0, 0);
 				this.remove();
 				return;
 			}
@@ -300,7 +311,7 @@ public class Torrent extends WaterAbility {
 					playWaterbendingSound(this.location);
 				}
 				for (double theta = this.startAngle; theta < this.angle + this.startAngle; theta += 20) {
-					final Location loc = this.player.getEyeLocation();
+					final Location loc = this.caster.getEyeLocation();
 					final double phi = Math.toRadians(theta);
 					final double dx = Math.cos(phi) * this.radius;
 					final double dy = 0;
@@ -326,8 +337,8 @@ public class Torrent extends WaterAbility {
 
 			}
 
-			if (this.formed && !this.player.isSneaking() && !this.launch) {
-				new TorrentWave(this.player, this.radius);
+			if (this.formed && !this.bender.isSneaking() && !this.launch) {
+				new TorrentWave(this.caster, this.radius);
 				this.remove();
 				return;
 			}
@@ -344,27 +355,26 @@ public class Torrent extends WaterAbility {
 			}
 
 			if (this.launching) {
-				if (!this.player.isSneaking()) {
+				if (!this.bender.isSneaking()) {
 					this.remove();
 					return;
 				}
 				if (!this.launch()) {
 					this.remove();
-					return;
 				}
 			}
 		}
 	}
 
-	private boolean launch() {
+	public boolean launch() {
 		if (this.launchedBlocks.isEmpty() && this.blocks.isEmpty()) {
 			return false;
 		}
 
 		if (this.launchedBlocks.isEmpty()) {
 			this.clearRing();
-			final Location loc = this.player.getEyeLocation();
-			final ArrayList<Block> doneBlocks = new ArrayList<Block>();
+			final Location loc = this.caster.getEyeLocation();
+			final ArrayList<Block> doneBlocks = new ArrayList<>();
 			for (double theta = this.startAngle; theta < this.angle + this.startAngle; theta += 20) {
 				final double phi = Math.toRadians(theta);
 				final double dx = Math.cos(phi) * this.radius;
@@ -378,30 +388,26 @@ public class Torrent extends WaterAbility {
 
 				final Block block = blockloc.getBlock();
 				if (!doneBlocks.contains(block) && !RegionProtection.isRegionProtected(this, blockloc)) {
-					if (isTransparent(this.player, block)) {
+					if (isTransparent(this.caster, block)) {
 						this.launchedBlocks.add(new TempBlock(block, Material.WATER));
 						doneBlocks.add(block);
-					} else if (!isTransparent(this.player, block)) {
+					} else if (!isTransparent(this.caster, block)) {
 						break;
 					}
 				}
 			}
-			if (this.launchedBlocks.isEmpty()) {
-				return false;
-			} else {
-				return true;
-			}
+			return !this.launchedBlocks.isEmpty();
 		}
 
-		final Entity target = GeneralMethods.getTargetedEntity(this.player, this.range, this.hurtEntities);
-		Location targetLoc = this.player.getTargetBlock(getTransparentMaterialSet(), (int) this.range).getLocation();
+		final Entity target = GeneralMethods.getTargetedEntity(this.caster, this.range, this.hurtEntities);
+		Location targetLoc = this.caster.getTargetBlock(getTransparentMaterialSet(), (int) this.range).getLocation();
 		if (target != null) {
 			targetLoc = target.getLocation();
 		}
 
-		final ArrayList<TempBlock> newBlocks = new ArrayList<TempBlock>();
-		final List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(this.player.getLocation(), this.range + 5);
-		final List<Entity> affectedEntities = new ArrayList<Entity>();
+		final ArrayList<TempBlock> newBlocks = new ArrayList<>();
+		final List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(this.caster.getLocation(), this.range + 5);
+		final List<Entity> affectedEntities = new ArrayList<>();
 		final Block realBlock = this.launchedBlocks.get(0).getBlock();
 		final Vector dir = GeneralMethods.getDirection(this.location, targetLoc).normalize();
 
@@ -413,7 +419,7 @@ public class Torrent extends WaterAbility {
 		}
 
 		final Block locBlock = this.location.getBlock();
-		if (this.location.distanceSquared(this.player.getLocation()) > this.range * this.range || RegionProtection.isRegionProtected(this, this.location)) {
+		if (this.location.distanceSquared(this.caster.getLocation()) > this.range * this.range || RegionProtection.isRegionProtected(this, this.location)) {
 			if (this.layer < this.maxLayer) {
 				if (this.freeze || this.layer < 1) {
 					this.layer++;
@@ -423,7 +429,7 @@ public class Torrent extends WaterAbility {
 				this.remove();
 				return false;
 			}
-		} else if (!isTransparent(this.player, locBlock)) {
+		} else if (!isTransparent(this.caster, locBlock)) {
 			if (this.layer < this.maxLayer) {
 				if (this.layer == 0) {
 					this.hurtEntities.clear();
@@ -488,17 +494,14 @@ public class Torrent extends WaterAbility {
 		this.launchedBlocks.clear();
 		this.launchedBlocks.addAll(newBlocks);
 
-		if (this.launchedBlocks.isEmpty()) {
-			return false;
-		}
-		return true;
+		return !this.launchedBlocks.isEmpty();
 	}
 
 	private void formRing() {
 		this.clearRing();
 		this.startAngle += 30;
 
-		final Location loc = this.player.getEyeLocation();
+		final Location loc = this.caster.getEyeLocation();
 		final ArrayList<Block> doneBlocks = new ArrayList<Block>();
 		final ArrayList<Entity> affectedEntities = new ArrayList<Entity>();
 		final List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(loc, this.radius + 2);
@@ -511,7 +514,7 @@ public class Torrent extends WaterAbility {
 			final Location blockLoc = loc.clone().add(dx, dy, dz);
 			final Block block = blockLoc.getBlock();
 			if (!doneBlocks.contains(block)) {
-				if (isTransparent(this.player, block)) {
+				if (isTransparent(this.caster, block)) {
 					this.blocks.add(new TempBlock(block, Material.WATER));
 					doneBlocks.add(block);
 					for (final Entity entity : entities) {
@@ -553,7 +556,8 @@ public class Torrent extends WaterAbility {
 	}
 
 	private void returnWater(final Location location) {
-		new WaterReturn(this.player, location.getBlock());
+		if (bPlayer != null)
+			new WaterReturn(this.player, location.getBlock());
 	}
 
 	public static void create(final Player player) {
@@ -579,7 +583,7 @@ public class Torrent extends WaterAbility {
 		}
 	}
 
-	private void use() {
+	public void onClick() {
 		this.launch = true;
 		if (this.launching) {
 			this.freeze = true;
@@ -587,7 +591,7 @@ public class Torrent extends WaterAbility {
 	}
 
 	private void deflect(final Entity entity) {
-		if (entity.getEntityId() == this.player.getEntityId()) {
+		if (entity.getEntityId() == this.caster.getEntityId()) {
 			return;
 		}
 		if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
@@ -597,8 +601,8 @@ public class Torrent extends WaterAbility {
 		double angle = 50;
 		angle = Math.toRadians(angle);
 
-		x = entity.getLocation().getX() - this.player.getLocation().getX();
-		z = entity.getLocation().getZ() - this.player.getLocation().getZ();
+		x = entity.getLocation().getX() - this.caster.getLocation().getX();
+		z = entity.getLocation().getZ() - this.caster.getLocation().getZ();
 
 		mag = Math.sqrt(x * x + z * z);
 
@@ -608,7 +612,7 @@ public class Torrent extends WaterAbility {
 		final Vector vec = new Vector(vx, 0, vz).normalize().multiply(this.knockback);
 		final Vector velocity = entity.getVelocity();
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			velocity.setX(AvatarState.getValue(vec.getX()));
 			velocity.setZ(AvatarState.getValue(vec.getZ()));
 		} else {
@@ -626,7 +630,7 @@ public class Torrent extends WaterAbility {
 	}
 
 	private void affect(final Entity entity, final Vector direction) {
-		if (entity.getEntityId() == this.player.getEntityId()) {
+		if (entity.getEntityId() == this.caster.getEntityId()) {
 			return;
 		}
 		if (RegionProtection.isRegionProtected(this, entity.getLocation()) || (entity instanceof Player && Commands.invincible.contains(((Player) entity).getName()))) {
@@ -657,21 +661,21 @@ public class Torrent extends WaterAbility {
 
 	public static void progressAllCleanup() {
 		for (final TempBlock block : FROZEN_BLOCKS.keySet()) {
-			final Player player = FROZEN_BLOCKS.get(block).getLeft();
-			final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-			if (bPlayer == null) {
+			final LivingEntity caster = FROZEN_BLOCKS.get(block).getLeft();
+			final Bender bender = Bender.get(caster);
+			if (bender == null) {
 				FROZEN_BLOCKS.remove(block);
 				continue;
 			} else if (!isIce(block.getBlock())) {
 				FROZEN_BLOCKS.remove(block);
 				continue;
-			} else if (!player.isOnline()) {
+			} else if (bender instanceof BendingPlayer bp && !bp.getPlayer().isOnline()) {
 				thaw(block);
 				continue;
-			} else if (block.getBlock().getWorld() != player.getWorld()) {
+			} else if (block.getBlock().getWorld() != caster.getWorld()) {
 				thaw(block);
 				continue;
-			} else if (block.getLocation().distanceSquared(player.getLocation()) > CLEANUP_RANGE * CLEANUP_RANGE || !bPlayer.canBendIgnoreBindsCooldowns(getAbility("Torrent"))) {
+			} else if (block.getLocation().distanceSquared(caster.getLocation()) > CLEANUP_RANGE * CLEANUP_RANGE || !bender.canBendIgnoreBindsCooldowns(getAbility("Torrent"))) {
 				thaw(block);
 			}
 		}
@@ -699,7 +703,7 @@ public class Torrent extends WaterAbility {
 	 */
 	public static void massThaw(final TempBlock origin) {
 		if (FROZEN_BLOCKS.containsKey(origin)) {
-			final Player creator = FROZEN_BLOCKS.get(origin).getLeft();
+			final LivingEntity creator = FROZEN_BLOCKS.get(origin).getLeft();
 			final int id = FROZEN_BLOCKS.get(origin).getRight();
 
 			for (final TempBlock tb : FROZEN_BLOCKS.keySet()) {
@@ -707,7 +711,7 @@ public class Torrent extends WaterAbility {
 					continue;
 				}
 
-				final Player check = FROZEN_BLOCKS.get(tb).getLeft();
+				final LivingEntity check = FROZEN_BLOCKS.get(tb).getLeft();
 				final int id2 = FROZEN_BLOCKS.get(tb).getRight();
 				if (creator.equals(check) && id == id2) {
 					thaw(tb);
@@ -732,8 +736,8 @@ public class Torrent extends WaterAbility {
 		}
 	}
 
-	public static boolean wasBrokenFor(final Player player, final Block block) {
-		final Torrent torrent = getAbility(player, Torrent.class);
+	public static boolean wasBrokenFor(final LivingEntity caster, final Block block) {
+		final Torrent torrent = getAbility(caster, Torrent.class);
 		if (torrent != null) {
 			if (torrent.sourceBlock == null) {
 				return false;
@@ -792,215 +796,15 @@ public class Torrent extends WaterAbility {
 		return locations;
 	}
 
-	public boolean isSourceSelected() {
-		return this.sourceSelected;
-	}
-
-	public void setSourceSelected(final boolean sourceSelected) {
-		this.sourceSelected = sourceSelected;
-	}
-
-	public boolean isSettingUp() {
-		return this.settingUp;
-	}
-
-	public void setSettingUp(final boolean settingUp) {
-		this.settingUp = settingUp;
-	}
-
-	public boolean isForming() {
-		return this.forming;
-	}
-
-	public void setForming(final boolean forming) {
-		this.forming = forming;
-	}
-
-	public boolean isFormed() {
-		return this.formed;
-	}
-
-	public void setFormed(final boolean formed) {
-		this.formed = formed;
-	}
-
-	public boolean isLaunch() {
-		return this.launch;
-	}
-
-	public void setLaunch(final boolean launch) {
-		this.launch = launch;
-	}
-
-	public boolean isLaunching() {
-		return this.launching;
-	}
-
-	public void setLaunching(final boolean launching) {
-		this.launching = launching;
-	}
-
-	public boolean isFreeze() {
-		return this.freeze;
-	}
-
-	public void setFreeze(final boolean freeze) {
-		this.freeze = freeze;
-	}
-
-	public int getLayer() {
-		return this.layer;
-	}
-
-	public void setLayer(final int layer) {
-		this.layer = layer;
-	}
-
-	public int getMaxLayer() {
-		return this.maxLayer;
-	}
-
-	public void setMaxLayer(final int maxLayer) {
-		this.maxLayer = maxLayer;
-	}
-
-	public long getTime() {
-		return this.time;
-	}
-
-	public void setTime(final long time) {
-		this.time = time;
-	}
-
-	public long getInterval() {
-		return this.interval;
-	}
-
-	public void setInterval(final long interval) {
-		this.interval = interval;
-	}
-
-	public double getStartAngle() {
-		return this.startAngle;
-	}
-
-	public void setStartAngle(final double startAngle) {
-		this.startAngle = startAngle;
-	}
-
-	public double getAngle() {
-		return this.angle;
-	}
-
-	public void setAngle(final double angle) {
-		this.angle = angle;
-	}
-
-	public double getRadius() {
-		return this.radius;
-	}
-
-	public void setRadius(final double radius) {
-		this.radius = radius;
-	}
-
-	public double getPush() {
-		return this.knockback;
-	}
-
-	public void setPush(final double push) {
-		this.knockback = push;
-	}
-
-	public double getMaxUpwardForce() {
-		return this.knockup;
-	}
-
-	public void setMaxUpwardForce(final double maxUpwardForce) {
-		this.knockup = maxUpwardForce;
-	}
-
-	public double getDamage() {
-		return this.damage;
-	}
-
-	public void setDamage(final double damage) {
-		this.damage = damage;
-	}
-
-	public double getDeflectDamage() {
-		return this.deflectDamage;
-	}
-
-	public void setDeflectDamage(final double deflectDamage) {
-		this.deflectDamage = deflectDamage;
-	}
-
-	public double getRange() {
-		return this.range;
-	}
-
-	public void setRange(final double range) {
-		this.range = range;
-	}
-
-	public double getSelectRange() {
-		return this.selectRange;
-	}
-
-	public void setSelectRange(final double selectRange) {
-		this.selectRange = selectRange;
-	}
-
-	public Block getSourceBlock() {
-		return this.sourceBlock;
-	}
-
-	public void setSourceBlock(final Block sourceBlock) {
-		this.sourceBlock = sourceBlock;
-	}
-
-	public TempBlock getSource() {
-		return this.source;
-	}
-
-	public void setSource(final TempBlock source) {
-		this.source = source;
-	}
-
-	public ArrayList<TempBlock> getBlocks() {
-		return this.blocks;
-	}
-
-	public void setBlocks(final ArrayList<TempBlock> blocks) {
-		this.blocks = blocks;
-	}
-
 	public static double getCleanupRange() {
 		return CLEANUP_RANGE;
 	}
 
-	public static Map<TempBlock, Player> getFrozenBlocks() {
-		final Map<TempBlock, Player> blocks = new HashMap<>();
+	public static Map<TempBlock, LivingEntity> getFrozenBlocks() {
+		final Map<TempBlock, LivingEntity> blocks = new HashMap<>();
 		for (final TempBlock tb : FROZEN_BLOCKS.keySet()) {
 			blocks.put(tb, FROZEN_BLOCKS.get(tb).getLeft());
 		}
 		return blocks;
-	}
-
-	public ArrayList<TempBlock> getLaunchedBlocks() {
-		return this.launchedBlocks;
-	}
-
-	public ArrayList<Entity> getHurtEntities() {
-		return this.hurtEntities;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
-	}
-
-	public void setLocation(final Location location) {
-		this.location = location;
 	}
 }

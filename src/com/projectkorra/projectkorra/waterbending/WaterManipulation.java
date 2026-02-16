@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.region.RegionProtection;
+
+import org.apache.commons.codec.language.bm.Lang;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -160,7 +162,9 @@ public class WaterManipulation extends WaterAbility {
 	public void moveWater() {
 		if (this.sourceBlock != null) {
 			if (this.sourceBlock.getWorld().equals(this.caster.getWorld())) {
-				this.targetDestination = getTargetLocation(this.caster, this.range);
+				boolean npc = bPlayer == null;
+				if (!npc)
+					this.targetDestination = getTargetLocation(this.caster, this.range);
 
 				if (this.targetDestination.distanceSquared(this.location) <= 1) {
 					this.progressing = false;
@@ -170,9 +174,11 @@ public class WaterManipulation extends WaterAbility {
 				} else {
 					this.progressing = true;
 					this.settingUp = true;
-					this.firstDestination = this.getToEyeLevel();
+					if (!npc)
+						this.firstDestination = this.getToEyeLevel();
 					this.firstDirection = GeneralMethods.getDirection(this.sourceBlock.getLocation(), this.firstDestination).normalize();
-					this.targetDestination = GeneralMethods.getPointOnLine(this.firstDestination, this.targetDestination, this.range);
+					if (!npc)
+						this.targetDestination = GeneralMethods.getPointOnLine(this.firstDestination, this.targetDestination, this.range);
 					this.targetDirection = GeneralMethods.getDirection(this.firstDestination, this.targetDestination).normalize();
 					
 					if (isDecayablePlant(this.sourceBlock)) {
@@ -217,7 +223,6 @@ public class WaterManipulation extends WaterAbility {
 				this.remove();
 				if (this.player != null)
 					new WaterReturn(this.player, this.sourceBlock);
-				return;
 			} else {
 				if (!this.progressing) {
 					if (!(isWater(this.sourceBlock.getType()) || isCauldron(this.sourceBlock) || (isIce(this.sourceBlock) && this.bender.canIcebend()) || (isSnow(this.sourceBlock) && this.bender.canIcebend()) || (isPlant(this.sourceBlock) && this.bender.canPlantbend()))) {
@@ -286,7 +291,7 @@ public class WaterManipulation extends WaterAbility {
 					GeneralMethods.breakBlock(block);
 				} else if (block.getType() != Material.AIR && !isWater(block)) {
 					this.remove();
-					if (this.player != null)
+					if (this.bPlayer != null)
 						new WaterReturn(this.player, this.sourceBlock);
 					return;
 				}
@@ -301,7 +306,7 @@ public class WaterManipulation extends WaterAbility {
 							final Vector vector = location.getDirection();
 							GeneralMethods.setVelocity(this, entity, vector.normalize().multiply(this.knockback));
 
-							if (this.bPlayer != null && this.bPlayer.isAvatarState()) {
+							if (this.bender.isAvatarState()) {
 								this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Water.WaterManipulation.Damage");
 							}
 							this.damage = this.getNightFactor(this.damage);
@@ -314,7 +319,7 @@ public class WaterManipulation extends WaterAbility {
 
 				if (!this.progressing) {
 					this.remove();
-					if (this.player != null)
+					if (this.bPlayer != null)
 						new WaterReturn(this.player, this.sourceBlock);
 					return;
 				}
@@ -380,9 +385,7 @@ public class WaterManipulation extends WaterAbility {
 			if (!AFFECTED_BLOCKS.containsKey(block)) {
 				AFFECTED_BLOCKS.put(block, block);
 			}
-			if (PhaseChange.getFrozenBlocksAsBlock().contains(block)) {
-				PhaseChange.getFrozenBlocksAsBlock().remove(block);
-			}
+			PhaseChange.getFrozenBlocksAsBlock().remove(block);
 			if (this.source != null) this.source.revertBlock();
 			this.source = new TempBlock(block, WATER, this);
 		} else {
@@ -390,7 +393,6 @@ public class WaterManipulation extends WaterAbility {
 				ParticleEffect.WATER_BUBBLE.display(block.getLocation().clone().add(.5, .5, .5), 5, Math.random(), Math.random(), Math.random(), 0);
 			}
 		}
-
 	}
 
 	/**

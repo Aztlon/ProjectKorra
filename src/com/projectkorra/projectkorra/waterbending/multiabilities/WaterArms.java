@@ -30,6 +30,11 @@ import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArmsWhip.W
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class WaterArms extends WaterAbility {
 
 	/**

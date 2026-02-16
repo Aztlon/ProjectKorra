@@ -22,6 +22,11 @@ import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.MovementHandler;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class Immobilize extends ChiAbility implements ComboAbility {
 
 	@Attribute(Attribute.DURATION)
@@ -30,24 +35,23 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 	private long cooldown;
 	private Entity target;
 
-	public Immobilize(final Player player) {
-		super(player);
+	public Immobilize(final LivingEntity caster) {
+		super(caster);
 
 		this.cooldown = getConfig().getLong("Abilities.Chi.Immobilize.Cooldown");
 		this.duration = getConfig().getLong("Abilities.Chi.Immobilize.ParalyzeDuration");
-		this.target = GeneralMethods.getTargetedEntity(player, 5);
-		if (!this.bPlayer.canBendIgnoreBinds(this)) {
+		this.target = GeneralMethods.getTargetedEntity(caster, 5);
+		if (!this.bender.canBendIgnoreBinds(this)) {
 			return;
 		}
 		if (this.target == null) {
 			this.remove();
-			return;
 		} else {
-			if (RegionProtection.isRegionProtected(this, this.target.getLocation()) || ((this.target instanceof Player) && Commands.invincible.contains(((Player) this.target).getName()))) {
+			if (RegionProtection.isRegionProtected(this, this.target.getLocation()) || ((this.target instanceof Player) && Commands.invincible.contains(this.target.getName()))) {
 				return;
 			}
 			paralyze(this.target, this.duration);
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 		}
 	}
 
@@ -100,25 +104,5 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 	@Override
 	public ArrayList<AbilityInformation> getCombination() {
 		return ComboUtil.generateCombinationFromList(this, ConfigManager.defaultConfig.get().getStringList("Abilities.Chi.Immobilize.Combination"));
-	}
-
-	public long getDuration() {
-		return this.duration;
-	}
-
-	public void setDuration(final long duration) {
-		this.duration = duration;
-	}
-
-	public Entity getTarget() {
-		return this.target;
-	}
-
-	public void setTarget(final Entity target) {
-		this.target = target;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
 	}
 }

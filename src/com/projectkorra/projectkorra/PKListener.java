@@ -116,6 +116,7 @@ import com.projectkorra.projectkorra.util.StatisticsMethods;
 import com.projectkorra.projectkorra.util.TempArmor;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempFallingBlock;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 import com.projectkorra.projectkorra.waterbending.OctopusForm;
 import com.projectkorra.projectkorra.waterbending.SurgeWall;
 import com.projectkorra.projectkorra.waterbending.SurgeWave;
@@ -154,6 +155,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockFormEvent;
 import org.bukkit.event.block.BlockFromToEvent;
@@ -241,7 +243,7 @@ public class PKListener implements Listener {
 //		TimingPlayerMoveJumpCheck = ProjectKorra.timing("PlayerMoveJumpCheck");
 	}
 
-	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+	@EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
 	public void onBlockBreak(final BlockBreakEvent event) {
 		final Block block = event.getBlock();
 		final Player player = event.getPlayer();
@@ -272,7 +274,7 @@ public class PKListener implements Listener {
 				ability = CoreAbility.getAbility(abil);
 			}
 
-			if (ability != null && ability instanceof WaterAbility && !((WaterAbility) ability).allowBreakPlants() && WaterAbility.isPlantbendable(player, block.getType(), false, true)) {
+			if (ability instanceof WaterAbility w && !w.allowBreakPlants() && WaterAbility.isPlantbendable(player, block.getType(), false, true)) {
 				event.setCancelled(true);
 				return;
 			}
@@ -968,6 +970,11 @@ public class PKListener implements Listener {
 		if (entity instanceof Player) {
 			Suffocate.remove((Player) entity);
 		}
+
+		// prevent Sentinel from overriding damage of abilities from NPCs
+		boolean npc = source.hasMetadata("NPC");
+		if (npc)
+			e.setDamage(e.getOriginalDamage(EntityDamageEvent.DamageModifier.BASE));
 
 		//Stop DamageHandler causing this event to fire infinitely
 		if (entity instanceof LivingEntity && DamageHandler.isReceivingDamage((LivingEntity) e.getEntity())) return;

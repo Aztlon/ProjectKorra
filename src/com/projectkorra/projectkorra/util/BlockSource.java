@@ -19,7 +19,6 @@ import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
-import com.projectkorra.projectkorra.region.RegionProtection;
 
 /**
  * BlockSource is a class that handles water and earth bending sources. When a
@@ -176,23 +175,30 @@ public class BlockSource {
 		return null;
 	}
 
-	public static @Nullable Block getNearestSourceBlock(final LivingEntity caster, final double range, final Predicate<Block> filter) {
+	public static @Nullable Block getNearbyBlock(final LivingEntity caster, final double range, final Predicate<Block> filter) {
+		// not min. actually prefer something closest to the forward edge of this range
+		var target = caster.getEyeLocation().add(caster.getEyeLocation().getDirection().normalize().multiply(range));
 		return GeneralMethods.getBlocksAroundPoint(caster.getEyeLocation(), range).stream()
-				.filter(block -> filter.test(block) && RegionProtection.isRegionProtected(caster, block.getLocation()))
-				.min(Comparator.comparingDouble(b -> b.getLocation().add(0.5, 0.5, 0.5).distanceSquared(caster.getEyeLocation())))
+				.filter(filter)
+				.filter(b -> b.getLocation().distanceSquared(caster.getEyeLocation()) <= range * range)
+				.min(Comparator.comparingDouble(b -> b.getLocation().distanceSquared(target)))
 				.orElse(null);
+//		return GeneralMethods.getBlocksAroundPoint(caster.getEyeLocation(), range).stream()
+//				.filter(filter)
+//				.min(Comparator.comparingDouble(b -> b.getLocation().add(0.5, 0.5, 0.5).distanceSquared(caster.getEyeLocation())))
+//				.orElse(null);
 	}
 
-	public static @Nullable Block getNearestEarthSourceBlock(final LivingEntity caster, final double range) {
-		return getNearestSourceBlock(caster, range, b -> EarthAbility.isEarthbendable(caster, b));
+	public static @Nullable Block getNearbyEarthBlock(final LivingEntity caster, final double range) {
+		return getNearbyBlock(caster, range, b -> EarthAbility.isEarthbendable(caster, b));
 	}
 
-	public static @Nullable Block getNearestWaterSourceBlock(final LivingEntity caster, final double range) {
-		return getNearestSourceBlock(caster, range, b -> WaterAbility.isWaterbendable(caster, null, b));
+	public static @Nullable Block getNearbyWaterBlock(final LivingEntity caster, final double range) {
+		return getNearbyBlock(caster, range, b -> WaterAbility.isWaterbendable(caster, null, b));
 	}
 
-	public static @Nullable Block getNearestLavaSourceBlock(final LivingEntity caster, final double range) {
-		return getNearestSourceBlock(caster, range, EarthAbility::isLavabendable);
+	public static @Nullable Block getNearbyLavaBlock(final LivingEntity caster, final double range) {
+		return getNearbyBlock(caster, range, EarthAbility::isLavabendable);
 	}
 
 	/**
@@ -273,7 +279,7 @@ public class BlockSource {
 		if (allowWaterBottles) {
 			// Check the block in front of the caster's eyes, it may have been created by a WaterBottle.
 			sourceBlock = WaterAbility.getWaterSourceBlock(caster, range, allowPlant);
-			if (sourceBlock == null || (sourceBlock.getWorld().equals(caster.getWorld()) && sourceBlock.getLocation().distance(caster.getEyeLocation()) > 3)) {
+			if (sourceBlock != null && (sourceBlock.getWorld().equals(caster.getWorld()) && sourceBlock.getLocation().distance(caster.getEyeLocation()) > 3)) {
 				sourceBlock = null;
 			}
 		}

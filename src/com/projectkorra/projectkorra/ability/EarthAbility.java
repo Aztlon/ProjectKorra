@@ -2,7 +2,6 @@ package com.projectkorra.projectkorra.ability;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -26,10 +25,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
-import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.earthbending.RaiseEarth;
@@ -360,11 +357,8 @@ public abstract class EarthAbility extends ElementalAbility {
 	 * @return a valid Earth source block, or null if one could not be found.
 	 */
 	public static @Nullable Block getEarthSourceBlock(final LivingEntity caster, final String abilityName, final double range) {
-		final Bender bender = Bender.get(caster);
 		final Block testBlock = caster.getTargetBlock(getTransparentMaterialSet(), Math.max((int) range, 1));
-		if (bender == null) {
-			return null;
-		} else if (isEarthbendable(testBlock.getType(), true, true, true)) {
+		if (isEarthbendable(testBlock.getType(), true, true, true)) {
 			return testBlock;
 		} else if (!isTransparent(caster, testBlock)) {
 			return null;
@@ -372,7 +366,7 @@ public abstract class EarthAbility extends ElementalAbility {
 
 		final boolean npc = !(caster instanceof Player player) || !player.isOnline();
 		if (npc) {
-			return BlockSource.getNearestEarthSourceBlock(caster, range);
+			return BlockSource.getNearbyEarthBlock(caster, range);
 		}
 
 		final Location location = caster.getEyeLocation();
@@ -380,9 +374,7 @@ public abstract class EarthAbility extends ElementalAbility {
 
 		for (double i = 0; i <= range; i++) {
 			final Block block = location.clone().add(vector.clone().multiply(i)).getBlock();
-			if (RegionProtection.isRegionProtected(caster, location, CoreAbility.getAbility(abilityName))) {
-				continue;
-			} else if (isEarthbendable(caster, block)) {
+			if (!RegionProtection.isRegionProtected(caster, location, CoreAbility.getAbility(abilityName)) && isEarthbendable(caster, block)) {
 				return block;
 			}
 		}
@@ -405,7 +397,7 @@ public abstract class EarthAbility extends ElementalAbility {
 	public static @Nullable Block getLavaSourceBlock(final LivingEntity caster, final String abilityName, final double range) {
 		final boolean npc = !(caster instanceof Player player) || !player.isOnline();
 		if (npc) {
-			return BlockSource.getNearestLavaSourceBlock(caster, range);
+			return BlockSource.getNearbyLavaBlock(caster, range);
 		}
 
 		final Location location = caster.getEyeLocation();
@@ -473,7 +465,10 @@ public abstract class EarthAbility extends ElementalAbility {
 		return ChatColor.valueOf(ConfigManager.getConfig().getString("Properties.Chat.Colors.EarthSub"));
 	}
 
-	public static Block getTargetEarthBlock(final LivingEntity caster, final int range) {
+	public static @Nullable Block getTargetEarthBlock(final LivingEntity caster, final int range) {
+		boolean npc = !(caster instanceof Player player) || !player.isOnline();
+		if (npc)
+			return BlockSource.getNearbyEarthBlock(caster, range);
 		return caster.getTargetBlock(getTransparentMaterialSet(), Math.max(range, 1));
 	}
 

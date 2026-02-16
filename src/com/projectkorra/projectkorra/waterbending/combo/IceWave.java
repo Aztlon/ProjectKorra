@@ -4,21 +4,26 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.projectkorra.projectkorra.ability.util.ComboUtil;
-import com.projectkorra.projectkorra.configuration.ConfigManager;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.ability.ComboAbility;
 import com.projectkorra.projectkorra.ability.IceAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
+import com.projectkorra.projectkorra.ability.util.ComboUtil;
 import com.projectkorra.projectkorra.attribute.Attribute;
-import com.projectkorra.projectkorra.util.ClickType;
+import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.WaterSpoutWave;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class IceWave extends IceAbility implements ComboAbility {
 
 	private static final Map<Block, TempBlock> FROZEN_BLOCKS = new ConcurrentHashMap<>();
@@ -27,25 +32,25 @@ public class IceWave extends IceAbility implements ComboAbility {
 	private long cooldown;
 	private Location origin;
 
-	public IceWave(final Player player) {
-		super(player);
+	public IceWave(final LivingEntity caster) {
+		super(caster);
 
-		if (!hasAbility(player, WaterSpoutWave.class)) {
+		if (!hasAbility(caster, WaterSpoutWave.class)) {
 			return;
 		}
 
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			return;
 		}
 
-		if (this.bPlayer.isOnCooldown("IceWave") && !this.bPlayer.isAvatarState()) {
+		if (this.bender.isOnCooldown("IceWave") && !this.bender.isAvatarState()) {
 			this.remove();
 			return;
 		}
 
 		this.cooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.IceWave.Cooldown"));
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.cooldown = 0;
 		}
 
@@ -59,18 +64,18 @@ public class IceWave extends IceAbility implements ComboAbility {
 
 	@Override
 	public void progress() {
-		if (this.player.isDead() || !this.player.isOnline()) {
+		if (this.caster.isDead()) {
 			this.remove();
 			return;
 		}
 
-		if (this.origin == null && WaterSpoutWave.containsType(this.player, WaterSpoutWave.AbilityType.RELEASE)) {
-			this.bPlayer.addCooldown("IceWave", this.cooldown);
-			this.origin = this.player.getLocation();
+		if (this.origin == null && WaterSpoutWave.containsType(this.caster, WaterSpoutWave.AbilityType.RELEASE)) {
+			this.bender.addCooldown("IceWave", this.cooldown);
+			this.origin = this.caster.getLocation();
 
-			final WaterSpoutWave wave = WaterSpoutWave.getType(this.player, WaterSpoutWave.AbilityType.RELEASE).get(0);
+			final WaterSpoutWave wave = WaterSpoutWave.getType(this.caster, WaterSpoutWave.AbilityType.RELEASE).get(0);
 			wave.setIceWave(true);
-		} else if (!WaterSpoutWave.containsType(this.player, WaterSpoutWave.AbilityType.RELEASE)) {
+		} else if (!WaterSpoutWave.containsType(this.caster, WaterSpoutWave.AbilityType.RELEASE)) {
 			this.remove();
 			return;
 		}
@@ -90,7 +95,7 @@ public class IceWave extends IceAbility implements ComboAbility {
 	@Override
 	public void remove() {
 		super.remove();
-		this.bPlayer.addCooldown("WaterWave", this.cooldown);
+		this.bender.addCooldown("WaterWave", this.cooldown);
 	}
 
 	@Override
@@ -106,10 +111,6 @@ public class IceWave extends IceAbility implements ComboAbility {
 	@Override
 	public long getCooldown() {
 		return this.cooldown;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
 	}
 
 	@Override

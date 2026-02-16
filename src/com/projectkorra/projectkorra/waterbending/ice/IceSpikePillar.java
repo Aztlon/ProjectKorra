@@ -27,6 +27,11 @@ import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempPotionEffect;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class IceSpikePillar extends IceAbility {
 
 	/** The list of blocks IceSpike uses */
@@ -63,22 +68,22 @@ public class IceSpikePillar extends IceAbility {
 	private ArrayList<LivingEntity> damaged;
 	protected boolean inField = false; // If it's part of a field or not.
 
-	public IceSpikePillar(final Player player) {
-		super(player);
+	public IceSpikePillar(final LivingEntity caster) {
+		super(caster);
 		this.setFields();
 
-		if (this.bPlayer.isOnCooldown("IceSpikePillar")) {
+		if (this.bender.isOnCooldown("IceSpikePillar")) {
 			return;
 		}
 
 		try {
 			double lowestDistance = this.range + 1;
 			Entity closestEntity = null;
-			for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(player.getLocation(), this.range)) {
-				if (GeneralMethods.getDistanceFromLine(player.getLocation().getDirection(), player.getLocation(), entity.getLocation()) <= 2 && (entity instanceof LivingEntity) && (entity.getEntityId() != player.getEntityId())) {
+			for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(caster.getLocation(), this.range)) {
+				if (GeneralMethods.getDistanceFromLine(caster.getLocation().getDirection(), caster.getLocation(), entity.getLocation()) <= 2 && (entity instanceof LivingEntity) && (entity.getEntityId() != caster.getEntityId())) {
 					double distance = 0;
-					if (player.getWorld().equals(entity.getWorld())) {
-						distance = player.getLocation().distance(entity.getLocation());
+					if (caster.getWorld().equals(entity.getWorld())) {
+						distance = caster.getLocation().distance(entity.getLocation());
 					}
 					if (distance < lowestDistance) {
 						closestEntity = entity;
@@ -88,10 +93,9 @@ public class IceSpikePillar extends IceAbility {
 			}
 
 			if (closestEntity != null) {
-				final Block tempTestingBlock = closestEntity.getLocation().getBlock().getRelative(BlockFace.DOWN, 1);
-				this.source_block = tempTestingBlock;
+				this.source_block = closestEntity.getLocation().getBlock().getRelative(BlockFace.DOWN, 1);
 			} else {
-				this.source_block = WaterAbility.getIceSourceBlock(player, this.range);
+				this.source_block = WaterAbility.getIceSourceBlock(caster, this.range);
 				if (this.source_block == null) {
 					return;
 				}
@@ -106,17 +110,17 @@ public class IceSpikePillar extends IceAbility {
 			if (this.canInstantiate()) {
 				this.start();
 				this.time = System.currentTimeMillis() - this.interval;
-				this.bPlayer.addCooldown("IceSpikePillar", this.cooldown);
+				this.bender.addCooldown("IceSpikePillar", this.cooldown);
 			}
 		}
 	}
 
-	public IceSpikePillar(final Player player, final Location origin, final int damage, final Vector throwing, final long aoecooldown) {
-		super(player);
+	public IceSpikePillar(final LivingEntity caster, final Location origin, final int damage, final Vector throwing, final long aoecooldown) {
+		super(caster);
 		this.setFields();
 
 		this.cooldown = aoecooldown;
-		this.player = player;
+		this.caster = caster;
 		this.origin = origin;
 		this.damage = damage;
 		this.thrownForce = throwing;
@@ -146,7 +150,7 @@ public class IceSpikePillar extends IceAbility {
 
 		this.interval = (long) (1000. / this.speed);
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.slowPower = getConfig().getInt("Abilities.Avatar.AvatarState.Water.IceSpike.SlowPower");
 			this.slowDuration = getConfig().getInt("Abilities.Avatar.AvatarState.Water.IceSpike.SlowDuration");
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Water.IceSpike.Damage");
@@ -189,7 +193,7 @@ public class IceSpikePillar extends IceAbility {
 				return false;
 			}
 
-			if (b.getX() == this.player.getEyeLocation().getBlock().getX() && b.getZ() == this.player.getEyeLocation().getBlock().getZ()) {
+			if (b.getX() == this.caster.getEyeLocation().getBlock().getX() && b.getZ() == this.caster.getEyeLocation().getBlock().getZ()) {
 				return false;
 			}
 		}
@@ -208,7 +212,6 @@ public class IceSpikePillar extends IceAbility {
 				if (this.removeTimestamp != 0 && this.removeTimestamp + this.duration <= System.currentTimeMillis()) {
 					if (!this.sinkPillar()) {
 						this.remove();
-						return;
 					}
 				}
 			}
@@ -230,13 +233,12 @@ public class IceSpikePillar extends IceAbility {
 		}
 
 		for (final Entity en : GeneralMethods.getEntitiesAroundPoint(this.location, 1.4)) {
-			if (en instanceof LivingEntity && en != this.player && !this.damaged.contains((en))) {
-				final LivingEntity le = (LivingEntity) en;
+			if (en instanceof LivingEntity le && en != this.caster && !this.damaged.contains((en))) {
 				this.affect(le);
 			}
 		}
 
-		final TempBlock b = new TempBlock(affectedBlock, iceMaterial(this.player));
+		final TempBlock b = new TempBlock(affectedBlock, iceMaterial(this.caster));
 		this.ice_blocks.put(affectedBlock, b);
 
 		if (!this.inField || new Random().nextInt((int) ((this.height + 1) * 1.5)) == 0) {
@@ -252,7 +254,7 @@ public class IceSpikePillar extends IceAbility {
 		AirAbility.breakBreathbendingHold(entity);
 		this.damaged.add(entity);
 
-		if (entity instanceof Player) {
+		if (entity instanceof Player && this.bPlayer != null) { // TODO is it meant to be affecting the other entity? bPlayer is the caster
 			if (!this.bPlayer.canBeSlowed())
 				return;
 
@@ -274,16 +276,19 @@ public class IceSpikePillar extends IceAbility {
 			this.ice_blocks.remove(this.location.getBlock());
 			this.location.add(direction);
 
-			if (this.source_block.equals(this.location.getBlock())) {
-				return false;
-			}
+			return !this.source_block.equals(this.location.getBlock());
 		}
 		return true;
 	}
 
 	@Override
 	public String getName() {
-		return "IceSpike";
+		return "IceSpikePillar";
+	}
+
+	@Override
+	public boolean isHiddenAbility() {
+		return true;
 	}
 
 	@Override
@@ -296,150 +301,9 @@ public class IceSpikePillar extends IceAbility {
 		return false;
 	}
 
-	public int getHeight() {
-		return this.height;
-	}
-
-	public void setHeight(final int height) {
-		this.height = height;
-	}
-
-	public int getProgress() {
-		return this.progress;
-	}
-
-	public void setProgress(final int progress) {
-		this.progress = progress;
-	}
-
-	public int getSlowPower() {
-		return this.slowPower;
-	}
-
-	public void setSlowPower(final int slowPower) {
-		this.slowPower = slowPower;
-	}
-
-	public int getSlowDuration() {
-		return this.slowDuration;
-	}
-
-	public void setSlowDuration(final int slowDuration) {
-		this.slowDuration = slowDuration;
-	}
-
 	@Override
 	public long getCooldown() {
 		return this.cooldown;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
-	}
-
-	public long getTime() {
-		return this.time;
-	}
-
-	public void setTime(final long time) {
-		this.time = time;
-	}
-
-	public long getRemoveTimestamp() {
-		return this.removeTimestamp;
-	}
-
-	public void setRemoveTimestamp(final long removeTimestamp) {
-		this.removeTimestamp = removeTimestamp;
-	}
-
-	public long getDuration() {
-		return this.duration;
-	}
-
-	public void setDuration(final long duration) {
-		this.duration = duration;
-	}
-
-	public long getInterval() {
-		return this.interval;
-	}
-
-	public void setInterval(final long interval) {
-		this.interval = interval;
-	}
-
-	public long getSlowCooldown() {
-		return this.slowCooldown;
-	}
-
-	public void setSlowCooldown(final long slowCooldown) {
-		this.slowCooldown = slowCooldown;
-	}
-
-	public double getDamage() {
-		return this.damage;
-	}
-
-	public void setDamage(final double damage) {
-		this.damage = damage;
-	}
-
-	public double getRange() {
-		return this.range;
-	}
-
-	public void setRange(final double range) {
-		this.range = range;
-	}
-
-	public double getSpeed() {
-		return this.speed;
-	}
-
-	public void setSpeed(final double speed) {
-		this.speed = speed;
-	}
-
-	public Block getBlock() {
-		return this.source_block;
-	}
-
-	public void setBlock(final Block block) {
-		this.source_block = block;
-	}
-
-	public Location getOrigin() {
-		return this.origin;
-	}
-
-	public void setOrigin(final Location origin) {
-		this.origin = origin;
-	}
-
-	@Override
-	public Location getLocation() {
-		return this.location;
-	}
-
-	public void setLocation(final Location location) {
-		this.location = location;
-	}
-
-	public Vector getThrownForce() {
-		return this.thrownForce;
-	}
-
-	public void setThrownForce(final Vector thrownForce) {
-		this.thrownForce = thrownForce;
-	}
-
-	public Vector getDirection() {
-		return this.direction;
-	}
-
-	public void setDirection(final Vector direction) {
-		this.direction = direction;
 	}
 
 	public Map<Block, TempBlock> getIceBlocks() {

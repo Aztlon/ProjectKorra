@@ -11,11 +11,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -92,6 +94,7 @@ public abstract class CoreAbility implements Ability {
 	private static long currentTick;
 
 	@MonotonicNonNull protected LivingEntity caster;
+	@Getter
 	@MonotonicNonNull protected Bender bender;
 	@MonotonicNonNull protected Player player;
 	@MonotonicNonNull protected BendingPlayer bPlayer;
@@ -222,7 +225,7 @@ public abstract class CoreAbility implements Ability {
 	 * Causes this CoreAbility instance to be removed, and {@link #progress}
 	 * will no longer be called every tick. If this method is overridden then
 	 * the new method must call <b>super.remove()</b>.
-	 *
+	 * <p>
 	 * {@inheritDoc}
 	 *
 	 * @see #isRemoved()
@@ -241,12 +244,12 @@ public abstract class CoreAbility implements Ability {
 			final Map<Integer, CoreAbility> casterMap = classMap.get(this.caster.getUniqueId());
 			if (casterMap != null) {
 				casterMap.remove(this.id);
-				if (casterMap.size() == 0) {
+				if (casterMap.isEmpty()) {
 					classMap.remove(this.caster.getUniqueId());
 				}
 			}
 
-			if (classMap.size() == 0) {
+			if (classMap.isEmpty()) {
 				INSTANCES_BY_CASTER.remove(this.getClass());
 			}
 		}
@@ -420,6 +423,10 @@ public abstract class CoreAbility implements Ability {
 		return (Collection<T>) CoreAbility.INSTANCES_BY_CLASS.get(clazz);
 	}
 
+	public static <T extends CoreAbility> Set<CoreAbility> getAbilities(final LivingEntity caster) {
+		return INSTANCES.stream().filter(a -> a.getCaster().equals(caster)).collect(Collectors.toSet());
+	}
+
 	/**
 	 * Returns a Collection of specific CoreAbility instances that were created
 	 * by the specified caster.
@@ -513,22 +520,26 @@ public abstract class CoreAbility implements Ability {
 	 * Returns a Set of all of the players that currently have an active
 	 * instance of clazz.
 	 *
-	 * @param clazz the clazz for the type of CoreAbility
+	 * @param clazz the class for the type of CoreAbility
 	 */
-	public static Set<Player> getPlayers(final Class<? extends CoreAbility> clazz) {
-		final HashSet<Player> players = new HashSet<>();
-		if (clazz != null) {
-			final Map<UUID, Map<Integer, CoreAbility>> uuidMap = INSTANCES_BY_CASTER.get(clazz);
-			if (uuidMap != null) {
-				for (final UUID uuid : uuidMap.keySet()) {
-					final Player uuidPlayer = Bukkit.getPlayer(uuid);
-					if (uuidPlayer != null) {
-						players.add(uuidPlayer);
-					}
-				}
-			}
-		}
-		return players;
+	public static Set<LivingEntity> getCasters(final Class<? extends CoreAbility> clazz) {
+		if (clazz == null) return Set.of();
+		var classSet = INSTANCES_BY_CLASS.get(clazz);
+		if (classSet == null) return Set.of();
+		return classSet.stream().map(CoreAbility::getCaster).collect(Collectors.toSet());
+//		final HashSet<LivingEntity> casters = new HashSet<>();
+//		if (clazz != null) {
+//			final Map<UUID, Map<Integer, CoreAbility>> uuidMap = INSTANCES_BY_CASTER.get(clazz);
+//			if (uuidMap != null) {
+//				for (final UUID uuid : uuidMap.keySet()) {
+//					final LivingEntity uuidPlayer = Bukkit.getEntity(uuid);
+//					if (uuidPlayer != null) {
+//						casters.add(uuidPlayer);
+//					}
+//				}
+//			}
+//		}
+//		return casters;
 	}
 
 	/**
@@ -705,7 +716,7 @@ public abstract class CoreAbility implements Ability {
 		return currentTick - this.startTick;
 	}
 
-	public BendingPlayer getBendingPlayer() {
+	public @Nullable BendingPlayer getBendingPlayer() {
 		return this.bPlayer;
 	}
 
@@ -963,7 +974,6 @@ public abstract class CoreAbility implements Ability {
 	public @Nullable Number getAttributeValue(final String attribute) {
 		Validate.notNull(attribute, "attribute cannot be null");
 		if (!ATTRIBUTE_FIELDS.containsKey(this.getClass()) || !ATTRIBUTE_FIELDS.get(this.getClass()).containsKey(attribute)) {
-			PkLang.warning("Attribute " + attribute + " is not a defined Attribute for " + this.getName());
 			return null;
 		}
 		final Field field = ATTRIBUTE_FIELDS.get(this.getClass()).get(attribute);
@@ -973,7 +983,6 @@ public abstract class CoreAbility implements Ability {
 				PkLang.warning("The field " + field.getName() + " cannot algebraically be modified.");
 				return null;
 			}
-			PkLang.info("Attribute " + attribute + " for " + this.getName() + " is " + n);
 			return n;
 		} catch (Exception e) {
 			e.printStackTrace();
