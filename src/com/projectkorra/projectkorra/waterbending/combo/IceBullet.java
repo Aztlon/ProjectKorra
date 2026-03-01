@@ -68,6 +68,7 @@ public class IceBullet extends IceAbility implements ComboAbility {
 	private WaterSourceGrabber waterGrabber;
 	private ArrayList<BukkitRunnable> tasks;
 	private ConcurrentHashMap<Block, TempBlock> affectedBlocks;
+	private boolean bendableIce;
 
 	public IceBullet(final Player player) {
 		super(player);
@@ -88,6 +89,7 @@ public class IceBullet extends IceAbility implements ComboAbility {
 		this.shootTime = applyModifiers(getConfig().getLong("Abilities.Water.IceBullet.ShootTime"));
 		this.maxShots = applyModifiers(getConfig().getInt("Abilities.Water.IceBullet.MaxShots"));
 		this.animationSpeed = getConfig().getDouble("Abilities.Water.IceBullet.AnimationSpeed");
+		this.bendableIce = getConfig().getBoolean("Abilities.Water.IceBullet.BendableIce");
 		this.speed = 1;
 
 		if (this.bPlayer.isAvatarState()) {
@@ -181,7 +183,7 @@ public class IceBullet extends IceAbility implements ComboAbility {
 	}
 
 	public void createBlock(final Block block, final BlockData data) {
-		this.affectedBlocks.put(block, new TempBlock(block, data));
+		this.affectedBlocks.put(block, new TempBlock(block, data).setBendableSource(bendableIce));
 	}
 
 	public void drawWaterCircle(final Location loc, final double theta, final double increment, final double radius) {

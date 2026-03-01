@@ -182,7 +182,7 @@ public class WaterManipulation extends WaterAbility {
 					this.targetDirection = GeneralMethods.getDirection(this.firstDestination, this.targetDestination).normalize();
 					
 					if (isDecayablePlant(this.sourceBlock)) {
-						new PlantRegrowth(this.caster, this.sourceBlock, 2);
+						new PlantRegrowth(this.caster, this.sourceBlock, getConfig().getDouble("Abilities.Water.WaterManipulation.GrassRadius"));
 					} else if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
 						new PlantRegrowth(this.caster, this.sourceBlock);
 						this.sourceBlock.setType(Material.AIR);

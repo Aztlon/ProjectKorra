@@ -87,6 +87,7 @@ public class Torrent extends WaterAbility {
 	private ArrayList<TempBlock> blocks;
 	private ArrayList<TempBlock> launchedBlocks;
 	private ArrayList<Entity> hurtEntities;
+	private boolean bendableIce;
 
 	public Torrent(final LivingEntity caster, boolean needSource) {
 		super(caster);
@@ -108,6 +109,7 @@ public class Torrent extends WaterAbility {
 		this.cooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.Torrent.Cooldown"));
 		this.revert = getConfig().getBoolean("Abilities.Water.Torrent.Revert");
 		this.revertTime = getConfig().getLong("Abilities.Water.Torrent.RevertTime");
+		this.bendableIce = getConfig().getBoolean("Abilities.Water.Torrent.BendableIce");
 		this.blocks = new ArrayList<>();
 		this.launchedBlocks = new ArrayList<>();
 		this.hurtEntities = new ArrayList<>();
@@ -175,7 +177,7 @@ public class Torrent extends WaterAbility {
 					}
 				}
 				final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster));
-				tblock.setBendableSource(true);
+				tblock.setBendableSource(bendableIce);
 				FROZEN_BLOCKS.put(tblock, Pair.of(this.caster, this.getId()));
 				if (this.revert) {
 					tblock.setRevertTime(this.revertTime + (new Random().nextInt((500 + 500) + 1) - 500));
@@ -225,7 +227,7 @@ public class Torrent extends WaterAbility {
 					}
 
 					if (isDecayablePlant(this.sourceBlock)) {
-						new PlantRegrowth(this.caster, this.sourceBlock, 3);
+						new PlantRegrowth(this.caster, this.sourceBlock, getConfig().getDouble("Abilities.Water.Torrent.GrassRadius"));
 					} else if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
 						new PlantRegrowth(this.caster, this.sourceBlock);
 						this.sourceBlock.setType(Material.AIR);

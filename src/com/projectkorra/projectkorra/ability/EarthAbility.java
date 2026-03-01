@@ -41,6 +41,8 @@ import com.projectkorra.projectkorra.util.logging.PkLang;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 
+import static com.projectkorra.projectkorra.ability.SandAbility.getSandBlock;
+
 public abstract class EarthAbility extends ElementalAbility {
 
 	private static final HashSet<Block> PREVENT_EARTHBENDING = new HashSet<Block>();
@@ -335,13 +337,20 @@ public abstract class EarthAbility extends ElementalAbility {
 		TEMP_AIR_LOCATIONS.put(info.getID(), info);
 	}
 
-	public static void displaySandParticle(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset, final double speed, final boolean red) {
+	public static void displaySandParticle(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset, final double speed, final boolean red, final Material material) {
 		if (amount <= 0) {
 			return;
 		}
 
-		final Material sand = red ? Material.RED_SAND : Material.SAND;
-		final Material stone = red ? Material.RED_SANDSTONE : Material.SANDSTONE;
+		final Material sand;
+		final Material stone;
+		if (material != Material.SAND) {
+			sand = material;
+			stone = material;
+		} else {
+			sand = red ? Material.RED_SAND : Material.SAND;
+			stone = red ? Material.RED_SANDSTONE : Material.SANDSTONE;
+		}
 
 		ParticleEffect.BLOCK_DUST.display(loc, amount, xOffset, yOffset, zOffset, speed, sand.createBlockData());
 		ParticleEffect.BLOCK_DUST.display(loc, amount, xOffset, yOffset, zOffset, speed, stone.createBlockData());
@@ -483,7 +492,7 @@ public abstract class EarthAbility extends ElementalAbility {
 			return false;
 		} else if (isMetal(block) && !bender.canMetalbend()) {
 			return false;
-		} else if (isSand(block) && !bender.canSandbend()) {
+		} else if ((isSand(block)  || getSandBlock(caster) == block.getType()) && !bender.canSandbend()) {
 			return false;
 		} else if (isLava(block) && !bender.canLavabend()) {
 			return false;

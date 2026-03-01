@@ -18,6 +18,8 @@ import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.TempBlock;
 
+import static com.projectkorra.projectkorra.ability.SandAbility.getSandBlock;
+
 public class DensityShift extends EarthAbility implements PassiveAbility {
 	private static final Set<TempBlock> SAND_BLOCKS = new HashSet<>();
 
@@ -46,8 +48,8 @@ public class DensityShift extends EarthAbility implements PassiveAbility {
 			for (final Block affectedBlock : GeneralMethods.getBlocksAroundPoint(block.getLocation(), 2)) {
 				if (ElementalAbility.isEarth(affectedBlock)) {
 					if (GeneralMethods.isSolid(affectedBlock.getRelative(BlockFace.DOWN))) {
-						Material sand = Material.SAND;
-						if (affectedBlock.getType() == Material.RED_SANDSTONE) {
+						Material sand = getSandBlock(player);
+						if (sand != Material.SAND && affectedBlock.getType() == Material.RED_SANDSTONE) {
 							sand = Material.RED_SAND;
 						}
 

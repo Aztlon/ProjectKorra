@@ -59,6 +59,7 @@ public class WaterArmsSpear extends WaterAbility {
 	private final List<Location> spearLocations;
 	private List<TempBlock> waterBlocks = new ArrayList<>();
 	private List<TempBlock> iceBlocks = new ArrayList<>();
+	private boolean bendableIce;
 
 	public WaterArmsSpear(final Player player, final boolean freeze) {
 		super(player);
@@ -78,6 +79,7 @@ public class WaterArmsSpear extends WaterAbility {
 		this.spearDurationFullMoon = getConfig().getLong("Abilities.Water.WaterArms.Spear.NightAugments.Duration.FullMoon");
 		this.usageCooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.WaterArms.Arms.Cooldowns.UsageCooldown.Spear"));
 		this.spearDamage = applyModifiers(getConfig().getDouble("Abilities.Water.WaterArms.Spear.Damage"));
+		this.bendableIce = getConfig().getBoolean("Abilities.Water.WaterArms.Spear.BendableIce");
 		this.spearLocations = new ArrayList<>();
 
 		this.getNightAugments();
@@ -205,7 +207,7 @@ public class WaterArmsSpear extends WaterAbility {
 						getIceBlocks().remove(block);
 					}
 
-					iceBlocks.add(new TempBlock(block, iceMaterial(this.player)));
+					iceBlocks.add(new TempBlock(block, iceMaterial(this.player)).setBendableSource(bendableIce));
 
 					getIceBlocks().put(block, System.currentTimeMillis() + this.spearDuration + (long) (Math.random() * 500));
 				}
@@ -252,7 +254,7 @@ public class WaterArmsSpear extends WaterAbility {
 					}
 				}
 				playIcebendingSound(block.getLocation());
-				new TempBlock(block, iceMaterial(this.player));
+				new TempBlock(block, iceMaterial(this.player)).setBendableSource(bendableIce);
 				getIceBlocks().put(block, System.currentTimeMillis() + this.spearDuration + (long) (Math.random() * 500));
 			}
 		}

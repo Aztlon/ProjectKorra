@@ -72,6 +72,7 @@ public class SurgeWave extends WaterAbility {
 	private Vector targetDirection;
 	private Map<Block, Block> waveBlocks;
 	private Map<Block, Material> frozenBlocks;
+	private boolean bendableIce;
 
 	public SurgeWave(final LivingEntity caster) {
 		super(caster);
@@ -99,6 +100,7 @@ public class SurgeWave extends WaterAbility {
 		this.selectRange = applyModifiers(getConfig().getDouble("Abilities.Water.Surge.Wave.SelectRange"));
 		this.solidifyLava = getConfig().getBoolean("Abilities.Water.Surge.Wave.SolidifyLava.Enabled");
 		this.obsidianDuration = getConfig().getLong("Abilities.Water.Surge.Wave.SolidifyLava.Duration");
+		this.bendableIce = getConfig().getBoolean("Abilities.Water.Surge.Wave.BendableIce");
 		this.waveBlocks = new ConcurrentHashMap<>();
 		this.frozenBlocks = new ConcurrentHashMap<>();
 
@@ -179,7 +181,7 @@ public class SurgeWave extends WaterAbility {
 					}
 				}
 
-				final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster));
+				final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster)).setBendableSource(bendableIce);
 
 				tblock.setRevertTask(() -> SurgeWave.this.frozenBlocks.remove(block));
 
@@ -362,7 +364,7 @@ public class SurgeWave extends WaterAbility {
 				for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, 2 * this.currentRadius)) {
 					boolean knockback = false;
 					for (final Block block : this.waveBlocks.keySet()) {
-						if (entity.getLocation().distanceSquared(block.getLocation()) <= 4) {
+						if (entity.getLocation().distanceSquared(block.getLocation().add(0.5, 0.5, 0.5)) <= 4) {
 							if (entity instanceof LivingEntity && this.freezing && entity.getEntityId() != this.caster.getEntityId()) {
 								this.activateFreeze = true;
 								this.frozenLocation = entity.getLocation();

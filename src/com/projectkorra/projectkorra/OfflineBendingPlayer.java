@@ -271,6 +271,9 @@ public class OfflineBendingPlayer extends Bender {
 							if (split[0].contains("w")) {
 								bPlayer.subelements.add(Element.WARRIOR);
 							}
+							if (split[0].contains("a")) {
+								bPlayer.subelements.add(Element.BLACK_SAND);
+							}
 						}
 						if (hasAddon) {
 							final CopyOnWriteArrayList<String> addonClone = new CopyOnWriteArrayList<>(Arrays.asList(split[split.length - 1].split(",")));
@@ -449,6 +452,9 @@ public class OfflineBendingPlayer extends Bender {
 		}
 		if (this.hasSubElement(Element.WARRIOR)) {
 			subs.append("w");
+		}
+		if (this.hasSubElement(Element.BLACK_SAND)) {
+			subs.append("a");
 		}
 		boolean hasAddon = false;
 		List<SubElement> addonSubs = Arrays.asList(Element.getAddonSubElements());

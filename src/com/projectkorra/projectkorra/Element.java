@@ -65,6 +65,7 @@ public class Element {
 	public static final SubElement LAVA = new SubElement("Lava", EARTH);
 	public static final SubElement METAL = new SubElement("Metal", EARTH);
 	public static final SubElement SAND = new SubElement("Sand", EARTH);
+	public static final SubElement BLACK_SAND = new SubElement("BlackSand", EARTH);
 	public static final SubElement LIGHTNING = new SubElement("Lightning", FIRE);
 	public static final SubElement COMBUSTION = new SubElement("Combustion", FIRE);
 	public static final SubElement BLUE_FIRE = new SubElement("BlueFire", FIRE);
@@ -72,9 +73,9 @@ public class Element {
 	public static final SubElement WARRIOR = new SubElement("Warrior", NON, ElementType.NO_SUFFIX);
 	public static final SubElement ARCHER = new SubElement("Archer", NON, ElementType.NO_SUFFIX);
 
-	private static final Element[] ELEMENTS = { AIR, WATER, EARTH, FIRE, NON, FLIGHT, SPIRITUAL, SUFFOCATION, BLOOD, DAY_BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, LIGHTNING, COMBUSTION, BLUE_FIRE, CHI, WARRIOR, ARCHER };
+	private static final Element[] ELEMENTS = { AIR, WATER, EARTH, FIRE, NON, FLIGHT, SPIRITUAL, SUFFOCATION, BLOOD, DAY_BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, BLACK_SAND, LIGHTNING, COMBUSTION, BLUE_FIRE, CHI, WARRIOR, ARCHER };
 	private static final Element[] MAIN_ELEMENTS = { AIR, WATER, EARTH, FIRE, NON };
-	private static final SubElement[] SUB_ELEMENTS = { FLIGHT, SPIRITUAL, SUFFOCATION, BLOOD, DAY_BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, LIGHTNING, COMBUSTION, BLUE_FIRE, CHI, WARRIOR, ARCHER };
+	private static final SubElement[] SUB_ELEMENTS = { FLIGHT, SPIRITUAL, SUFFOCATION, BLOOD, DAY_BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, BLACK_SAND, LIGHTNING, COMBUSTION, BLUE_FIRE, CHI, WARRIOR, ARCHER };
 
 	protected final String name;
 	protected final ElementType type;

@@ -88,6 +88,7 @@ public class WaterSpoutWave extends WaterAbility {
 	private ArrayList<Entity> affectedEntities;
 	private ArrayList<BukkitRunnable> tasks;
 	private ConcurrentHashMap<Block, TempBlock> affectedBlocks;
+	private boolean bendableIce;
 
 	public WaterSpoutWave(final LivingEntity caster) {
 		this(caster, AbilityType.CLICK);
@@ -116,6 +117,7 @@ public class WaterSpoutWave extends WaterAbility {
 		this.revertSphereTime = getConfig().getLong("Abilities.Water.IceWave.RevertSphereTime");
 		this.revertIceSphere = getConfig().getBoolean("Abilities.Water.IceWave.RevertSphere");
 		this.trailRevertTime = getConfig().getLong("Abilities.Water.WaterSpout.Wave.TrailRevertTime");
+		this.bendableIce = getConfig().getBoolean("Abilities.Water.IceWave.BendableIce");
 		this.affectedBlocks = new ConcurrentHashMap<>();
 		this.affectedEntities = new ArrayList<>();
 		this.tasks = new ArrayList<>();
@@ -227,7 +229,7 @@ public class WaterSpoutWave extends WaterAbility {
 				this.location = this.origin.clone();
 
 				if (isDecayablePlant(this.origin.getBlock())) {
-					new PlantRegrowth(this.caster, this.origin.getBlock(), 3);
+					new PlantRegrowth(this.caster, this.origin.getBlock(), getConfig().getDouble("Abilities.Water.WaterSpout.GrassRadius"));
 				} else if (isPlant(this.origin.getBlock()) || isSnow(this.origin.getBlock())) {
 					new PlantRegrowth(this.caster, this.origin.getBlock());
 					this.origin.getBlock().setType(Material.AIR);
@@ -402,7 +404,7 @@ public class WaterSpoutWave extends WaterAbility {
 		if (this.affectedBlocks.containsKey(block)) {
 			this.affectedBlocks.get(block).revertBlock();
 		}
-		TempBlock tb = new TempBlock(block, data, this.trailRevertTime);
+		TempBlock tb = new TempBlock(block, data, this.trailRevertTime).setBendableSource(bendableIce);
 		tb.setRevertTask(() -> this.affectedBlocks.remove(block));
 		this.affectedBlocks.put(block, tb);
 	}
@@ -440,7 +442,7 @@ public class WaterSpoutWave extends WaterAbility {
 					}
 					if (ElementalAbility.isAir(block.getType()) || isIce(block) || this.isWaterbendable(block)) {
 						if (!FROZEN_BLOCKS.containsKey(block)) {
-							final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster));
+							final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster)).setBendableSource(bendableIce);
 							FROZEN_BLOCKS.put(block, tblock);
 							if (this.revertIceSphere) {
 								tblock.setRevertTime(this.revertSphereTime + ThreadLocalRandom.current().nextLong(-500, 500));

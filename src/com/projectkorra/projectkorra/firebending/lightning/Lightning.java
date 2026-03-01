@@ -81,9 +81,13 @@ public class Lightning extends LightningAbility {
 	private double particleRotation;
 	private long time;
 
+	@Attribute(Attribute.DURATION)
+	private long holdDuration;
+
 	@Attribute("Cooldown")
 	private long cooldown;
 
+	private long redirectTiming;
 	private State state;
 	private Location origin;
 	private Location destination;
@@ -140,6 +144,8 @@ public class Lightning extends LightningAbility {
 		this.chargeTime = getConfig().getLong("Abilities.Fire.Lightning.ChargeTime");
 		this.cooldown = getConfig().getLong("Abilities.Fire.Lightning.Cooldown");
 		this.allowOnFireJet = getConfig().getBoolean("Abilities.Fire.Lightning.AllowOnFireJet");
+		this.holdDuration = getConfig().getLong("Abilities.Fire.Lightning.HoldDuration");
+		this.redirectTiming = getConfig().getLong("Abilities.Fire.Lightning.RedirectTiming");
 
 		if (this.bPlayer.isAvatarState()) {
 			this.chargeTime = getConfig().getLong("Abilities.Avatar.AvatarState.Fire.Lightning.ChargeTime");
@@ -185,7 +191,7 @@ public class Lightning extends LightningAbility {
 			removeWithTasks();
 			return;
 		}
-		if (!this.bPlayer.canBendIgnoreCooldowns(this)) {
+		if (!this.bPlayer.canBendIgnoreCooldowns(this) || (System.currentTimeMillis() - this.time > this.holdDuration && this.state == State.START)) {
 			remove();
 			this.bPlayer.addCooldown(this);
 			return;
@@ -598,9 +604,13 @@ public class Lightning extends LightningAbility {
 							Player p = (Player)lent;
 							Lightning light = (Lightning)CoreAbility.getAbility(p, Lightning.class);
 							if (light != null && light.state == Lightning.State.START) {
-								light.charged = true;
-								Lightning.this.remove();
-								return;
+								if (System.currentTimeMillis() - light.time < redirectTiming) {
+									light.charged = true;
+									Lightning.this.remove();
+									return;
+								} else {
+									light.remove();
+								}
 							}
 						}
 						Lightning.this.electrocute(lent);
