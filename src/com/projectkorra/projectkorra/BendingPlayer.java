@@ -65,27 +65,11 @@ import lombok.Setter;
  */
 public class BendingPlayer extends OfflineBendingPlayer {
 
-	private long slowTime;
-	@Getter
-	private final Player player;
-	@Getter
-	private ChiAbility stance;
-
-	protected boolean tremorSense;
-	protected boolean illumination;
-	@Getter
-	protected boolean chiBlocked;
-	@Setter
-	@Getter
-	protected boolean queueAirBlastStop;
+	@Getter private final Player player;
 
 	public BendingPlayer(Player player) {
 		super(player);
-
 		this.player = player;
-		this.tremorSense = true;
-		this.illumination = true;
-		this.chiBlocked = false;
 	}
 
 	/**
@@ -114,21 +98,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 			BendingBoardManager.updateBoard(this.player, event.getAbility(), true, 0);
 			CooldownCommand.addCooldownType(ability);
 		}
-	}
-
-	/**
-	 * Checks to see if a Player is effected by BloodBending.
-	 *
-	 * @return true If {@link #isChiBlocked()} is true <br />
-	 *         false If player is BloodBender and Bending is toggled on, or if
-	 *         player is in AvatarState
-	 */
-	public boolean canBeBloodbent() {
-		if (this.isAvatarState()) {
-			return this.isChiBlocked();
-		}
-
-		return !this.canBendIgnoreBindsCooldowns(CoreAbility.getAbility("Bloodbending")) || !this.isToggled();
 	}
 
 	@Override
@@ -190,15 +159,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 			return true;
 		}
 		return false;
-	}
-
-	/**
-	 * Checks to see if {@link BendingPlayer} can be slowed.
-	 *
-	 * @return true If player can be slowed
-	 */
-	public boolean canBeSlowed() {
-		return (System.currentTimeMillis() > this.slowTime);
 	}
 
 	@Override
@@ -402,38 +362,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	}
 
 	/**
-	 * Sets the {@link BendingPlayer}'s chi blocked to false.
-	 */
-	public void unblockChi() {
-		this.chiBlocked = false;
-	}
-
-	/**
-	 * Sets chiBlocked to true.
-	 */
-	public void blockChi() {
-		this.chiBlocked = true;
-	}
-
-	/**
-	 * Checks if the {@link BendingPlayer} is tremor sensing.
-	 *
-	 * @return true if player is tremor sensing
-	 */
-	public boolean isTremorSensing() {
-		return this.tremorSense;
-	}
-
-	/**
-	 * Checks if the {@link BendingPlayer} is using illumination.
-	 *
-	 * @return true if player is using illumination
-	 */
-	public boolean isIlluminating() {
-		return this.illumination;
-	}
-
-	/**
 	 * Removes the cooldown of an ability.
 	 *
 	 * @param ability The ability's cooldown to remove
@@ -493,6 +421,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	 *
 	 * @param stance The player's new stance object
 	 */
+	@Override
 	public void setStance(final ChiAbility stance) {
 		final String oldStance = (this.stance == null) ? "" : this.stance.getName();
 		final String newStance = (stance == null) ? "" : stance.getName();
@@ -500,15 +429,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		ChatUtil.displayMovePreview(this.player);
 		final PlayerStanceChangeEvent event = new PlayerStanceChangeEvent(Bukkit.getPlayer(this.uuid), oldStance, newStance);
 		Bukkit.getServer().getPluginManager().callEvent(event);
-	}
-
-	/**
-	 * Slow the {@link BendingPlayer} for a certain amount of time.
-	 *
-	 * @param cooldown The amount of time to slow.
-	 */
-	public void slow(final long cooldown) {
-		this.slowTime = System.currentTimeMillis() + cooldown;
 	}
 
 	/**
@@ -629,27 +549,8 @@ public class BendingPlayer extends OfflineBendingPlayer {
 
 
 	@Override
-	public String toString() {
-		return ToStringBuilder.reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
-	}
-
-	@Override
 	public void setCurrentSlot(int slot) {
 		this.player.getInventory().setHeldItemSlot(slot % 9);
-	}
-
-	/**
-	 * Toggles the {@link BendingPlayer}'s tremor sensing.
-	 */
-	public void toggleTremorSense() {
-		this.tremorSense = !this.tremorSense;
-	}
-
-	/**
-	 * Toggles the {@link BendingPlayer}'s illumination.
-	 */
-	public void toggleIllumination() {
-		this.illumination = !this.illumination;
 	}
 
 	/**

@@ -23,19 +23,24 @@ import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.ability.AvatarAbility;
+import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.util.MultiAbilityManager;
 import com.projectkorra.projectkorra.avatar.AvatarState;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.command.CooldownCommand;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.earthbending.metal.MetalClips;
 import com.projectkorra.projectkorra.event.PlayerBindChangeEvent;
+import com.projectkorra.projectkorra.event.PlayerStanceChangeEvent;
 import com.projectkorra.projectkorra.hooks.CanBendHook;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.storage.DBConnection;
 import com.projectkorra.projectkorra.util.ChatUtil;
 import com.projectkorra.projectkorra.util.Cooldown;
+import com.projectkorra.projectkorra.util.MovementHandler;
 import com.projectkorra.projectkorra.util.logging.PkLang;
+import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -65,18 +70,27 @@ public class Bender {
 	protected boolean permaRemoved;
 	protected boolean toggled;
 	protected boolean allPassivesToggled;
-	@Setter private boolean sneaking;
+	@Setter protected boolean sneaking;
 	protected final List<Element> elements = new ArrayList<>();
 	protected final List<Element.SubElement> subelements = new ArrayList<>();
 	protected HashMap<Integer, String> abilities = new HashMap<>();
 	protected final Map<String, Cooldown> cooldowns = new HashMap<>();
 	protected final Set<Element> toggledElements = new HashSet<>();
 	protected final Set<Element> toggledPassives = new HashSet<>();
+	@Setter protected ChiAbility stance;
+	protected boolean tremorSense;
+	protected boolean illumination;
+	protected boolean chiBlocked;
+	@Setter protected boolean queueAirBlastStop;
+	protected long slowTime;
 
 	public Bender(UUID uuid) {
 		this.uuid = uuid;
 		this.toggled = true;
 		this.allPassivesToggled = true;
+		this.tremorSense = true;
+		this.illumination = true;
+		this.chiBlocked = false;
 	}
 
 	public Optional<OfflineBendingPlayer> asOfflinePlayer() {
@@ -338,12 +352,6 @@ public class Bender {
 		return this.allPassivesToggled;
 	}
 
-	public boolean isAvatarState() {
-		var entity = asEntity().orElse(null);
-		if (entity == null) return false;
-		return CoreAbility.hasAbility(entity, AvatarState.class);
-	}
-
 	public long getCooldown(final String ability) {
 		if (this.cooldowns.containsKey(ability)) {
 			return this.cooldowns.get(ability).getCooldown();
@@ -520,5 +528,100 @@ public class Bender {
 
 	public boolean canWaterHeal() {
 		return this.subelements.contains(Element.HEALING);
+	}
+
+	/**
+	 * Checks to see if a Bender is affected by BloodBending.
+	 *
+	 * @return true If {@link #isChiBlocked()} is true <br />
+	 *         false If player is BloodBender and Bending is toggled on, or if
+	 *         player is in AvatarState
+	 */
+	public boolean canBeBloodbent() {
+		if (this.isAvatarState()) {
+			return this.isChiBlocked();
+		}
+
+		return !this.canBendIgnoreBindsCooldowns(CoreAbility.getAbility("Bloodbending")) || !this.isToggled();
+	}
+
+	/**
+	 * Checks to see if {@link BendingPlayer} can be slowed.
+	 *
+	 * @return true If player can be slowed
+	 */
+	public boolean canBeSlowed() {
+		return (System.currentTimeMillis() > this.slowTime);
+	}
+
+	public boolean isAvatarState() {
+		return asEntity().map(e -> CoreAbility.hasAbility(e, AvatarState.class)).orElse(false);
+	}
+
+	public boolean isBloodbent() {
+		return asEntity().map(Bloodbending::isBloodbent).orElse(false);
+	}
+
+	public boolean isControlledByMetalClips() {
+		return asEntity().map(MetalClips::isControlled).orElse(false);
+	}
+
+	public boolean isParalyzed() {
+		return asEntity().map(MovementHandler::isStopped).orElse(false);
+	}
+
+	/**
+	 * Sets the {@link BendingPlayer}'s chi blocked to false.
+	 */
+	public void unblockChi() {
+		this.chiBlocked = false;
+	}
+
+	/**
+	 * Sets chiBlocked to true.
+	 */
+	public void blockChi() {
+		this.chiBlocked = true;
+	}
+
+	/**
+	 * Checks if the {@link BendingPlayer} is tremor sensing.
+	 *
+	 * @return true if player is tremor sensing
+	 */
+	public boolean isTremorSensing() {
+		return this.tremorSense;
+	}
+
+	/**
+	 * Checks if the {@link BendingPlayer} is using illumination.
+	 *
+	 * @return true if player is using illumination
+	 */
+	public boolean isIlluminating() {
+		return this.illumination;
+	}
+
+	/**
+	 * Toggles the {@link BendingPlayer}'s tremor sensing.
+	 */
+	public void toggleTremorSense() {
+		this.tremorSense = !this.tremorSense;
+	}
+
+	/**
+	 * Toggles the {@link BendingPlayer}'s illumination.
+	 */
+	public void toggleIllumination() {
+		this.illumination = !this.illumination;
+	}
+
+	/**
+	 * Slow the {@link BendingPlayer} for a certain amount of time.
+	 *
+	 * @param cooldown The amount of time to slow.
+	 */
+	public void slow(final long cooldown) {
+		this.slowTime = System.currentTimeMillis() + cooldown;
 	}
 }

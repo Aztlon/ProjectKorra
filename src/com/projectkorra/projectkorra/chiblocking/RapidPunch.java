@@ -60,13 +60,11 @@ public class RapidPunch extends ChiAbility {
 		if (System.currentTimeMillis() >= this.last + this.interval) {
 			DamageHandler.damageEntity(this.target, this.damage, this);
 
-			if (this.target instanceof Player) {
-				if (ChiPassive.willChiBlock(this.caster, (Player) this.target)) {
-					ChiPassive.blockChi((Player) this.target);
-				}
-				if (Suffocate.isChannelingSphere((Player) this.target)) {
-					Suffocate.remove((Player) this.target);
-				}
+			if (ChiPassive.willChiBlock(this.caster, lt)) {
+				ChiPassive.blockChi(lt);
+			}
+			if (Suffocate.isChannelingSphere(lt)) {
+				Suffocate.remove(lt);
 			}
 
 			lt.setNoDamageTicks(0);

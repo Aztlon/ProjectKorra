@@ -259,17 +259,17 @@ public class Suffocate extends SuffocationAbility {
 		return false;
 	}
 
-	/** Determines if a player is Suffocating entities **/
-	public static boolean isChannelingSphere(final Player player) {
-		return hasAbility(player, Suffocate.class);
+	/** Determines if a caster is Suffocating entities **/
+	public static boolean isChannelingSphere(final LivingEntity caster) {
+		return hasAbility(caster, Suffocate.class);
 	}
 
 	/**
-	 * Removes an instance of Suffocate if player is the one suffocating
+	 * Removes an instance of Suffocate if caster is the one suffocating
 	 * entities
 	 **/
-	public static void remove(final Player player) {
-		final Suffocate suff = getAbility(player, Suffocate.class);
+	public static void remove(final LivingEntity caster) {
+		final Suffocate suff = getAbility(caster, Suffocate.class);
 		if (suff != null) {
 			suff.remove();
 		}

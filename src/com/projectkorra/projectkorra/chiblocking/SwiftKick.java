@@ -53,8 +53,8 @@ public class SwiftKick extends ChiAbility {
 			return;
 		}
 		DamageHandler.damageEntity(this.target, this.damage, this);
-		if (this.target instanceof Player p && ChiPassive.willChiBlock(this.caster, p)) {
-			ChiPassive.blockChi(p);
+		if (this.target instanceof LivingEntity le && ChiPassive.willChiBlock(this.caster, le)) {
+			ChiPassive.blockChi(le);
 		}
 		this.bender.addCooldown(this);
 		this.remove();
