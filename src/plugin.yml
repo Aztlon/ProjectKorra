@@ -26,6 +26,7 @@ permissions:
       bending.water.bloodbending.anytime: true
       bending.water.bloodbending: true
       bending.fire.bluefire: true
+      bending.fire.whitefire: true
       bending.fire.blacksand: true
       bending.ability.Flight: true
       bending.ability.MetalClips.loot: true
@@ -73,7 +74,7 @@ permissions:
     children:
       bending.command.add.air: true
       bending.command.choose.air: true
-      bending.ability.AirBlast: true 
+      bending.ability.AirBlast: true
       bending.ability.AirBurst: true
       bending.ability.AirScooter: true
       bending.ability.AirShield: true
@@ -98,9 +99,7 @@ permissions:
       bending.ability.OctopusForm: true
       bending.ability.PhaseChange: true
       bending.ability.Surge: true
-      bending.ability.SurgeWall: true
       bending.ability.Torrent: true
-      bending.ability.TorrentWave: true
       bending.ability.WaterBubble: true
       bending.ability.WaterManipulation: true
       bending.ability.WaterSpout: true
@@ -154,7 +153,6 @@ permissions:
       bending.command.choose.fire: true
       bending.ability.Blaze: true
       bending.ability.FireBlast: true
-      bending.ability.FireBlastCharged: true
       bending.ability.FireBurst: true
       bending.ability.FireJet: true
       bending.ability.FireShield: true

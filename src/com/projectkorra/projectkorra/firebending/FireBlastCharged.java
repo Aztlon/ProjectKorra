@@ -76,7 +76,7 @@ public class FireBlastCharged extends FireAbility {
 		this.launched = false;
 		this.canDamageBlocks = getConfig().getBoolean("Abilities.Fire.FireBlast.Charged.DamageBlocks");
 		this.dissipate = getConfig().getBoolean("Abilities.Fire.FireBlast.Dissipate");
-		this.chargeTime = (long) applyInverseModifiers(getConfig().getLong("Abilities.Fire.FireBlast.Charged.ChargeTime"));
+		this.chargeTime = applyModifiersChargeTime(getConfig().getLong("Abilities.Fire.FireBlast.Charged.ChargeTime"));
 		this.cooldown = applyModifiersCooldown(getConfig().getLong("Abilities.Fire.FireBlast.Charged.Cooldown"));
 		this.time = System.currentTimeMillis();
 		this.interval = 25;

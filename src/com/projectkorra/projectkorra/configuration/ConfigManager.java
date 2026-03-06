@@ -78,6 +78,7 @@ public class ConfigManager {
 			config.addDefault("Chat.Colors.Non", "YELLOW");
 			config.addDefault("Chat.Colors.NonSub", "GOLD");
 			config.addDefault("Chat.Colors.Lightning", "#820d0d");
+			config.addDefault("Chat.Colors.WhiteFire", "#eaf0ef");
 			config.addDefault("Chat.Colors.Chi", "GOLD");
 			config.addDefault("Chat.Branding.JoinMessage.Enabled", true);
 			config.addDefault("Chat.Branding.Color", "GOLD");
@@ -103,7 +104,7 @@ public class ConfigManager {
 			config.addDefault("Board.Prefix.NonSelectedColor", ChatColor.DARK_GRAY.getName());
 			config.addDefault("Board.EmptySlot", "&8-- Slot {slot_number} --");
 			config.addDefault("Board.MiscSeparator", "  ----------");
-			
+
 			if (!config.contains("Board.Extras")) {
 				config.addDefault("Board.Extras.RaiseEarthWall", Element.EARTH.getColor().getName());
 				config.addDefault("Board.Extras.SurgeWave", Element.WATER.getColor().getName());
@@ -807,6 +808,18 @@ public class ConfigManager {
 			config.addDefault("Properties.Fire.BlueFire.DamageFactor", 1.1);
 			config.addDefault("Properties.Fire.BlueFire.CooldownFactor", .9);
 			config.addDefault("Properties.Fire.BlueFire.RangeFactor", 1.2);
+			config.addDefault("Properties.Fire.WhiteFire.DamageFactor", 1.55);
+			config.addDefault("Properties.Fire.WhiteFire.CooldownFactor", 0.01);
+			config.addDefault("Properties.Fire.WhiteFire.RangeFactor", 1);
+			config.addDefault("Properties.Fire.WhiteFire.ChargeFactor", .25);
+			config.addDefault("Properties.Fire.WhiteFire.DebuffDuration", 6000);
+			config.addDefault("Properties.Fire.WhiteFire.BurnOutDamageFactor", 0.7);
+			config.addDefault("Properties.Fire.WhiteFire.BurnOutCooldownFactor", 1);
+			config.addDefault("Properties.Fire.WhiteFire.BurnOutRangeFactor", 1);
+			config.addDefault("Properties.Fire.WhiteFire.BurnOutChargeFactor", 1);
+
+			List<String> wfAbils = List.of("FireBlast", "FireShots", "FireBall");
+			config.addDefault("Properties.Fire.WhiteFire.ValidChargeAbilities", wfAbils);
 
 			config.addDefault("Properties.Chi.CanBendWithWeapons", true);
 
@@ -1131,7 +1144,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Water.Bloodbending.Cooldown", 3000);
 			config.addDefault("Abilities.Water.Bloodbending.CanOnlyBeUsedDuringFullMoon", true);
 			config.addDefault("Abilities.Water.Bloodbending.CanBloodbendOtherBloodbenders", false);
-			
+
 			List<String> bloodless = new ArrayList<>();
 			bloodless.add(EntityType.SKELETON.name());
 			bloodless.add(EntityType.IRON_GOLEM.name());
@@ -1141,7 +1154,7 @@ public class ConfigManager {
 			bloodless.add(EntityType.SKELETON_HORSE.name());
 			bloodless.add(EntityType.WITHER_SKELETON.name());
 			bloodless.add(EntityType.STRAY.name());
-			
+
 			config.addDefault("Abilities.Water.Bloodbending.Bloodless", bloodless);
 
 			config.addDefault("Abilities.Water.HealingWaters.Enabled", true);
@@ -1384,7 +1397,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Water.IceBullet.ShotCooldown", 500);
 			config.addDefault("Abilities.Water.IceBullet.Combination", Arrays.asList("WaterBubble:SNEAK_DOWN", "WaterBubble:SNEAK_UP", "IceBlast:SNEAK_DOWN"));
 			config.addDefault("Abilities.Water.IceBullet.BendableIce", true);
-			
+
 //			config.addDefault("Abilities.Water.PlantTether.Enabled", true);
 //			config.addDefault("Abilities.Water.PlantTether.Cooldown", 15000);
 //			config.addDefault("Abilities.Water.PlantTether.Damage", 2);

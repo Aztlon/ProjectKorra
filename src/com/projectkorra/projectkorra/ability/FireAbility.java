@@ -65,7 +65,7 @@ public abstract class FireAbility extends ElementalAbility {
 		}
 	}
 	/**
-	 * 
+	 *
 	 * @return Material based on whether the player is a Blue Firebender, SOUL_FIRE if true, FIRE if false.
 	 */
 	public Material getFireType() {
@@ -83,7 +83,7 @@ public abstract class FireAbility extends ElementalAbility {
 			return ParticleEffect.FLAME;
 		}
 	}
-	
+
 	/**
 	 * Returns if fire is allowed to completely replace blocks or if it should
 	 * place a temp fire block.
@@ -321,7 +321,7 @@ public abstract class FireAbility extends ElementalAbility {
 			}
 		}
 	}
-	
+
 	public static void playLightningbendingHitSound(final Location loc) {
 		if (getConfig().getBoolean("Properties.Fire.PlaySound")) {
 			final float volume = (float) getConfig().getDouble("Properties.Fire.LightningHit.Volume");
@@ -363,7 +363,16 @@ public abstract class FireAbility extends ElementalAbility {
 	 * @return The modified value
 	 */
 	public double applyModifiersDamage(double value) {
-		return GeneralMethods.applyModifiers(value, getDayFactor(1.0), bender.hasElement(Element.BLUE_FIRE) ? getConfig().getDouble("Properties.Fire.BlueFire.DamageFactor", 1.1) : 1);
+		double fireModifier = 1;
+		CoreAbility abil = getAbility("WhiteFlames");
+		if (WhiteFireAbility.getBurntOutPlayers().containsKey(caster)) {
+			fireModifier = WhiteFireAbility.getDamageFactor(player, true);
+		} else if (abil != null && getAbility(caster, abil.getClass()) != null) {
+			fireModifier = WhiteFireAbility.getDamageFactor(player, false);
+		} else if (bender.hasElement(Element.BLUE_FIRE)) {
+			getConfig().getDouble("Properties.Fire.BlueFire.DamageFactor", 1.1);
+		}
+		return GeneralMethods.applyModifiers(value, getDayFactor(1.0), fireModifier);
 	}
 
 	/**
@@ -372,7 +381,16 @@ public abstract class FireAbility extends ElementalAbility {
 	 * @return The modified value
 	 */
 	public double applyModifiersRange(double value) {
-		return GeneralMethods.applyModifiers(value, getDayFactor(1.0), bender.hasElement(Element.BLUE_FIRE) ? getConfig().getDouble("Properties.Fire.BlueFire.RangeFactor", 1.2) : 1);
+		double fireModifier = 1;
+		CoreAbility abil = getAbility("WhiteFlames");
+		if (abil != null && getAbility(caster, abil.getClass()) != null) {
+			fireModifier = WhiteFireAbility.getRangeFactor(player, false);
+		} else if (WhiteFireAbility.getBurntOutPlayers().containsKey(caster)) {
+			fireModifier = WhiteFireAbility.getRangeFactor(player, true);
+		}  else if (bender.hasElement(Element.BLUE_FIRE)) {
+			getConfig().getDouble("Properties.Fire.BlueFire.RangeFactor", 1.2);
+		}
+		return GeneralMethods.applyModifiers(value, getDayFactor(1.0), fireModifier);
 	}
 
 	/**
@@ -381,7 +399,27 @@ public abstract class FireAbility extends ElementalAbility {
 	 * @return The modified value
 	 */
 	public long applyModifiersCooldown(long value) {
-		return (long) GeneralMethods.applyInverseModifiers(value, getDayFactor(1.0), bender.hasElement(Element.BLUE_FIRE) ? 1 / getConfig().getDouble("Properties.Fire.BlueFire.CooldownFactor", 0.9) : 1);
+		double fireModifier = 1;
+		CoreAbility abil = getAbility("WhiteFlames");
+		if (abil != null && getAbility(caster, abil.getClass()) != null) {
+			fireModifier = WhiteFireAbility.getCooldownFactor(player, false);
+		} else if (WhiteFireAbility.getBurntOutPlayers().containsKey(caster)) {
+			fireModifier = WhiteFireAbility.getCooldownFactor(player, true);
+		}  else if (bender.hasElement(Element.BLUE_FIRE)) {
+			getConfig().getDouble("Properties.Fire.BlueFire.CooldownFactor", 0.9);
+		}
+		return (long) GeneralMethods.applyInverseModifiers(value, getDayFactor(1.0), 1 / fireModifier);
+	}
+
+	public long applyModifiersChargeTime(long value) {
+		double fireModifier = 1;
+		CoreAbility abil = getAbility("WhiteFlames");
+		if (abil != null && getAbility(caster, abil.getClass()) != null) {
+			fireModifier = WhiteFireAbility.getChargeFactor(player, false);
+		} else if (WhiteFireAbility.getBurntOutPlayers().containsKey(caster)) {
+			fireModifier = WhiteFireAbility.getChargeFactor(player, true);
+		}
+		return (long) GeneralMethods.applyInverseModifiers(value, getDayFactor(1.0), 1 / fireModifier);
 	}
 
 	public static void stopBending() {
