@@ -318,6 +318,11 @@ public class Ripple extends EarthAbility {
 	}
 
 	@Override
+	public boolean isHiddenAbility() {
+		return true;
+	}
+
+	@Override
 	public Location getLocation() {
 		return this.location;
 	}
