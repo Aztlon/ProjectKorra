@@ -194,7 +194,7 @@ public class Bender {
 	public boolean canBind(CoreAbility ability) {
 		if (ability == null) return false;
 		if (!ability.isEnabled()) return false;
-		if (ability instanceof AvatarAbility avAbil && avAbil.requireAvatar() && !hasElement(ability.getElement())) return false;
+		if (!hasElement(ability.getElement()) && !(ability instanceof AvatarAbility avAbil && !avAbil.requireAvatar())) return false;
 		if (ability.getElement() instanceof Element.SubElement sub) {
 			if (sub instanceof Element.MultiSubElement multiSub) {
 				if (Arrays.stream(multiSub.getParentElements()).noneMatch(this::hasElement)) return false;
