@@ -189,12 +189,14 @@ public class Torrent extends WaterAbility {
 
 	@Override
 	public void progress() {
-		WaterAbility transformTo = WaterAbility.transformer.apply(this, this.bender.getBoundAbilityName());
-		if (transformTo != null) {
-			return;
-		}
+        if (isInChargingPhase()) {
+            WaterAbility transformTo = WaterAbility.transformer.apply(this, this.bender.getBoundAbilityName());
+            if (transformTo != null) {
+                return;
+            }
+        }
 
-		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
+        if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
 			return;
 		} 
@@ -366,6 +368,13 @@ public class Torrent extends WaterAbility {
 				}
 			}
 		}
+	}
+
+	public boolean isInChargingPhase() {
+		return !this.launch
+				&& !this.launching
+				&& (this.sourceSelected || this.settingUp || this.forming || this.formed)
+				&& this.launchedBlocks.isEmpty();
 	}
 
 	public boolean launch() {
