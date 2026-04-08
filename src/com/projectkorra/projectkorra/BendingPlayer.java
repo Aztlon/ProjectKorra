@@ -358,7 +358,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 //	}
 
 	public boolean isParalyzed() {
-		return MovementHandler.isStopped(this.player);
+		return Optional.ofNullable(MovementHandler.getFromEntity(this.player)).map(mh -> mh.isStopped() && !mh.canBend()).orElse(false);
 	}
 
 	/**

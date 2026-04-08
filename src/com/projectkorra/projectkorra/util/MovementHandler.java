@@ -29,6 +29,7 @@ public class MovementHandler {
 	private Runnable resetTask = null;
 	private final CoreAbility ability;
 	private boolean stopped;
+	private boolean canBend;
 
 	public MovementHandler(final LivingEntity entity, final CoreAbility ability) {
 		this.entity = entity;
@@ -37,7 +38,7 @@ public class MovementHandler {
 	}
 
 	/**
-	 * This stops the movement of the entity once they land on the ground,
+	 * This stops the movement of the entity,
 	 * acting as a "paralyze" with a duration for how long they should be
 	 * stopped
 	 *
@@ -75,6 +76,17 @@ public class MovementHandler {
 			}.runTaskTimer(ProjectKorra.plugin, 0, 1);
 		}
 		stopped = true;
+	}
+
+	/**
+	 * This stops the movement of the entity, acting as a "paralyze" with a duration for how long they should be
+	 * stopped, but allows them to still bend if they are a player.
+	 * @param duration how long the entity should be stopped for <b>(in ticks)</b>.
+	 * @param message the message to send to the stopped entity if they are a player
+	 */
+	public void stopButAllowBending(final long duration, final String message) {
+		stopWithDuration(duration, message);
+		canBend = true;
 	}
 
 	/**
@@ -159,6 +171,10 @@ public class MovementHandler {
 
 	public boolean isStopped() {
 		return stopped;
+	}
+
+	public boolean canBend() {
+		return canBend;
 	}
 
 	/**
