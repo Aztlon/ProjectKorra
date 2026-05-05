@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 
 import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.PassiveAbility;
-import com.projectkorra.projectkorra.board.BendingBoard;
 import com.projectkorra.projectkorra.command.CooldownCommand;
 import com.projectkorra.projectkorra.event.BendingPlayerCreationEvent;
 import com.projectkorra.projectkorra.event.PlayerStanceChangeEvent;
@@ -539,7 +538,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		//Show the bending board 1 tick later. We do it 1 tick later because postLoad() is called BEFORE the player is loaded into the map,
 		//and the board needs to see the player in the map to initialize
 		Bukkit.getScheduler().runTaskLater(ProjectKorra.plugin, () -> {
-			BendingBoardManager.getBoard(this.player).ifPresent(BendingBoard::show);
+			BendingBoardManager.getBoard(this.player).ifPresent(board -> board.show());
 			//Hide the board if they spawn in a world with bending disabled
 			BendingBoardManager.changeWorld(this.player);
 		}, 1L);

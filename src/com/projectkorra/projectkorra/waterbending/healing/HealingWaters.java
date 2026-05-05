@@ -23,6 +23,7 @@ import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.chiblocking.Smokescreen;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 public class HealingWaters extends HealingAbility {
 
@@ -123,8 +124,14 @@ public class HealingWaters extends HealingAbility {
 		// If ability is is charged, set charged = true. If not, play charging particles.
 		if (System.currentTimeMillis() >= this.getStartTime() + this.chargeTime) {
 			if (!this.charged) {
+				if (this.bottle) {
+					if (!CarriedWaterManager.consumeForAbility(this, this.getCarriedWaterCost(), this.getName() + ".Consume")) {
+						this.bPlayer.addCooldown(this);
+						this.remove();
+						return;
+					}
+				}
 				this.charged = true;
-				WaterReturn.emptyWaterBottle(this.player);
 			}
 		} else {
 			GeneralMethods.displayColoredParticle(this.hex, this.origin);

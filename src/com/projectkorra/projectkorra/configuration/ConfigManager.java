@@ -104,6 +104,13 @@ public class ConfigManager {
 			config.addDefault("Board.Prefix.NonSelectedColor", ChatColor.DARK_GRAY.getName());
 			config.addDefault("Board.EmptySlot", "&8-- Slot {slot_number} --");
 			config.addDefault("Board.MiscSeparator", "  ----------");
+			config.addDefault("Board.RPG.Enabled", false);
+			config.addDefault("Board.RPG.Title", "&lAbilities");
+			config.addDefault("Board.RPG.Divider", "&8----------------");
+			config.addDefault("Board.RPG.ObjectivesHeader", "&6Objectives");
+			if (!config.contains("Board.RPG.Objectives.Lines")) {
+				config.addDefault("Board.RPG.Objectives.Lines", Arrays.asList("", "", "", ""));
+			}
 
 			if (!config.contains("Board.Extras")) {
 				config.addDefault("Board.Extras.RaiseEarthWall", Element.EARTH.getColor().getName());
@@ -702,6 +709,16 @@ public class ConfigManager {
 			config.addDefault("Properties.ChooseCooldown", 0L);
 			config.addDefault("Properties.MaxPresets", 10);
 			config.addDefault("Properties.IgnoreArmorPercentage.Default", 0.5);
+
+			config.addDefault("Properties.PhasedIntegration.Enabled", false);
+			config.addDefault("Properties.PhasedIntegration.RolloutMode", "observe");
+			config.addDefault("Properties.PhasedIntegration.FallbackBehavior", "allow");
+			config.addDefault("Properties.PhasedIntegration.Telemetry.Enabled", true);
+			config.addDefault("Properties.PhasedIntegration.Telemetry.LogAllowed", false);
+			config.addDefault("Properties.PhasedIntegration.Telemetry.SamplingRate", 0.05);
+			config.addDefault("Properties.PhasedIntegration.Telemetry.SummaryIntervalMs", 60000L);
+			config.addDefault("Properties.PhasedIntegration.Blocks.UseViewerOverlays", false);
+			config.addDefault("Properties.PhasedIntegration.Blocks.RefreshIntervalTicks", 10);
 
 			config.addDefault("Properties.HorizontalCollisionPhysics.Enabled", true);
 			config.addDefault("Properties.HorizontalCollisionPhysics.DamageOnBarrierBlock", false);

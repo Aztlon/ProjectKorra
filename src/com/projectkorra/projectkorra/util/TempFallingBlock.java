@@ -1,6 +1,8 @@
 package com.projectkorra.projectkorra.util;
 
 import com.projectkorra.projectkorra.ability.CoreAbility;
+import com.projectkorra.projectkorra.phasing.GateStage;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.data.BlockData;
@@ -20,6 +22,7 @@ public class TempFallingBlock {
     private long creation;
     private boolean expire;
     private boolean immuneToBending;
+    private boolean denied;
     private Consumer<TempFallingBlock> onPlace, onTick;
 
     public TempFallingBlock(Location location, BlockData data, Vector velocity, CoreAbility ability) {
@@ -27,10 +30,18 @@ public class TempFallingBlock {
     }
 
     public TempFallingBlock(Location location, BlockData data, Vector velocity, CoreAbility ability, boolean expire) {
+        this.ability = ability;
+        if (!PhasedIntegrationManager.shouldAllow(
+                PhasedIntegrationManager.requestFromAbility(ability, null, GateStage.BLOCK, location, null))) {
+            this.denied = true;
+            this.creation = System.currentTimeMillis();
+            this.expire = expire;
+            return;
+        }
+
         this.fallingblock = location.getWorld().spawnFallingBlock(location, data.clone());
         this.fallingblock.setVelocity(velocity);
         this.fallingblock.setDropItem(false);
-        this.ability = ability;
         this.creation = System.currentTimeMillis();
         this.expire = expire;
         instances.put(fallingblock, this);
@@ -91,6 +102,9 @@ public class TempFallingBlock {
     }
 
     public void remove() {
+        if (fallingblock == null) {
+            return;
+        }
         fallingblock.remove();
         instances.remove(fallingblock);
     }
@@ -104,19 +118,28 @@ public class TempFallingBlock {
     }
 
     public Material getMaterial() {
+        if (fallingblock == null) {
+            return Material.AIR;
+        }
         return fallingblock.getBlockData().getMaterial();
     }
 
     public BlockData getMaterialData() {
+        if (fallingblock == null) {
+            return Material.AIR.createBlockData();
+        }
         return fallingblock.getBlockData();
     }
 
     public BlockData getData() {
+        if (fallingblock == null) {
+            return Material.AIR.createBlockData();
+        }
         return fallingblock.getBlockData();
     }
 
     public Location getLocation() {
-        return fallingblock.getLocation();
+        return fallingblock == null ? null : fallingblock.getLocation();
     }
 
     public long getCreationTime() {
@@ -128,6 +151,13 @@ public class TempFallingBlock {
     }
 
     public void tryPlace() {
+        if (this.denied || this.fallingblock == null) {
+            return;
+        }
+        if (!PhasedIntegrationManager.shouldAllow(
+                PhasedIntegrationManager.requestFromAbility(this.ability, null, GateStage.BLOCK, this.fallingblock.getLocation(), null))) {
+            return;
+        }
         if (onPlace != null) {
             onPlace.accept(this);
         }

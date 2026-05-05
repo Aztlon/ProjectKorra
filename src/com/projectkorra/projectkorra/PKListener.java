@@ -2016,22 +2016,23 @@ public class PKListener implements Listener {
 	public void onBindChange(final PlayerBindChangeEvent event) {
 		final Player player = event.getPlayer();
 		if (player == null) return;
-		if (event.isMultiAbility()) {
-			new BukkitRunnable() {
+		new BukkitRunnable() {
 
-				@Override
-				public void run() {
+			@Override
+			public void run() {
+				if (event.isMultiAbility()) {
 					BendingBoardManager.updateAllSlots(player);
+				} else if (event.isBinding()) {
+					BendingBoardManager.updateBoard(player, event.getAbility(), false, event.getSlot());
+				} else {
+					BendingBoardManager.updateBoard(player, "", false, event.getSlot());
 				}
 
-			}.runTaskLater(ProjectKorra.plugin, 1);
-		} else {
-			if (event.isBinding()) {
-				BendingBoardManager.updateBoard(player, event.getAbility(), false, event.getSlot());
-			} else {
-				BendingBoardManager.updateBoard(player, "", false, event.getSlot());
+				// Re-apply active-slot highlighting to keep the selected prefix in sync after bind updates.
+				BendingBoardManager.changeActiveSlot(player, player.getInventory().getHeldItemSlot() + 1);
 			}
-		}
+
+		}.runTaskLater(ProjectKorra.plugin, 1);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR)

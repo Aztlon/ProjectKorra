@@ -19,6 +19,7 @@ import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 /**
  * BlockSource is a class that handles water and earth bending sources. When a
@@ -276,15 +277,8 @@ public class BlockSource {
 	 */
 	public static Block getWaterSourceBlock(final LivingEntity caster, final double range, final ClickType clickType, final boolean allowWater, final boolean allowIce, final boolean allowPlant, final boolean allowSnow, final boolean allowWaterBottles) {
 		Block sourceBlock = null;
-		if (allowWaterBottles) {
-			// Check the block in front of the caster's eyes, it may have been created by a WaterBottle.
-			sourceBlock = WaterAbility.getWaterSourceBlock(caster, range, allowPlant);
-			if (sourceBlock != null && (sourceBlock.getWorld().equals(caster.getWorld()) && sourceBlock.getLocation().distance(caster.getEyeLocation()) > 3)) {
-				sourceBlock = null;
-			}
-		}
 		final boolean dynamic = ConfigManager.getConfig().getBoolean("Properties.Water.DynamicSourcing");
-		if (dynamic && sourceBlock == null) {
+		if (dynamic) {
 			if (allowWater) {
 				sourceBlock = getSourceBlock(caster, range, BlockSourceType.WATER, clickType);
 			}
@@ -299,6 +293,14 @@ public class BlockSource {
 			}
 		} else {
 			sourceBlock = WaterAbility.getWaterSourceBlock(caster, range, allowPlant);
+		}
+
+		if (sourceBlock == null && allowWaterBottles && caster instanceof Player player && CarriedWaterManager.hasCarriedWater(player, 1, "BlockSource.CarriedFallback")) {
+			// Carried fallback is represented as a temporary near-eye water source if available.
+			sourceBlock = WaterAbility.getWaterSourceBlock(caster, range, allowPlant);
+			if (sourceBlock != null && (sourceBlock.getWorld().equals(caster.getWorld()) && sourceBlock.getLocation().distance(caster.getEyeLocation()) > 3)) {
+				sourceBlock = null;
+			}
 		}
 		if (sourceBlock != null && !ElementalAbility.isAir(sourceBlock.getType()) && (ElementalAbility.isWater(sourceBlock) || ElementalAbility.isPlant(sourceBlock) || WaterAbility.isSnow(sourceBlock) || ElementalAbility.isIce(sourceBlock) || WaterAbility.isCauldron(sourceBlock))) {
 			if (TempBlock.isTempBlock(sourceBlock) && !WaterAbility.isBendableWaterTempBlock(sourceBlock)) {

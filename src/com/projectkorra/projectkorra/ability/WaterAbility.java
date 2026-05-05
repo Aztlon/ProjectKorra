@@ -58,6 +58,14 @@ public abstract class WaterAbility extends ElementalAbility {
 		return getConfig().getBoolean("Abilities." + this.getElement() + "." + this.getName() + ".CanDynamicSource");
 	}
 
+	public int getCarriedWaterCost() {
+		return 1;
+	}
+
+	public int getDeterministicReturnAmount(final int consumedAmount) {
+		return consumedAmount;
+	}
+
 	@Override
 	public Element getElement() {
 		return Element.WATER;

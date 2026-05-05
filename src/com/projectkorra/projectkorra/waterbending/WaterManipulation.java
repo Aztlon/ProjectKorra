@@ -34,6 +34,7 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.ice.PhaseChange;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -222,7 +223,7 @@ public class WaterManipulation extends WaterAbility {
 			if (this.falling) {
 				this.remove();
 				if (this.player != null)
-					new WaterReturn(this.player, this.sourceBlock);
+					new WaterReturn(this.player, this.sourceBlock, this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 			} else {
 				if (!this.progressing) {
 					if (!(isWater(this.sourceBlock.getType()) || isCauldron(this.sourceBlock) || (isIce(this.sourceBlock) && this.bender.canIcebend()) || (isSnow(this.sourceBlock) && this.bender.canIcebend()) || (isPlant(this.sourceBlock) && this.bender.canPlantbend()))) {
@@ -292,7 +293,7 @@ public class WaterManipulation extends WaterAbility {
 				} else if (block.getType() != Material.AIR && !isWater(block)) {
 					this.remove();
 					if (this.bPlayer != null)
-						new WaterReturn(this.player, this.sourceBlock);
+						new WaterReturn(this.player, this.sourceBlock, this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 					return;
 				}
 
@@ -320,7 +321,7 @@ public class WaterManipulation extends WaterAbility {
 				if (!this.progressing) {
 					this.remove();
 					if (this.bPlayer != null)
-						new WaterReturn(this.player, this.sourceBlock);
+						new WaterReturn(this.player, this.sourceBlock, this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 					return;
 				}
 
@@ -519,7 +520,9 @@ public class WaterManipulation extends WaterAbility {
 					final WaterManipulation waterManip = new WaterManipulation(caster, block);
 					waterManip.moveWater();
 					if (waterManip.progressing) {
-						WaterReturn.emptyWaterBottle(p);
+						if (!CarriedWaterManager.consumeForAbility(waterManip, waterManip.getCarriedWaterCost(), waterManip.getName() + ".Consume")) {
+							waterManip.remove();
+						}
 					}
 					tb.revertBlock();
 				}
@@ -616,7 +619,7 @@ public class WaterManipulation extends WaterAbility {
 	public void handleCollision(final Collision collision) {
 		super.handleCollision(collision);
 		if (collision.isRemovingFirst() && this.player != null) {
-			new WaterReturn(this.player, this.sourceBlock);
+			new WaterReturn(this.player, this.sourceBlock, this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".CollisionReturn");
 		}
 	}
 

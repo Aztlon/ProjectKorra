@@ -31,6 +31,7 @@ import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -140,7 +141,9 @@ public class SurgeWall extends WaterAbility {
 				if (!wave.isProgressing()) {
 					wave.remove();
 				} else if (bPlayer != null) {
-					WaterReturn.emptyWaterBottle(player);
+					if (!CarriedWaterManager.consumeForAbility(wave, wave.getCarriedWaterCost(), wave.getName() + ".Consume")) {
+						wave.remove();
+					}
 				}
 
 				SOURCE_BLOCKS.remove(tempBlock);
@@ -517,7 +520,9 @@ public class SurgeWall extends WaterAbility {
 						tempBlock.revertBlock();
 						wall.remove();
 					} else {
-						WaterReturn.emptyWaterBottle(p);
+						if (!CarriedWaterManager.consumeForAbility(wall, wall.getCarriedWaterCost(), wall.getName() + ".Consume")) {
+							wall.remove();
+						}
 					}
 
 					SOURCE_BLOCKS.remove(tempBlock);
@@ -572,7 +577,7 @@ public class SurgeWall extends WaterAbility {
 				this.thaw();
 			}
 			if (bPlayer != null) {
-				new WaterReturn(this.player, this.location.getBlock());
+				new WaterReturn(this.player, this.location.getBlock(), this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 			}
 		}
 	}

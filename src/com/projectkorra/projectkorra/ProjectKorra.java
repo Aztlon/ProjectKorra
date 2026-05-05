@@ -26,6 +26,8 @@ import com.projectkorra.projectkorra.hooks.WorldGuardFlag;
 import com.projectkorra.projectkorra.object.Preset;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.phasing.PhasedBlockVisibilityManager;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import com.projectkorra.projectkorra.util.Metrics;
 import com.projectkorra.projectkorra.util.RevertChecker;
 import com.projectkorra.projectkorra.util.StatisticsManager;
@@ -55,6 +57,8 @@ public class ProjectKorra extends JavaPlugin {
 //		timingManager = TimingManager.of(this);
 
 		new ConfigManager();
+		PhasedIntegrationManager.reloadFromConfig();
+		PhasedBlockVisibilityManager.reloadFromConfig();
 		new GeneralMethods(this);
 		final boolean checkUpdateOnStartup = ConfigManager.getConfig().getBoolean("Properties.UpdateChecker");
 		this.updater = new Updater(this, "https://projectkorra.com/forum/resources/projectkorra-core.1/", checkUpdateOnStartup);
@@ -133,6 +137,7 @@ public class ProjectKorra extends JavaPlugin {
 
 	@Override
 	public void onDisable() {
+		PhasedBlockVisibilityManager.shutdown();
 		this.revertChecker.cancel();
 		GeneralMethods.stopBending();
 		for (final Player player : this.getServer().getOnlinePlayers()) {

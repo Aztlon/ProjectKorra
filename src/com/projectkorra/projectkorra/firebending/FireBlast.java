@@ -186,7 +186,7 @@ public class FireBlast extends FireAbility {
 	}
 
 	private void affect(final Entity entity) {
-		if ((entity.getUniqueId() != this.caster.getUniqueId() || selfHit) && !RegionProtection.isRegionProtected(this, entity.getLocation()) && !((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+		if ((entity.getUniqueId() != this.caster.getUniqueId() || selfHit) && !RegionProtection.isRegionProtected(this, entity.getLocation()) && !((entity instanceof Player) && Commands.invincible.contains(entity.getName()))) {
 			if (this.bender.isAvatarState()) {
 				GeneralMethods.setVelocity(this, entity, this.direction.clone().multiply(AvatarState.getValue(this.knockback)));
 			} else {

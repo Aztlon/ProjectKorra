@@ -34,6 +34,7 @@ import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -568,7 +569,7 @@ public class Torrent extends WaterAbility {
 
 	private void returnWater(final Location location) {
 		if (bPlayer != null)
-			new WaterReturn(this.player, location.getBlock());
+			new WaterReturn(this.player, location.getBlock(), this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 	}
 
 	public static void create(final Player player) {
@@ -587,7 +588,9 @@ public class Torrent extends WaterAbility {
 				final Torrent tor = new Torrent(player);
 
 				if (tor.sourceSelected || tor.settingUp) {
-					WaterReturn.emptyWaterBottle(player);
+					if (!CarriedWaterManager.consumeForAbility(tor, tor.getCarriedWaterCost(), tor.getName() + ".Consume")) {
+						tor.remove();
+					}
 				}
 				block.setType(Material.AIR);
 			}

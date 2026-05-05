@@ -26,6 +26,7 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempPotionEffect;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -243,7 +244,7 @@ public class IceSpikeBlast extends IceAbility {
 
 	private void returnWater() {
 		if (this.bPlayer != null)
-			new WaterReturn(this.player, this.location.getBlock());
+			new WaterReturn(this.player, this.location.getBlock(), this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 	}
 
 	private void throwIce() {
@@ -419,7 +420,9 @@ public class IceSpikeBlast extends IceAbility {
 				iceSpike.sourceBlock = null;
 
 				if (iceSpike.progressing) {
-					WaterReturn.emptyWaterBottle(p);
+					if (!CarriedWaterManager.consumeForAbility(iceSpike, iceSpike.getCarriedWaterCost(), iceSpike.getName() + ".Consume")) {
+						iceSpike.remove();
+					}
 				}
 				block.setType(state.getType());
 				block.setBlockData(state.getBlockData());

@@ -1,7 +1,5 @@
 package com.projectkorra.projectkorra.waterbending.util;
 
-import java.util.HashMap;
-
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -20,6 +18,7 @@ import com.projectkorra.projectkorra.waterbending.OctopusForm;
 import com.projectkorra.projectkorra.waterbending.SurgeWall;
 import com.projectkorra.projectkorra.waterbending.WaterManipulation;
 import com.projectkorra.projectkorra.waterbending.ice.IceSpikeBlast;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 public class WaterReturn extends WaterAbility {
 
@@ -28,10 +27,19 @@ public class WaterReturn extends WaterAbility {
 	private double range;
 	private Location location;
 	private TempBlock block;
+	private int returnAmount;
+	private String returnCause;
 
 	public WaterReturn(final Player player, final Block block) {
+		this(player, block, 1, "WaterReturn");
+	}
+
+	public WaterReturn(final Player player, final Block block, final int returnAmount, final String returnCause) {
 		super(player);
 		if (this.bPlayer == null) {
+			return;
+		}
+		if (returnAmount <= 0) {
 			return;
 		}
 		if (hasAbility(player, WaterReturn.class)) {
@@ -41,6 +49,8 @@ public class WaterReturn extends WaterAbility {
 		this.location = block.getLocation();
 		this.range = 30;
 		this.interval = 50;
+		this.returnAmount = returnAmount;
+		this.returnCause = returnCause;
 
 		this.range = this.getNightFactor(this.range);
 
@@ -107,32 +117,11 @@ public class WaterReturn extends WaterAbility {
 	}
 
 	private boolean hasEmptyWaterBottle() {
-		final PlayerInventory inventory = this.player.getInventory();
-		if (inventory.contains(Material.GLASS_BOTTLE)) {
-			return true;
-		}
-		return false;
+		return CarriedWaterManager.canReceiveReturnedWater(this.player, this.returnAmount, this.returnCause);
 	}
 
 	private void fillBottle() {
-		final PlayerInventory inventory = this.player.getInventory();
-		final int index = inventory.first(Material.GLASS_BOTTLE);
-		if (index >= 0) {
-			final ItemStack item = inventory.getItem(index);
-
-			final ItemStack water = waterBottleItem();
-
-			if (item.getAmount() == 1) {
-				inventory.setItem(index, water);
-			} else {
-				item.setAmount(item.getAmount() - 1);
-				inventory.setItem(index, item);
-				final HashMap<Integer, ItemStack> leftover = inventory.addItem(water);
-				for (final int left : leftover.keySet()) {
-					this.player.getWorld().dropItemNaturally(this.player.getLocation(), leftover.get(left));
-				}
-			}
-		}
+		CarriedWaterManager.returnCarriedWater(this.player, this.returnAmount, this.returnCause);
 		this.remove();
 	}
 
@@ -173,29 +162,11 @@ public class WaterReturn extends WaterAbility {
 		if (hasAbility(player, WaterReturn.class) || isBending(player)) {
 			return false;
 		}
-		final PlayerInventory inventory = player.getInventory();
-
-		return WaterReturn.firstWaterBottle(inventory) >= 0;
+		return CarriedWaterManager.hasCarriedWater(player, 1, "WaterReturn.HasCarriedWater");
 	}
 
 	public static void emptyWaterBottle(final Player player) {
-		final PlayerInventory inventory = player.getInventory();
-		int index = WaterReturn.firstWaterBottle(inventory);
-
-		if (index != -1) {
-			final ItemStack item = inventory.getItem(index);
-			if (item.getAmount() == 1) {
-				inventory.setItem(index, new ItemStack(Material.GLASS_BOTTLE));
-			} else {
-				item.setAmount(item.getAmount() - 1);
-				inventory.setItem(index, item);
-				final HashMap<Integer, ItemStack> leftover = inventory.addItem(new ItemStack(Material.GLASS_BOTTLE));
-
-				for (final int left : leftover.keySet()) {
-					player.getWorld().dropItemNaturally(player.getLocation(), leftover.get(left));
-				}
-			}
-		}
+		CarriedWaterManager.consumeCarriedWater(player, 1, "WaterReturn.ConsumeCarriedWater");
 	}
 
 	public static ItemStack waterBottleItem() {

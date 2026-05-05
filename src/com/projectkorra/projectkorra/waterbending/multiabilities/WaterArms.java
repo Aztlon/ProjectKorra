@@ -29,6 +29,7 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArmsWhip.Whip;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -180,7 +181,9 @@ public class WaterArms extends WaterAbility {
 			ParticleEffect.SMOKE_LARGE.display(sourceBlock.getLocation().clone().add(0.5, 0.5, 0.5), 4, 0, 0, 0);
 			return true;
 		} else if (WaterReturn.hasWaterBottle(this.player)) {
-			WaterReturn.emptyWaterBottle(this.player);
+			if (!CarriedWaterManager.consumeForAbility(this, this.getCarriedWaterCost(), this.getName() + ".Consume")) {
+				return false;
+			}
 			this.fullSource = false;
 			return true;
 		}
@@ -433,7 +436,7 @@ public class WaterArms extends WaterAbility {
 		if (this.player.isOnline()) {
 			this.bPlayer.addCooldown("WaterArms", this.cooldown);
 		}
-		new WaterReturn(this.player, this.player.getLocation().getBlock());
+		new WaterReturn(this.player, this.player.getLocation().getBlock(), this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 	}
 
 	public void prepareCancel() {

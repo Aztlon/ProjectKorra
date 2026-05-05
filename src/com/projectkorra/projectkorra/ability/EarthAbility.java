@@ -702,7 +702,7 @@ public abstract class EarthAbility extends ElementalAbility {
 
 	public static boolean revertBlock(final Block block) {
 		if (TempBlock.isTempBlock(block)) {
-			for (TempBlock tempBlock : TempBlock.getAll(block)) {
+			for (final TempBlock tempBlock : new ArrayList<>(TempBlock.getAll(block))) {
 				if (!tempBlock.isReverted()) {
 					tempBlock.revertBlock();
 				}

@@ -31,6 +31,7 @@ import com.projectkorra.projectkorra.waterbending.ice.PhaseChange;
 import com.projectkorra.projectkorra.waterbending.ice.PhaseChange.PhaseChangeType;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 public class OctopusForm extends WaterAbility {
 
@@ -164,7 +165,9 @@ public class OctopusForm extends WaterAbility {
 				form.form();
 
 				if (form.formed || form.forming || form.settingUp) {
-					WaterReturn.emptyWaterBottle(player);
+					if (!CarriedWaterManager.consumeForAbility(form, form.getCarriedWaterCost(), form.getName() + ".Consume")) {
+						form.remove();
+					}
 				} else {
 					block.setType(Material.AIR);
 				}
@@ -501,15 +504,16 @@ public class OctopusForm extends WaterAbility {
 	}
 
 	private void returnWater() {
+		final int returnAmount = this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this));
 		if (this.source != null) {
 			this.source.revertBlock();
-			new WaterReturn(this.player, this.source.getLocation().getBlock());
+			new WaterReturn(this.player, this.source.getLocation().getBlock(), returnAmount, this.getName() + ".Return");
 			this.source = null;
 		} else {
 			final Location location = this.player.getLocation();
 			final double rtheta = Math.toRadians(this.startAngle);
 			final Block block = location.clone().add(new Vector(this.radius * Math.cos(rtheta), 0, this.radius * Math.sin(rtheta))).getBlock();
-			new WaterReturn(this.player, block);
+			new WaterReturn(this.player, block, returnAmount, this.getName() + ".Return");
 		}
 	}
 

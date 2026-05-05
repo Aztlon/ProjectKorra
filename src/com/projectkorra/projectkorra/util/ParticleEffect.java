@@ -1,10 +1,15 @@
 package com.projectkorra.projectkorra.util;
 
+import java.util.UUID;
+
+import com.projectkorra.projectkorra.phasing.GateStage;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Particle.DustOptions;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 public enum ParticleEffect {
@@ -221,8 +226,7 @@ public enum ParticleEffect {
 		if (particle.getDataType() == Float.class) {
 			data = 1.0f; // default size
 		}
-
-		loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data, true);
+		this.spawnScoped(loc, amount, offsetX, offsetY, offsetZ, extra, data);
 	}
 	
 	/**
@@ -252,7 +256,23 @@ public enum ParticleEffect {
 		if (dataClass.isAssignableFrom(Void.class) || data == null || !dataClass.isAssignableFrom(data.getClass())) {
 			display(loc, amount, offsetX, offsetY, offsetZ, extra);
 		} else {
-			loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data, true);
+			this.spawnScoped(loc, amount, offsetX, offsetY, offsetZ, extra, data);
+		}
+	}
+
+	private void spawnScoped(final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ,
+			final double extra, final Object data) {
+		if (loc == null || loc.getWorld() == null) {
+			return;
+		}
+
+		for (final Player viewer : loc.getWorld().getPlayers()) {
+			final UUID viewerUuid = viewer.getUniqueId();
+			if (!PhasedIntegrationManager.shouldAllow(
+					PhasedIntegrationManager.requestFromAbility(null, null, GateStage.PARTICLE, loc, viewerUuid))) {
+				continue;
+			}
+			viewer.spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data);
 		}
 	}
 }

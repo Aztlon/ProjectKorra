@@ -82,6 +82,9 @@ import com.projectkorra.projectkorra.earthbending.EarthBlast;
 import com.projectkorra.projectkorra.earthbending.EarthTunnel;
 import com.projectkorra.projectkorra.earthbending.passive.EarthPassive;
 import com.projectkorra.projectkorra.earthbending.util.EarthbendingManager;
+import com.projectkorra.projectkorra.phasing.GateStage;
+import com.projectkorra.projectkorra.phasing.PhasedBlockVisibilityManager;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import com.projectkorra.projectkorra.event.AbilityVelocityAffectEntityEvent;
 import com.projectkorra.projectkorra.event.BendingReloadEvent;
 import com.projectkorra.projectkorra.firebending.FireBlast;
@@ -282,10 +285,17 @@ public class GeneralMethods {
 		}
 
 		for (int i = 0; i < amount; i++) {
-			if (type.getParticle() == Particle.DUST) {
-				clone.getWorld().spawnParticle(type.getParticle(), clone, 0, new Particle.DustOptions(Color.fromRGB(r, g, b), 1));
-			} else { // entity effect
-				clone.getWorld().spawnParticle(type.getParticle(), clone, 1,  Color.fromRGB(r, g, b));
+			for (final Player viewer : clone.getWorld().getPlayers()) {
+				if (!PhasedIntegrationManager.shouldAllow(
+						PhasedIntegrationManager.requestFromAbility(null, null, GateStage.PARTICLE, clone, viewer.getUniqueId()))) {
+					continue;
+				}
+
+				if (type.getParticle() == Particle.DUST) {
+					viewer.spawnParticle(type.getParticle(), clone, 0, new Particle.DustOptions(Color.fromRGB(r, g, b), 1));
+				} else { // entity effect
+					viewer.spawnParticle(type.getParticle(), clone, 1, Color.fromRGB(r, g, b));
+				}
 			}
 //			type.display(clone, 0, 0, 0, 0, Color.fromRGB(r, g, b));
 //			clone.getWorld().spawnParticle(Particle.ENTITY_EFFECT, clone, 0, Color.fromRGB(r, g, b));
@@ -624,6 +634,30 @@ public class GeneralMethods {
 	}
 
 	/**
+	 * Returns true when the entity is a display-only entity that should not be a direct combat target.
+	 */
+	private static boolean isDisplayEntity(final Entity entity) {
+		return switch (entity.getType()) {
+			case TEXT_DISPLAY, BLOCK_DISPLAY, ITEM_DISPLAY -> true;
+			default -> false;
+		};
+	}
+
+	/**
+	 * Resolves display passengers to the entity they are attached to, so abilities can affect the real target.
+	 */
+	public static Entity resolveAbilityTarget(final Entity entity) {
+		Entity resolved = entity;
+		int depth = 0;
+
+		while (resolved != null && isDisplayEntity(resolved) && resolved.getVehicle() != null && depth++ < 8) {
+			resolved = resolved.getVehicle();
+		}
+
+		return resolved;
+	}
+
+	/**
 	 * Gets the closest entity within the specified radius around a point
 	 * @param center point to check around
 	 * @param radius distance from center to check within
@@ -734,7 +768,21 @@ public class GeneralMethods {
 	 * @return A list of entities around a point
 	 */
 	public static List<Entity> getEntitiesAroundPoint(final Location location, final double radius, Predicate<Entity> acceptable) {
-		return new ArrayList<>(location.getWorld().getNearbyEntities(location, radius, radius, radius, acceptable));
+		final List<Entity> entities = new ArrayList<>();
+		final HashSet<Integer> uniqueEntityIds = new HashSet<>();
+
+		for (final Entity nearby : location.getWorld().getNearbyEntities(location, radius, radius, radius)) {
+//			final Entity resolved = resolveAbilityTarget(nearby);
+			if (nearby == null || !uniqueEntityIds.add(nearby.getEntityId())) {
+				continue;
+			}
+
+			if (acceptable.test(nearby)) {
+				entities.add(nearby);
+			}
+		}
+
+		return entities;
 	}
 
 	/**
@@ -746,7 +794,12 @@ public class GeneralMethods {
 	 * @return A list of entities around a point
 	 */
 	public static List<Entity> getEntitiesAroundPoint(final Location location, final double radius) {
-		return getEntitiesAroundPoint(location, radius, entity -> !(entity.isDead() || (entity instanceof Player && ((Player) entity).getGameMode().equals(GameMode.SPECTATOR))) || entity instanceof ArmorStand && ((ArmorStand) entity).isMarker());
+		return getEntitiesAroundPoint(location, radius, entity ->
+				!entity.isDead()
+				&& (!(entity instanceof Player) || ((Player) entity).getGameMode() != GameMode.SPECTATOR)
+				&& (!(entity instanceof ArmorStand) || !((ArmorStand) entity).isMarker())
+				&& !entity.hasMetadata("temparmorstand")
+				&& !isDisplayEntity(entity));
 	}
 
 	public static long getGlobalCooldown() {
@@ -1390,6 +1443,8 @@ public class GeneralMethods {
 		ConfigManager.defaultConfig.reload();
 		ConfigManager.languageConfig.reload();
 		ConfigManager.presetConfig.reload();
+		PhasedIntegrationManager.reloadFromConfig();
+		PhasedBlockVisibilityManager.reloadFromConfig();
 		ConfigManager.loadConstants();
 		Arrays.stream(Element.getElements()).forEach(e -> {e.setColor(null); e.setSubColor(null);}); //Load colors from config again
 		Arrays.stream(Element.getSubElements()).forEach(e -> {e.setColor(null); e.setSubColor(null);}); //Same for subs
@@ -1875,6 +1930,11 @@ public class GeneralMethods {
 	}
 	
 	public static void setVelocity(Ability ability, Entity entity, Vector vector) {
+		if (!PhasedIntegrationManager.shouldAllow(
+				PhasedIntegrationManager.requestFromAbility(ability, entity.getUniqueId(), GateStage.COLLISION, entity.getLocation(), null))) {
+			return;
+		}
+
 		final AbilityVelocityAffectEntityEvent event = new AbilityVelocityAffectEntityEvent(ability, entity, vector);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (event.isCancelled()) 

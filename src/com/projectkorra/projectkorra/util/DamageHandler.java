@@ -3,7 +3,6 @@ package com.projectkorra.projectkorra.util;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.ProjectKorra;
 import org.bukkit.Bukkit;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.damage.DamageType;
@@ -20,10 +19,9 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.event.AbilityDamageEntityEvent;
 import com.projectkorra.projectkorra.event.EntityBendingDeathEvent;
+import com.projectkorra.projectkorra.phasing.GateStage;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import com.projectkorra.projectkorra.util.logging.PkLang;
-
-import fr.neatmonster.nocheatplus.checks.CheckType;
-import fr.neatmonster.nocheatplus.hooks.NCPExemptionManager;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -151,6 +149,11 @@ public class DamageHandler {
 	 */
 	public static void damageEntity(final Entity entity, LivingEntity source, double damage, final Ability ability, boolean ignoreArmor, boolean doSourcelessDamage) {
 		if (ability == null) {
+			return;
+		}
+
+		if (!PhasedIntegrationManager.shouldAllow(
+				PhasedIntegrationManager.requestFromAbility(ability, entity.getUniqueId(), GateStage.DAMAGE, entity.getLocation(), null))) {
 			return;
 		}
 
