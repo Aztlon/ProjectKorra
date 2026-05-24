@@ -167,7 +167,7 @@ public class CollisionInitializer {
 
 		this.collisionManager.addCollision(new Collision(airSweep, airSweep, false, false));
 
-		this.collisionManager.addCollision(new Collision(fireShield, fireBlastCharged, false, false));
+		this.collisionManager.addCollision(new Collision(fireShield, fireBlastCharged, false, true));
 		this.collisionManager.addCollision(new Collision(fireShield, fireBlast, false, true));
 		this.collisionManager.addCollision(new Collision(fireShield, waterManipulation, false, true));
 		this.collisionManager.addCollision(new Collision(fireShield, earthBlast, false, true));
