@@ -51,6 +51,7 @@ import org.bukkit.inventory.MainHand;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import com.google.common.io.Files;
 import com.google.common.reflect.ClassPath;
@@ -82,9 +83,6 @@ import com.projectkorra.projectkorra.earthbending.EarthBlast;
 import com.projectkorra.projectkorra.earthbending.EarthTunnel;
 import com.projectkorra.projectkorra.earthbending.passive.EarthPassive;
 import com.projectkorra.projectkorra.earthbending.util.EarthbendingManager;
-import com.projectkorra.projectkorra.phasing.GateStage;
-import com.projectkorra.projectkorra.phasing.PhasedBlockVisibilityManager;
-import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import com.projectkorra.projectkorra.event.AbilityVelocityAffectEntityEvent;
 import com.projectkorra.projectkorra.event.BendingReloadEvent;
 import com.projectkorra.projectkorra.firebending.FireBlast;
@@ -92,6 +90,9 @@ import com.projectkorra.projectkorra.firebending.FireShield;
 import com.projectkorra.projectkorra.firebending.combustion.Combustion;
 import com.projectkorra.projectkorra.firebending.util.FirebendingManager;
 import com.projectkorra.projectkorra.object.Preset;
+import com.projectkorra.projectkorra.phasing.GateStage;
+import com.projectkorra.projectkorra.phasing.PhasedBlockVisibilityManager;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.storage.DBConnection;
 import com.projectkorra.projectkorra.util.ChatUtil;
@@ -110,8 +111,9 @@ import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
 import com.projectkorra.projectkorra.waterbending.util.WaterbendingManager;
 
 import net.md_5.bungee.api.ChatColor;
-
-import dev.lone.itemsadder.api.CustomBlock;
+import net.momirealms.craftengine.bukkit.api.CraftEngineBlocks;
+import net.momirealms.craftengine.core.block.BlockDefinition;
+import net.momirealms.craftengine.core.util.Key;
 
 public class GeneralMethods {
 
@@ -1037,6 +1039,18 @@ public class GeneralMethods {
 		return getTargetedEntity(caster, range, new ArrayList<>());
 	}
 
+	public static @Nullable BlockDefinition customBlockFromId(final String id) {
+		return CraftEngineBlocks.byId(Key.of(id));
+	}
+
+	public static BlockData blockDataFromCustomBlock(BlockDefinition customBlock) {
+		return CraftEngineBlocks.getBukkitBlockData(customBlock.defaultState());
+	}
+
+	public static String idFromCustomBlock(BlockDefinition customBlock) {
+		return customBlock.id().toString();
+	}
+
 	public static BlockData blockDataFromId(final String id) {
 		if (id.startsWith("customfire:")) {
 			Fire fireData = (Fire) Material.FIRE.createBlockData();
@@ -1049,9 +1063,9 @@ public class GeneralMethods {
 			return Material.SOUL_FIRE.createBlockData();
 		}
 
-		CustomBlock custom = CustomBlock.getInstance(id);
+		var custom = customBlockFromId(id);
 		if (custom != null) {
-			return custom.getBaseBlockData();
+			return blockDataFromCustomBlock(custom);
 		}
 
 		Material material = Material.getMaterial(id.toUpperCase());
@@ -1063,9 +1077,9 @@ public class GeneralMethods {
 	}
 
 	public static boolean blockMatchesId(final Block block, final String id) {
-		CustomBlock custom = CustomBlock.byAlreadyPlaced(block);
+		var custom = customBlockFromId(id);
 		if (custom != null) {
-			return custom.getNamespacedID().equalsIgnoreCase(id);
+			return custom.id().toString().equalsIgnoreCase(id);
 		}
 
 		return block.getType().name().equalsIgnoreCase(id);
@@ -1323,7 +1337,7 @@ public class GeneralMethods {
 	}
 
 	/**
-	 * Deprecated. Use {@link RegionProtection#isRegionProtected(Player, Location, CoreAbility)} instead
+	 * Deprecated. Use {@link RegionProtection#isRegionProtected(LivingEntity, Location, String)} instead
 	 */
 	@Deprecated
 	public static boolean isRegionProtectedFromBuild(final Player player, final String ability, final Location loc) {
@@ -1331,7 +1345,7 @@ public class GeneralMethods {
 	}
 
 	/**
-	 * Deprecated. Use {@link RegionProtection#isRegionProtected(Player, Location, CoreAbility)} instead
+	 * Deprecated. Use {@link RegionProtection#isRegionProtected(CoreAbility, Location)} instead
 	 */
 	@Deprecated
 	public static boolean isRegionProtectedFromBuild(final Ability ability, final Location loc) {
@@ -1339,7 +1353,7 @@ public class GeneralMethods {
 	}
 
 	/**
-	 * Deprecated. Use {@link RegionProtection#isRegionProtected(Player, Location, CoreAbility)} instead
+	 * Deprecated. Use {@link RegionProtection#isRegionProtected(LivingEntity, Location)} instead
 	 */
 	@Deprecated
 	public static boolean isRegionProtectedFromBuild(final Player player, final Location loc) {

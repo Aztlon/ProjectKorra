@@ -38,7 +38,6 @@ import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.IWaterAbilityTransformer;
 
-import dev.lone.itemsadder.api.CustomBlock;
 import me.clip.placeholderapi.PlaceholderAPI;
 
 public abstract class WaterAbility extends ElementalAbility {
@@ -349,9 +348,9 @@ public abstract class WaterAbility extends ElementalAbility {
 		if (caster instanceof Player player) {
 			String cosmeticIceMaterial = PlaceholderAPI.setPlaceholders(player, "%avatarverse_icematerial%");
 			if (!cosmeticIceMaterial.isEmpty()) {
-				CustomBlock custom = CustomBlock.getInstance(cosmeticIceMaterial);
-				if (custom != null && custom.getNamespacedID().startsWith("customice:")) {
-					return custom.getBaseBlockData().getAsString();
+				var custom = GeneralMethods.customBlockFromId(cosmeticIceMaterial);
+				if (custom != null && custom.id().toString().startsWith("customice:")) {
+					return GeneralMethods.blockDataFromCustomBlock(custom).getAsString();
 				}
 				Material mat = Material.getMaterial(cosmeticIceMaterial);
 				if (mat != null) {
@@ -366,9 +365,9 @@ public abstract class WaterAbility extends ElementalAbility {
 		if (caster instanceof Player player) {
 			String cosmeticIceMaterial = PlaceholderAPI.setPlaceholders(player, "%avatarverse_icematerial%");
 			if (!cosmeticIceMaterial.isEmpty()) {
-				CustomBlock custom = CustomBlock.getInstance(cosmeticIceMaterial);
-				if (custom != null && custom.getNamespacedID().startsWith("customice:")) {
-					return custom.getBaseBlockData();
+				var custom = GeneralMethods.customBlockFromId(cosmeticIceMaterial);
+				if (custom != null && custom.id().toString().startsWith("customice:")) {
+					return GeneralMethods.blockDataFromCustomBlock(custom);
 				}
 				Material mat = Material.getMaterial(cosmeticIceMaterial);
 				if (mat != null) {

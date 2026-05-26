@@ -11,6 +11,7 @@ import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 import net.md_5.bungee.api.ChatColor;
 
@@ -59,7 +60,7 @@ abstract class AbstractAbilityBoard implements AbilityBoard {
 	}
 
 	protected final String colorize(final String input) {
-		return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
+		return PkLang.format(input);
 	}
 
 	protected final String renderAbilityText(final int slot, final String ability, final boolean cooldown) {

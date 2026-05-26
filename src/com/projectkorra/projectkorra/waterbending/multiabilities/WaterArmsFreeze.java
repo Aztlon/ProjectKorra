@@ -26,7 +26,7 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempPotionEffect;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms.Arm;
 
-import dev.lone.itemsadder.api.CustomBlock;
+import net.momirealms.craftengine.bukkit.api.CraftEngineBlocks;
 
 public class WaterArmsFreeze extends IceAbility {
 
@@ -91,7 +91,7 @@ public class WaterArmsFreeze extends IceAbility {
 			nonOpaque.add(Material.WATER.name());
 			nonOpaque.add(Material.ICE.name());
 			nonOpaque.add(Material.PACKED_ICE.name());
-			CustomBlock.getNamespacedIdsInRegistry().stream().filter(id -> id.startsWith("customice:")).forEach(nonOpaque::add);
+			CraftEngineBlocks.loadedBlocks().keySet().stream().filter(k -> k.namespace().equals("customice")).forEach(k -> nonOpaque.add(k.toString()));
 			this.direction = GeneralMethods.getDirection(this.location, GeneralMethods.getTargetedLocation(this.player, this.iceRange, false, true, nonOpaque.toArray(new String[0]))).normalize();
 		} else {
 			return;

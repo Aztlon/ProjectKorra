@@ -13,6 +13,10 @@ import net.md_5.bungee.api.ChatColor;
 
 public class PkAbilityBoard extends AbstractAbilityBoard {
 
+	private static final int HOTBAR_SLOT_COUNT = 9;
+	private static final int MISC_SEPARATOR_SCORE = -(HOTBAR_SLOT_COUNT + 1);
+	private static final int FIRST_MISC_SCORE = MISC_SEPARATOR_SCORE - 1;
+
 	private static final class MiscEntry {
 
 		private final int slotId;
@@ -35,13 +39,13 @@ public class PkAbilityBoard extends AbstractAbilityBoard {
 	public PkAbilityBoard(final BendingPlayer bendingPlayer) {
 		super(BoardType.PK, bendingPlayer, "pkboard", "Board.Title");
 
-		for (int slot = 1; slot <= 9; slot++) {
+		for (int slot = 1; slot <= HOTBAR_SLOT_COUNT; slot++) {
 			registerHotbarLine(slot, new BoardLine(this.scoreboard, this.objective, "pkslot" + slot, -slot, slot - 1));
 			this.miscSlotIds.add(slot - 1);
 		}
 
 		this.miscSeparator = colorize(ConfigManager.languageConfig.get().getString("Board.MiscSeparator"));
-		this.miscSeparatorLine = new BoardLine(this.scoreboard, this.objective, "pkmiscsep", 0, 9);
+		this.miscSeparatorLine = new BoardLine(this.scoreboard, this.objective, "pkmiscsep", MISC_SEPARATOR_SCORE, HOTBAR_SLOT_COUNT);
 		this.miscSeparatorLine.remove();
 	}
 
@@ -61,7 +65,7 @@ public class PkAbilityBoard extends AbstractAbilityBoard {
 			return;
 		}
 
-		final BoardLine line = new BoardLine(this.scoreboard, this.objective, "pkmisc" + slotId, -(slotId + 1), 10 + slotId);
+		final BoardLine line = new BoardLine(this.scoreboard, this.objective, "pkmisc" + slotId, FIRST_MISC_SCORE - slotId, HOTBAR_SLOT_COUNT + 1 + slotId);
 		line.update(getMiscPadding(), color + "" + ChatColor.STRIKETHROUGH + name);
 
 		final MiscEntry miscEntry = new MiscEntry(slotId, line);
