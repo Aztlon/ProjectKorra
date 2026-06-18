@@ -34,6 +34,7 @@ import com.projectkorra.projectkorra.util.StatisticsManager;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.Updater;
 import com.projectkorra.projectkorra.util.logging.PkLang;
+import com.projectkorra.projectkorra.util.particles.ParticleCompatibilityService;
 import com.projectkorra.projectkorra.waterbending.util.WaterbendingManager;
 
 public class ProjectKorra extends JavaPlugin {
@@ -59,6 +60,7 @@ public class ProjectKorra extends JavaPlugin {
 		new ConfigManager();
 		PhasedIntegrationManager.reloadFromConfig();
 		PhasedBlockVisibilityManager.reloadFromConfig();
+		ParticleCompatibilityService.reload(this);
 		new GeneralMethods(this);
 		final boolean checkUpdateOnStartup = ConfigManager.getConfig().getBoolean("Properties.UpdateChecker");
 		this.updater = new Updater(this, "https://projectkorra.com/forum/resources/projectkorra-core.1/", checkUpdateOnStartup);
@@ -137,6 +139,7 @@ public class ProjectKorra extends JavaPlugin {
 
 	@Override
 	public void onDisable() {
+		ParticleCompatibilityService.shutdown();
 		PhasedBlockVisibilityManager.shutdown();
 		this.revertChecker.cancel();
 		GeneralMethods.stopBending();

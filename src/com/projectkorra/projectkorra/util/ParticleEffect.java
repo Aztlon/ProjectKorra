@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import com.projectkorra.projectkorra.phasing.GateStage;
 import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
+import com.projectkorra.projectkorra.util.particles.ParticleCompatibilityService;
+import com.projectkorra.projectkorra.util.particles.ParticleSpawnRequest;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -272,7 +274,7 @@ public enum ParticleEffect {
 					PhasedIntegrationManager.requestFromAbility(null, null, GateStage.PARTICLE, loc, viewerUuid))) {
 				continue;
 			}
-			viewer.spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data);
+			ParticleCompatibilityService.spawn(viewer, new ParticleSpawnRequest(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data));
 		}
 	}
 }

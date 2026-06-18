@@ -105,6 +105,8 @@ import com.projectkorra.projectkorra.util.TempArmorStand;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempFallingBlock;
 import com.projectkorra.projectkorra.util.logging.PkLang;
+import com.projectkorra.projectkorra.util.particles.ParticleCompatibilityService;
+import com.projectkorra.projectkorra.util.particles.ParticleSpawnRequest;
 import com.projectkorra.projectkorra.waterbending.WaterManipulation;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
 import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
@@ -294,9 +296,9 @@ public class GeneralMethods {
 				}
 
 				if (type.getParticle() == Particle.DUST) {
-					viewer.spawnParticle(type.getParticle(), clone, 0, new Particle.DustOptions(Color.fromRGB(r, g, b), 1));
+					ParticleCompatibilityService.spawn(viewer, new ParticleSpawnRequest(type.getParticle(), clone, 0, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(r, g, b), 1)));
 				} else { // entity effect
-					viewer.spawnParticle(type.getParticle(), clone, 1, Color.fromRGB(r, g, b));
+					ParticleCompatibilityService.spawn(viewer, new ParticleSpawnRequest(type.getParticle(), clone, 1, 0, 0, 0, 0, Color.fromRGB(r, g, b)));
 				}
 			}
 //			type.display(clone, 0, 0, 0, 0, Color.fromRGB(r, g, b));
@@ -1459,6 +1461,7 @@ public class GeneralMethods {
 		ConfigManager.presetConfig.reload();
 		PhasedIntegrationManager.reloadFromConfig();
 		PhasedBlockVisibilityManager.reloadFromConfig();
+		ParticleCompatibilityService.reload(ProjectKorra.plugin);
 		ConfigManager.loadConstants();
 		Arrays.stream(Element.getElements()).forEach(e -> {e.setColor(null); e.setSubColor(null);}); //Load colors from config again
 		Arrays.stream(Element.getSubElements()).forEach(e -> {e.setColor(null); e.setSubColor(null);}); //Same for subs

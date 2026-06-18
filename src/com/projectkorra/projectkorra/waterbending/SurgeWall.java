@@ -613,6 +613,11 @@ public class SurgeWall extends WaterAbility {
 	}
 
 	@Override
+	public boolean isHiddenAbility() {
+		return true;
+	}
+
+	@Override
 	public List<Location> getLocations() {
 		return this.locations;
 	}

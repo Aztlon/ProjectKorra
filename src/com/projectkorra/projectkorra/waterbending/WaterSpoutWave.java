@@ -554,6 +554,11 @@ public class WaterSpoutWave extends WaterAbility {
 	}
 
 	@Override
+	public boolean isHiddenAbility() {
+		return true;
+	}
+
+	@Override
 	public boolean isCollidable() {
 		return this.collidable;
 	}

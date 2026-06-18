@@ -10,6 +10,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import com.projectkorra.projectkorra.Element;
 
+import net.md_5.bungee.api.ChatColor;
+
 public abstract class AbstractSkill {
 
 	public static final Map<String, AbstractSkill> CACHE = new HashMap<>();
@@ -38,6 +40,6 @@ public abstract class AbstractSkill {
 	}
 
 	public String displayName(Element element) {
-		return element.getColor() + name;
+		return element.getColor().toString() + ChatColor.BOLD + name;
 	}
 }

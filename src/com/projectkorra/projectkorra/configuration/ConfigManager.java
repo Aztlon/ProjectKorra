@@ -720,6 +720,20 @@ public class ConfigManager {
 			config.addDefault("Properties.PhasedIntegration.Blocks.UseViewerOverlays", false);
 			config.addDefault("Properties.PhasedIntegration.Blocks.RefreshIntervalTicks", 10);
 
+			config.addDefault("Properties.BedrockParticles.Enabled", true);
+			config.addDefault("Properties.BedrockParticles.MaxCount", 8);
+			config.addDefault("Properties.BedrockParticles.Debug", false);
+			config.addDefault("Properties.BedrockParticles.BlockReplacementMode", "COLORED_DUST");
+			config.addDefault("Properties.BedrockParticles.UsePacketEventsSafetyNet", true);
+			config.addDefault("Properties.BedrockParticles.Profiles.Air.Particle", "WHITE_SMOKE");
+			config.addDefault("Properties.BedrockParticles.Profiles.Air.Color", "daeaff");
+			config.addDefault("Properties.BedrockParticles.Profiles.Earth.Color", "8a6a45");
+			config.addDefault("Properties.BedrockParticles.Profiles.Sand.Color", "d8c071");
+			config.addDefault("Properties.BedrockParticles.Profiles.Metal.Color", "b8b8b8");
+			config.addDefault("Properties.BedrockParticles.Profiles.Water.Color", "7fd9ff");
+			config.addDefault("Properties.BedrockParticles.Profiles.Ice.Color", "dff9ff");
+			config.addDefault("Properties.BedrockParticles.Profiles.Plant.Color", "4fa35c");
+
 			config.addDefault("Properties.HorizontalCollisionPhysics.Enabled", true);
 			config.addDefault("Properties.HorizontalCollisionPhysics.DamageOnBarrierBlock", false);
 			config.addDefault("Properties.HorizontalCollisionPhysics.WallDamageMinimumDistance", 5.0);
