@@ -948,6 +948,7 @@ public class ConfigManager {
 			config.addDefault("Abilities.Avatar.AvatarState.Fire.Lightning.Cooldown", 1000);
 			config.addDefault("Abilities.Avatar.AvatarState.Fire.FireBurst.ChargeTime", 1);
 			config.addDefault("Abilities.Avatar.AvatarState.Fire.FireBurst.Damage", 3);
+			config.addDefault("Abilities.Avatar.AvatarState.Fire.FireBurst.ConeDamage", 4);
 			config.addDefault("Abilities.Avatar.AvatarState.Fire.FireBurst.Cooldown", 0);
 			config.addDefault("Abilities.Avatar.AvatarState.Fire.FireBlast.Charged.ChargeTime", 1500);
 			config.addDefault("Abilities.Avatar.AvatarState.Fire.FireBlast.Charged.MinimumDamage", 3);
@@ -1665,10 +1666,12 @@ public class ConfigManager {
 
 			config.addDefault("Abilities.Fire.FireBurst.Enabled", true);
 			config.addDefault("Abilities.Fire.FireBurst.Damage", 2);
+			config.addDefault("Abilities.Fire.FireBurst.ConeDamage", 4);
 			config.addDefault("Abilities.Fire.FireBurst.Ignite", true);
 			config.addDefault("Abilities.Fire.FireBurst.ChargeTime", 3500);
 			config.addDefault("Abilities.Fire.FireBurst.Cooldown", 0);
 			config.addDefault("Abilities.Fire.FireBurst.Range", 14);
+			config.addDefault("Abilities.Fire.FireBurst.ConeRange", 16);
 			config.addDefault("Abilities.Fire.FireBurst.AnglePhi", 10);
 			config.addDefault("Abilities.Fire.FireBurst.AngleTheta", 10);
 			config.addDefault("Abilities.Fire.FireBurst.ParticlesPercentage", 5);
