@@ -402,11 +402,11 @@ public class LavaFlow extends LavaAbility {
 				final Block above = block.getRelative(BlockFace.UP);
 				final Block above2 = above.getRelative(BlockFace.UP);
 				if (isPlant(above) || isSnow(above)) {
-					final TempBlock tb = new TempBlock(above, Material.AIR);
+					final TempBlock tb = new TempBlock(above, Material.AIR, this);
 					TEMP_AIR_BLOCKS.put(above, tb);
 					this.affectedBlocks.add(tb);
 					if (isPlant(above2) && above2.getType().equals(Material.TALL_GRASS)) {
-						final TempBlock tb2 = new TempBlock(above2, Material.AIR);
+						final TempBlock tb2 = new TempBlock(above2, Material.AIR, this);
 						TEMP_AIR_BLOCKS.put(above2, tb2);
 						this.affectedBlocks.add(tb);
 					}
@@ -443,7 +443,7 @@ public class LavaFlow extends LavaAbility {
 			return;
 		}
 
-		final TempBlock tblock = new TempBlock(testBlock, this.revertMaterial);
+		final TempBlock tblock = new TempBlock(testBlock, this.revertMaterial, this);
 		this.affectedBlocks.add(tblock);
 		TEMP_LAND_BLOCKS.put(testBlock, tblock);
 	}

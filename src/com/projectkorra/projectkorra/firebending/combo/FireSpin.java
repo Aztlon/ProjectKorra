@@ -21,6 +21,7 @@ import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformatio
 import com.projectkorra.projectkorra.ability.util.ComboUtil;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -97,7 +98,7 @@ public class FireSpin extends FireAbility implements ComboAbility {
 			}
 			this.bender.addCooldown("FireSpin", this.cooldown);
 			this.destination = this.caster.getEyeLocation().add(this.range, 0, this.range);
-			this.caster.getWorld().playSound(this.caster.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 0.5f, 0.5f);
+			PhasedSoundManager.playSound(this, this.caster.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 0.5f, 0.5f);
 
 			for (int i = 0; i <= 360; i += 5) {
 				Vector vec = GeneralMethods.getDirection(this.caster.getLocation(), this.destination.clone());

@@ -28,6 +28,7 @@ import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
@@ -193,10 +194,12 @@ public class FireBlast extends FireAbility {
 				GeneralMethods.setVelocity(this, entity, this.direction.clone().multiply(this.knockback));
 			}
 			if (entity instanceof LivingEntity) {
-				entity.setFireTicks((int) (this.fireTicks * 20));
+				final boolean ignited = PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.fireTicks * 20));
 				DamageHandler.damageEntity(entity, this.damage, this);
 				AirAbility.breakBreathbendingHold(entity);
-				new FireDamageTimer(entity, this.caster, this);
+				if (ignited) {
+					new FireDamageTimer(entity, this.caster, this);
+				}
 				this.remove();
 			}
 		}

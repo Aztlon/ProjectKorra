@@ -14,6 +14,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 
@@ -76,7 +77,9 @@ public class Smokescreen extends ChiAbility {
 			} else if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 				return;
 			}
-			p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, this.duration * 20, 2));
+			if (!PhasedEntityEffectManager.addPotionEffect(this, p, new PotionEffect(PotionEffectType.DARKNESS, this.duration * 20, 2))) {
+				return;
+			}
 			BLINDED_TIMES.put(p.getName(), System.currentTimeMillis());
 			BLINDED_TO_ABILITY.put(p.getName(), this);
 		}

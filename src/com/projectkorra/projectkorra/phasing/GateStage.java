@@ -5,6 +5,7 @@ public enum GateStage {
 	TARGET_SELECT("target-select"),
 	COLLISION("collision"),
 	DAMAGE("damage"),
+	EFFECT("effect"),
 	BLOCK("block"),
 	PARTICLE("particle"),
 	SOUND("sound");

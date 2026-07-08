@@ -22,6 +22,7 @@ import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.LightningAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.FireJet;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.ActionBar;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.MovementHandler;
@@ -153,19 +154,19 @@ public class Lightning extends LightningAbility {
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.Lightning.Damage");
 		}
 
-		this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.25F);
-		this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 5.0F, 0.75F);
+		PhasedSoundManager.playSound(this, this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.25F);
+		PhasedSoundManager.playSound(this, this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 5.0F, 0.75F);
 		ParticleEffect.FLASH.display(this.player.getLocation(), 1, 0, 0, 0, 0);
 		start();
 	}
 
 	public void electrocute(LivingEntity lent) {
-		playLightningbendingSound(lent.getLocation());
-		playLightningbendingSound(this.player.getLocation());
-		lent.getWorld().playSound(lent.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.35F);
-		lent.getWorld().playSound(lent.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
-		this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.35F);
-		this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
+		playLightningbendingSound(this, lent.getLocation());
+		playLightningbendingSound(this, this.player.getLocation());
+		PhasedSoundManager.playSound(this, lent.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.35F);
+		PhasedSoundManager.playSound(this, lent.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
+		PhasedSoundManager.playSound(this, this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.35F);
+		PhasedSoundManager.playSound(this, this.player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
 		ParticleEffect.FLASH.display(lent.getLocation(), 2, 1.0D, 1.0D, 1.0D);
 		ParticleEffect.CRIT_MAGIC.display(lent.getLocation(), 10, 1.0D, 1.0D, 1.0D, 0.11999999731779099D);
 
@@ -216,7 +217,7 @@ public class Lightning extends LightningAbility {
 					ParticleEffect.END_ROD.display(loc, 2, 0.5, 0.5, 0.5, 0.04);
 					thundergrid();
 
-					loc.getWorld().playSound(loc, Sound.ENTITY_CREEPER_PRIMED, 0.65F, 1.35F);
+					PhasedSoundManager.playSound(this, loc, Sound.ENTITY_CREEPER_PRIMED, 0.65F, 1.35F);
 				} else {
 					this.state = State.MAINBOLT;
 					this.bPlayer.addCooldown(this);
@@ -252,8 +253,8 @@ public class Lightning extends LightningAbility {
 
 
 
-				playLightningbendingSound(localLocation2);
-				playLightningbendingChargingSound(localLocation2);
+				playLightningbendingSound(this, localLocation2);
+				playLightningbendingChargingSound(this, localLocation2);
 				this.particleRotation += 1.0D;
 			}
 
@@ -550,10 +551,10 @@ public class Lightning extends LightningAbility {
 				cancel();
 			} else if (this.count == 1) {
 				if (ThreadLocalRandom.current().nextDouble() < .1) {
-					playLightningbendingSound(location);
-					location.getWorld().playSound(location, Sound.BLOCK_BEEHIVE_WORK, 1, 0);
-					playLightningbendingHitSound(location);
-					location.getWorld().playSound(location, Sound.ENTITY_GENERIC_EXPLODE, 1.0F, 0.65F);
+					playLightningbendingSound(Lightning.this, location);
+					PhasedSoundManager.playSound(Lightning.this, location, Sound.BLOCK_BEEHIVE_WORK, 1, 0);
+					playLightningbendingHitSound(Lightning.this, location);
+					PhasedSoundManager.playSound(Lightning.this, location, Sound.ENTITY_GENERIC_EXPLODE, 1.0F, 0.65F);
 					ParticleEffect.FLASH.display(location, 1, 0, 0, 0);
 					StaticField(60, 3.0f, 6);
 				}
@@ -564,9 +565,9 @@ public class Lightning extends LightningAbility {
 					ParticleEffect.SMOKE_LARGE.display(this.location.getBlock().getLocation(), 20, 2.0D, 2.0D, 2.0D);
 					ParticleEffect.CRIT_MAGIC.display(this.location.getBlock().getLocation(), 30, 1.0D, 1.0D, 1.0D, 0.14000000059604645D);
 					ParticleEffect.END_ROD.display(this.location.getBlock().getLocation(), 30, 1.0D, 1.0D, 1.0D, 0.14000000059604645D);
-					this.location.getBlock().getWorld().playSound(this.location.getBlock().getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 10.0F, 1.0F);
-					this.location.getBlock().getWorld().playSound(this.location.getBlock().getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 10.0F, 0.0F);
-					this.location.getBlock().getWorld().playSound(this.location.getBlock().getLocation(), Sound.ENTITY_CREEPER_HURT, 10.0F, 0.0F);
+					PhasedSoundManager.playSound(Lightning.this, this.location.getBlock().getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 10.0F, 1.0F);
+					PhasedSoundManager.playSound(Lightning.this, this.location.getBlock().getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 10.0F, 0.0F);
+					PhasedSoundManager.playSound(Lightning.this, this.location.getBlock().getLocation(), Sound.ENTITY_CREEPER_HURT, 10.0F, 0.0F);
 
 				}
 
@@ -591,14 +592,14 @@ public class Lightning extends LightningAbility {
 					if (entity instanceof LivingEntity lent && !Lightning.this.affectedEntities.contains(entity)) {
 						Lightning.this.affectedEntities.add(entity);
 						if (lent instanceof Player) {
-							playLightningbendingSound(lent.getLocation());
-							playLightningbendingSound(Lightning.this.player.getLocation());
-							lent.getWorld().playSound(lent.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.35F);
-							lent.getWorld().playSound(lent.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
-							lent.getWorld().playSound(lent.getLocation(), Sound.ENTITY_CREEPER_HURT, 5.0F, 0F);
-							Lightning.this.player.getWorld().playSound(Lightning.this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.35F);
-							Lightning.this.player.getWorld().playSound(Lightning.this.player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
-							Lightning.this.player.getWorld().playSound(Lightning.this.player.getLocation(), Sound.ENTITY_CREEPER_HURT, 5.0F, 0.0F);
+							playLightningbendingSound(Lightning.this, lent.getLocation());
+							playLightningbendingSound(Lightning.this, Lightning.this.player.getLocation());
+							PhasedSoundManager.playSound(Lightning.this, lent.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.35F);
+							PhasedSoundManager.playSound(Lightning.this, lent.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
+							PhasedSoundManager.playSound(Lightning.this, lent.getLocation(), Sound.ENTITY_CREEPER_HURT, 5.0F, 0F);
+							PhasedSoundManager.playSound(Lightning.this, Lightning.this.player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0F, 1.35F);
+							PhasedSoundManager.playSound(Lightning.this, Lightning.this.player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 5.0F, 0.65F);
+							PhasedSoundManager.playSound(Lightning.this, Lightning.this.player.getLocation(), Sound.ENTITY_CREEPER_HURT, 5.0F, 0.0F);
 							ParticleEffect.FLASH.display(lent.getLocation(), 2, 1.0D, 1.0D, 1.0D);
 							ParticleEffect.CRIT_MAGIC.display(lent.getLocation(), 10, 1.0D, 1.0D, 1.0D, 0.11999999731779099D);
 							Player p = (Player)lent;

@@ -367,6 +367,14 @@ public class Bloodbending extends BloodAbility {
 		return bb.vector;
 	}
 
+	public static Bloodbending getBloodbendingAbility(final Entity entity) {
+		if (!TARGETED_ENTITIES.containsKey(entity)) {
+			return null;
+		}
+
+		return getAbility(TARGETED_ENTITIES.get(entity), Bloodbending.class);
+	}
+
 	public static BendingPlayer getBloodbender(final Entity entity) {
 		if (!TARGETED_ENTITIES.containsKey(entity)) {
 			return null;

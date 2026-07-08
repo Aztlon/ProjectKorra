@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.util.TempBlock;
@@ -35,12 +36,21 @@ public class WaterSourceGrabber {
 	private Material material;
 	private Location currentLoc;
 	private final Map<Block, TempBlock> affectedBlocks;
+	private CoreAbility ability;
 
 	public WaterSourceGrabber(final Player player, final Location origin) {
-		this(player, origin, 1);
+		this(player, origin, 1, null);
 	}
 
 	public WaterSourceGrabber(final Player player, final Location origin, final double animationSpeed) {
+		this(player, origin, animationSpeed, null);
+	}
+
+	public WaterSourceGrabber(final Player player, final Location origin, final CoreAbility ability) {
+		this(player, origin, 1, ability);
+	}
+
+	public WaterSourceGrabber(final Player player, final Location origin, final double animationSpeed, final CoreAbility ability) {
 		this.player = player;
 		this.animimationSpeed = animationSpeed;
 		this.material = Material.WATER;
@@ -48,6 +58,7 @@ public class WaterSourceGrabber {
 		this.currentLoc = origin.clone();
 		this.state = AnimationState.RISING;
 		this.affectedBlocks = new ConcurrentHashMap<>();
+		this.ability = ability;
 	}
 
 	public void progress() {
@@ -111,7 +122,7 @@ public class WaterSourceGrabber {
 	}
 
 	public void createBlock(final Block block, final BlockData data) {
-		this.affectedBlocks.put(block, new TempBlock(block, data));
+		this.affectedBlocks.put(block, new TempBlock(block, data, this.ability));
 	}
 
 	public Player getPlayer() {
@@ -160,6 +171,14 @@ public class WaterSourceGrabber {
 
 	public void setState(final AnimationState state) {
 		this.state = state;
+	}
+
+	public CoreAbility getAbility() {
+		return this.ability;
+	}
+
+	public void setAbility(final CoreAbility ability) {
+		this.ability = ability;
 	}
 
 }

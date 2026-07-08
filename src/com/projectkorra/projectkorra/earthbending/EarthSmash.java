@@ -416,7 +416,7 @@ public class EarthSmash extends EarthAbility {
 				final List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(this.location, this.liftRange);
 				for (final Entity entity : entities) {
 					final org.bukkit.util.Vector velocity = entity.getVelocity();
-					entity.setVelocity(velocity.add(new Vector(0, this.liftKnockup, 0)));
+					GeneralMethods.setVelocity(this, entity, velocity.add(new Vector(0, this.liftKnockup, 0)));
 				}
 			}
 
@@ -439,7 +439,7 @@ public class EarthSmash extends EarthAbility {
 		for (final BlockRepresenter blockRep : this.currentBlocks) {
 			final Block block = this.location.clone().add(blockRep.getX(), blockRep.getY(), blockRep.getZ()).getBlock();
 			if (this.caster != null && this.isTransparent(block)) {
-				this.affectedBlocks.add(new TempBlock(block, blockRep.getType()));
+				this.affectedBlocks.add(new TempBlock(block, blockRep.getType(), this));
 				getPreventEarthbendingBlocks().add(block);
 			}
 		}

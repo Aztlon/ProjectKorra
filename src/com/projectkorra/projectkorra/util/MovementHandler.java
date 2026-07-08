@@ -12,6 +12,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
 
 /**
  * An object to control how an entity moves. <br>
@@ -48,6 +49,10 @@ public class MovementHandler {
 	 *            player
 	 */
 	public void stopWithDuration(final long duration, final String message) {
+		if (!this.canApply()) {
+			return;
+		}
+
 		if (this.entity instanceof final Player player) {
 			final long start = System.currentTimeMillis();
 			this.runnable = new BukkitRunnable() {
@@ -86,7 +91,9 @@ public class MovementHandler {
 	 */
 	public void stopButAllowBending(final long duration, final String message) {
 		stopWithDuration(duration, message);
-		canBend = true;
+		if (this.stopped) {
+			canBend = true;
+		}
 	}
 
 	/**
@@ -97,6 +104,10 @@ public class MovementHandler {
 	 *            player
 	 */
 	public void stop(final String message) {
+		if (!this.canApply()) {
+			return;
+		}
+
 		if (this.entity instanceof final Player player) {
 			this.msg = new BukkitRunnable() {
 				public void run() {
@@ -116,6 +127,15 @@ public class MovementHandler {
 		}
 		this.runnable = null;
 		stopped = true;
+	}
+
+	private boolean canApply() {
+		if (PhasedEntityEffectManager.shouldAllowEffect(this.ability, this.entity)) {
+			return true;
+		}
+		this.stopped = false;
+		HANDLERS.remove(this);
+		return false;
 	}
 
 	/**

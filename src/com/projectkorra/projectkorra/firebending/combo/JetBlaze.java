@@ -17,6 +17,7 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.FireJet;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 
@@ -105,7 +106,7 @@ public class JetBlaze extends FireAbility implements ComboAbility {
 			fs.runTaskTimer(ProjectKorra.plugin, 0, 1L);
 			this.tasks.add(fs);
 			if (this.progressCounter % 4 == 0) {
-				this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 1, 0F);
+				PhasedSoundManager.playSound(this, this.player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 1, 0F);
 			}
 		}
 	}

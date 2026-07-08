@@ -7,6 +7,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.BendingPlayer;
@@ -20,6 +21,7 @@ import com.projectkorra.projectkorra.chiblocking.AcrobatStance;
 import com.projectkorra.projectkorra.chiblocking.QuickStrike;
 import com.projectkorra.projectkorra.chiblocking.SwiftKick;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.ActionBar;
 
 public class ChiPassive {
@@ -50,6 +52,10 @@ public class ChiPassive {
 	}
 
 	public static void blockChi(final LivingEntity target) {
+		blockChi(null, target);
+	}
+
+	public static void blockChi(@Nullable final LivingEntity source, final LivingEntity target) {
 		if (Suffocate.isChannelingSphere(target)) {
 			Suffocate.remove(target);
 		}
@@ -60,7 +66,11 @@ public class ChiPassive {
 		}
 
 		bender.blockChi();
-		target.getWorld().playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 2, 0);
+		if (source == null) {
+			PhasedSoundManager.playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 2, 0);
+		} else {
+			PhasedSoundManager.playSoundFromEntity(source, "ChiPassive", target.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 2, 0);
+		}
 
 		final long start = System.currentTimeMillis();
 		new BukkitRunnable() {

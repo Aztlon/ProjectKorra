@@ -137,7 +137,7 @@ public class WaterSpout extends WaterAbility {
 
 			final Block block = loc.getBlock();
 			if ((!TempBlock.isTempBlock(block)) && (ElementalAbility.isAir(block.getType()) || !GeneralMethods.isSolid(block))) {
-				this.blocks.add(new TempBlock(block, GeneralMethods.getWaterData(7)));
+				this.blocks.add(new TempBlock(block, GeneralMethods.getWaterData(7), this));
 				AFFECTED_BLOCKS.put(block, block);
 			}
 		}
@@ -185,7 +185,7 @@ public class WaterSpout extends WaterAbility {
 				block = location.clone().add(0, i, 0).getBlock();
 
 				if (!TempBlock.isTempBlock(block)) {
-					this.blocks.add(new TempBlock(block, Material.WATER));
+					this.blocks.add(new TempBlock(block, Material.WATER, this));
 					AFFECTED_BLOCKS.put(block, block);
 				}
 				this.rotateParticles(block);
@@ -315,7 +315,7 @@ public class WaterSpout extends WaterAbility {
 
 //					if (!TempBlock.isTempBlock(blocki)) {
 						this.revertBaseBlock();
-						this.baseBlock = new TempBlock(blocki, Material.WATER);
+						this.baseBlock = new TempBlock(blocki, Material.WATER, this);
 //					}
 
 					this.base = blocki;

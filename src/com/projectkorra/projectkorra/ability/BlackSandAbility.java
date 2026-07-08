@@ -5,6 +5,8 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.Element;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -29,10 +31,10 @@ public abstract class BlackSandAbility extends SandAbility implements SubAbility
         if (getSandBlock(player) == Material.BLACK_CONCRETE_POWDER && effectsEnabled && target != player) {
             int durationWith = getConfig().getInt("Properties.Earth.BlackSand.WitherEffectDuration");
             int amplifierWith = getConfig().getInt("Properties.Earth.BlackSand.WitherEffectStrength");
-            target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, durationWith, amplifierWith));
+            PhasedEntityEffectManager.addPotionEffect(player, "BlackSand", target, new PotionEffect(PotionEffectType.WITHER, durationWith, amplifierWith));
             int durationDark = getConfig().getInt("Properties.Earth.BlackSand.DarknessEffectDuration");
             int amplifierDark = getConfig().getInt("Properties.Earth.BlackSand.DarknessEffectStrength");
-            target.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, durationDark, amplifierDark));
+            PhasedEntityEffectManager.addPotionEffect(player, "BlackSand", target, new PotionEffect(PotionEffectType.DARKNESS, durationDark, amplifierDark));
         }
     }
 }

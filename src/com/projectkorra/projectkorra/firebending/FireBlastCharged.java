@@ -21,6 +21,8 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.ParticleEffect;
@@ -238,7 +240,7 @@ public class FireBlastCharged extends FireAbility {
 						DamageHandler.damageEntity(entity, damage, this);
 					}
 				}
-				this.location.getWorld().playSound(this.location, Sound.ENTITY_GENERIC_EXPLODE, 5, 1);
+				PhasedSoundManager.playSound(this, this.location, Sound.ENTITY_GENERIC_EXPLODE, 5, 1);
 				ParticleEffect.EXPLOSION_HUGE.display(this.location, 1, 0, 0, 0);
 			}
 		}
@@ -266,7 +268,7 @@ public class FireBlastCharged extends FireAbility {
 			if (entity.getEntityId() == this.caster.getEntityId() || RegionProtection.isRegionProtected(this, entity.getLocation())) {
 				continue;
 			}
-			entity.setFireTicks((int) (this.fireTicks * 20));
+			PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.fireTicks * 20));
 			if (entity instanceof LivingEntity) {
 				if (!exploded) {
 					this.explode();

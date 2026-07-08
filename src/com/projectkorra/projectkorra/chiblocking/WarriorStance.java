@@ -9,6 +9,7 @@ import org.bukkit.potion.PotionEffectType;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 
 public class WarriorStance extends ChiAbility {
 
@@ -41,7 +42,7 @@ public class WarriorStance extends ChiAbility {
 		}
 		this.start();
 		this.bPlayer.setStance(this);
-		player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 0.5F, 2F);
+		PhasedSoundManager.playSoundToViewer(this, player, player.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 0.5F, 2F);
 	}
 
 	@Override
@@ -68,7 +69,7 @@ public class WarriorStance extends ChiAbility {
 		this.bPlayer.addCooldown(this);
 		this.bPlayer.setStance(null);
 		if (this.player != null) {
-			this.player.playSound(this.player.getLocation(), Sound.ENTITY_ENDER_DRAGON_SHOOT, 0.5F, 2F);
+			PhasedSoundManager.playSoundToViewer(this, this.player, this.player.getLocation(), Sound.ENTITY_ENDER_DRAGON_SHOOT, 0.5F, 2F);
 			this.player.removePotionEffect(PotionEffectType.RESISTANCE);
 			this.player.removePotionEffect(PotionEffectType.STRENGTH);
 		}

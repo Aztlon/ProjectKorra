@@ -21,6 +21,7 @@ import org.bukkit.util.Vector;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.LavaAbility;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
@@ -215,7 +216,7 @@ public class LavaSurge extends LavaAbility {
 				playEarthbendingSound(b.getLocation());
 
 				for (int i = 0; i < 2; i++) {
-					final TempBlock tb = new TempBlock(b, Material.LAVA);
+					final TempBlock tb = new TempBlock(b, Material.LAVA, this);
 					this.fractureTempBlocks.add(tb);
 				}
 			}
@@ -257,7 +258,7 @@ public class LavaSurge extends LavaAbility {
 					if (e instanceof LivingEntity) {
 						if (e.getEntityId() != this.player.getEntityId()) {
 							DamageHandler.damageEntity(e, this.impactDamage, this);
-							e.setFireTicks(100);
+							PhasedEntityEffectManager.setFireTicks(this, e, 100);
 							GeneralMethods.setVelocity(this, e, this.direction.clone());
 						}
 					}

@@ -130,7 +130,7 @@ public class EarthBlast extends EarthAbility {
         block.setType(sourceType);
         block.setType(originalType);
 	
-		sourceBlock = new TempBlock(block, sourceType.createBlockData(), 20000);
+		sourceBlock = new TempBlock(block, sourceType.createBlockData(), 20000, this);
 	}
 
 	private Material selectMaterialForSource(Material material) {
@@ -382,7 +382,7 @@ public class EarthBlast extends EarthAbility {
 			playEarthbendingSound(location);
 
 			sourceBlock.revertBlock();
-			new TempBlock(location.getBlock(), Material.AIR.createBlockData(), 10000);
+			new TempBlock(location.getBlock(), Material.AIR.createBlockData(), 10000, this);
 			blastBlock = new TempBlock(location.getBlock(), blockData, this);
 		}
 

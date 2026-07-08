@@ -18,6 +18,7 @@ import com.projectkorra.projectkorra.ability.BlueFireAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
@@ -129,8 +130,9 @@ public class WallOfFire extends FireAbility {
 			DamageHandler.damageEntity(entity, this.damage, this);
 			AirAbility.breakBreathbendingHold(entity);
 		}
-		entity.setFireTicks((int) (this.fireTicks * 20));
-		new FireDamageTimer(entity, this.caster, this);
+		if (PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.fireTicks * 20))) {
+			new FireDamageTimer(entity, this.caster, this);
+		}
 	}
 
 	private void damage() {

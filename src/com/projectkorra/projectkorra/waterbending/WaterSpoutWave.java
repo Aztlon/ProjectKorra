@@ -404,7 +404,7 @@ public class WaterSpoutWave extends WaterAbility {
 		if (this.affectedBlocks.containsKey(block)) {
 			this.affectedBlocks.get(block).revertBlock();
 		}
-		TempBlock tb = new TempBlock(block, data, this.trailRevertTime).setBendableSource(bendableIce);
+		TempBlock tb = new TempBlock(block, data, this.trailRevertTime, this).setBendableSource(bendableIce);
 		tb.setRevertTask(() -> this.affectedBlocks.remove(block));
 		this.affectedBlocks.put(block, tb);
 	}
@@ -442,7 +442,7 @@ public class WaterSpoutWave extends WaterAbility {
 					}
 					if (ElementalAbility.isAir(block.getType()) || isIce(block) || this.isWaterbendable(block)) {
 						if (!FROZEN_BLOCKS.containsKey(block)) {
-							final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster)).setBendableSource(bendableIce);
+							final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster), this).setBendableSource(bendableIce);
 							FROZEN_BLOCKS.put(block, tblock);
 							if (this.revertIceSphere) {
 								tblock.setRevertTime(this.revertSphereTime + ThreadLocalRandom.current().nextLong(-500, 500));

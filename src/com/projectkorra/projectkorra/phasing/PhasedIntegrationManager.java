@@ -38,6 +38,7 @@ public final class PhasedIntegrationManager {
 
 	private static final Map<String, AtomicLong> COUNTERS = new ConcurrentHashMap<>();
 	private static final AtomicLong LAST_SUMMARY_MS = new AtomicLong(0);
+	private static final ThreadLocal<Ability> CURRENT_ABILITY_CONTEXT = new ThreadLocal<>();
 
 	private static volatile long lastServiceLookup;
 	private static volatile PhasedAbilityGate cachedGate;
@@ -57,6 +58,34 @@ public final class PhasedIntegrationManager {
 		lastServiceLookup = 0L;
 		cachedGate = null;
 		ProjectKorra.log.info("Phased integration config loaded: enabled=" + enabled + ", mode=" + rolloutMode + ", fallback=" + fallbackBehavior);
+	}
+
+	public static void runWithAbilityContext(@Nullable final Ability ability, final Runnable action) {
+		if (action == null) {
+			return;
+		}
+
+		final Ability previousAbility = CURRENT_ABILITY_CONTEXT.get();
+		if (ability == null) {
+			CURRENT_ABILITY_CONTEXT.remove();
+		} else {
+			CURRENT_ABILITY_CONTEXT.set(ability);
+		}
+
+		try {
+			action.run();
+		} finally {
+			if (previousAbility == null) {
+				CURRENT_ABILITY_CONTEXT.remove();
+			} else {
+				CURRENT_ABILITY_CONTEXT.set(previousAbility);
+			}
+		}
+	}
+
+	@Nullable
+	public static Ability getCurrentAbilityContext() {
+		return CURRENT_ABILITY_CONTEXT.get();
 	}
 
 	public static boolean shouldAllow(final GateRequest request) {
@@ -84,6 +113,23 @@ public final class PhasedIntegrationManager {
 	public static GateRequest requestFromAbility(@Nullable final Ability ability, @Nullable final UUID targetEntityUuid, final GateStage stage,
 			@Nullable final Location location, @Nullable final UUID viewerUuid) {
 		return new GateRequest(sourceUuid(ability), targetEntityUuid, stage, ability == null ? null : ability.getName(), location, viewerUuid);
+	}
+
+	public static GateRequest requestFromSource(@Nullable final LivingEntity source, @Nullable final String abilityId, final GateStage stage,
+			@Nullable final Location location, @Nullable final UUID viewerUuid) {
+		return new GateRequest(source == null ? null : source.getUniqueId(), null, stage, abilityId, location, viewerUuid);
+	}
+
+	public static GateRequest requestFromSource(@Nullable final LivingEntity source, @Nullable final String abilityId,
+			@Nullable final UUID targetEntityUuid, final GateStage stage, @Nullable final Location location, @Nullable final UUID viewerUuid) {
+		return new GateRequest(source == null ? null : source.getUniqueId(), targetEntityUuid, stage, abilityId, location, viewerUuid);
+	}
+
+	public static GateRequest requestFromAbilityCollision(@Nullable final Ability sourceAbility, @Nullable final Ability targetAbility,
+			@Nullable final Location sourceLocation, @Nullable final Location targetLocation) {
+		return new GateRequest(sourceUuid(sourceAbility), sourceUuid(targetAbility), GateStage.COLLISION,
+				sourceAbility == null ? null : sourceAbility.getName(), collisionLocation(sourceLocation, targetLocation), null,
+				targetAbility == null ? null : targetAbility.getName());
 	}
 
 	private static GateDecision evaluateProvider(final GateRequest request) {
@@ -121,7 +167,7 @@ public final class PhasedIntegrationManager {
 			case OBSERVE:
 				return false;
 			case SOFT_BLOCK:
-				return stage == GateStage.DAMAGE || stage == GateStage.COLLISION;
+				return stage == GateStage.DAMAGE || stage == GateStage.COLLISION || stage == GateStage.EFFECT;
 			case ENFORCE:
 			default:
 				return true;
@@ -138,6 +184,7 @@ public final class PhasedIntegrationManager {
 
 		if (shouldLogDecision(decision, denied)) {
 			ProjectKorra.log.info("[PhasedGate] abilityId=" + value(request.getAbilityId())
+					+ " targetAbilityId=" + value(request.getTargetAbilityId())
 					+ " stage=" + request.getStage().getId()
 					+ " sourceEntityUuid=" + value(request.getSourceEntityUuid())
 					+ " targetEntityUuid=" + value(request.getTargetEntityUuid())
@@ -230,5 +277,17 @@ public final class PhasedIntegrationManager {
 		}
 		final LivingEntity caster = ability.getCaster();
 		return caster == null ? null : caster.getUniqueId();
+	}
+
+	@Nullable
+	private static Location collisionLocation(@Nullable final Location sourceLocation, @Nullable final Location targetLocation) {
+		if (sourceLocation != null && targetLocation != null
+				&& sourceLocation.getWorld() != null && sourceLocation.getWorld().equals(targetLocation.getWorld())) {
+			return new Location(sourceLocation.getWorld(),
+					(sourceLocation.getX() + targetLocation.getX()) / 2.0D,
+					(sourceLocation.getY() + targetLocation.getY()) / 2.0D,
+					(sourceLocation.getZ() + targetLocation.getZ()) / 2.0D);
+		}
+		return sourceLocation == null ? targetLocation : sourceLocation;
 	}
 }

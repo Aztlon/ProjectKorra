@@ -21,6 +21,7 @@ import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.HealingAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.chiblocking.Smokescreen;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
 import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
@@ -215,7 +216,7 @@ public class HealingWaters extends HealingAbility {
 
 		for (final PotionEffect effect : livingEntity.getActivePotionEffects()) {
 			if (ElementalAbility.isNegativeEffect(effect.getType())) {
-				livingEntity.removePotionEffect(effect.getType());
+				PhasedEntityEffectManager.removePotionEffect(this, livingEntity, effect.getType());
 			}
 		}
 	}
@@ -231,7 +232,10 @@ public class HealingWaters extends HealingAbility {
 
 	private void applyHealing(final LivingEntity livingEntity) {
 		if (livingEntity.getHealth() < livingEntity.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()) {
-			livingEntity.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 30, this.potionPotency));
+			if (!PhasedEntityEffectManager.addPotionEffect(this, livingEntity, new PotionEffect(PotionEffectType.REGENERATION, 30, this.potionPotency))) {
+				this.healing = false;
+				return;
+			}
 			AirAbility.breakBreathbendingHold(livingEntity);
 			this.healing = true;
 			this.healingSelf = false;

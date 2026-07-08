@@ -33,6 +33,7 @@ import com.projectkorra.projectkorra.earthbending.RaiseEarth;
 import com.projectkorra.projectkorra.earthbending.Shockwave;
 import com.projectkorra.projectkorra.earthbending.lava.LavaFlow;
 import com.projectkorra.projectkorra.earthbending.passive.DensityShift;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.Information;
 import com.projectkorra.projectkorra.util.ParticleEffect;
@@ -242,7 +243,7 @@ public abstract class EarthAbility extends ElementalAbility {
 			} else if (this.isTransparent(affectedblock)) {
 				if (throwCaster) {
 					for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(affectedblock.getLocation(), getEarthPushRadius())) {
-						entity.setVelocity(norm.clone().multiply(getEarthPush()));
+						GeneralMethods.setVelocity(this, entity, norm.clone().multiply(getEarthPush()));
 					}
 				}
 				if (up) {
@@ -596,7 +597,7 @@ public abstract class EarthAbility extends ElementalAbility {
 			} catch (final IllegalArgumentException exception) {
 				PkLang.warning("Your current value for 'Properties.Earth.EarthSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}
@@ -613,7 +614,7 @@ public abstract class EarthAbility extends ElementalAbility {
 			} catch (final IllegalArgumentException exception) {
 				PkLang.warning("Your current value for 'Properties.Earth.MetalSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}
@@ -630,7 +631,7 @@ public abstract class EarthAbility extends ElementalAbility {
 			} catch (final IllegalArgumentException exception) {
 				PkLang.warning("Your current value for 'Properties.Earth.SandSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}
@@ -647,7 +648,7 @@ public abstract class EarthAbility extends ElementalAbility {
 			} catch (final IllegalArgumentException exception) {
 				PkLang.warning("Your current value for 'Properties.Earth.LavaSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}

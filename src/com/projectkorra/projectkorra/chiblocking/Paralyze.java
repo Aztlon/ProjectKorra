@@ -9,11 +9,11 @@ import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.ability.ChiAbility;
-import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.airbending.Suffocate;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.chiblocking.passive.ChiPassive;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.MovementHandler;
 
 import lombok.Getter;
@@ -69,9 +69,9 @@ public class Paralyze extends ChiAbility {
 		if (Suffocate.isChannelingSphere(entity)) {
 			Suffocate.remove(entity);
 		}
-		final MovementHandler mh = new MovementHandler(entity, CoreAbility.getAbility(Paralyze.class));
+		final MovementHandler mh = new MovementHandler(entity, this);
 		mh.stopWithDuration((long) (this.duration / 1000D * 20), Element.NON.getColor() + "* Paralyzed *");
-		entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 2, 0);
+		PhasedSoundManager.playSound(this, entity.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 2, 0);
 	}
 
 	@Override

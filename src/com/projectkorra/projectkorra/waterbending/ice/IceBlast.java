@@ -20,6 +20,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.IceAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
@@ -227,8 +228,8 @@ public class IceBlast extends IceAbility {
 			TempBlock.get(this.sourceBlock).setType(Material.PACKED_ICE);
 			this.source = TempBlock.get(this.sourceBlock);
 		} else {
-			new TempBlock(this.sourceBlock, Material.AIR.createBlockData(), 10_000L);
-			this.source = new TempBlock(this.sourceBlock, Material.PACKED_ICE);
+			new TempBlock(this.sourceBlock, Material.AIR.createBlockData(), 10_000L, this);
+			this.source = new TempBlock(this.sourceBlock, Material.PACKED_ICE, this);
 		}
 	}
 
@@ -321,7 +322,7 @@ public class IceBlast extends IceAbility {
 				TempBlock.get(this.sourceBlock).setType(Material.PACKED_ICE);
 				this.source = TempBlock.get(this.sourceBlock);
 			} else {
-				this.source = new TempBlock(this.sourceBlock, Material.PACKED_ICE);
+				this.source = new TempBlock(this.sourceBlock, Material.PACKED_ICE, this);
 			}
 
 			for (int x = 0; x < 10; x++) {
@@ -342,7 +343,7 @@ public class IceBlast extends IceAbility {
 			ParticleEffect.ITEM_CRACK.display(this.location, 2, Math.random(), Math.random(), Math.random(), new ItemStack(Material.ICE));
 			ParticleEffect.SNOW_SHOVEL.display(this.location, 2, Math.random(), Math.random(), Math.random(), 0);
 		}
-		this.location.getWorld().playSound(this.location, Sound.BLOCK_GLASS_BREAK, 5, 1.3f);
+		PhasedSoundManager.playSound(this, this.location, Sound.BLOCK_GLASS_BREAK, 5, 1.3f);
 	}
 
 	@Override

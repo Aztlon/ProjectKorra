@@ -2,6 +2,7 @@ package com.projectkorra.projectkorra.util;
 
 import java.util.UUID;
 
+import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.phasing.GateStage;
 import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import com.projectkorra.projectkorra.util.particles.ParticleCompatibilityService;
@@ -13,6 +14,7 @@ import org.bukkit.Particle.DustOptions;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public enum ParticleEffect {
 	
@@ -191,7 +193,11 @@ public enum ParticleEffect {
 	 * @param amount how many of the particle to display
 	 */
 	public void display(Location loc, int amount) {
-		display(loc, amount, 0, 0, 0);
+		display(null, loc, amount);
+	}
+
+	public void display(@Nullable final Ability ability, final Location loc, final int amount) {
+		display(ability, loc, amount, 0, 0, 0);
 	}
 	
 	/**
@@ -203,7 +209,11 @@ public enum ParticleEffect {
 	 * @param offsetZ random offset on the z axis
 	 */
 	public void display(Location loc, int amount, double offsetX, double offsetY, double offsetZ) {
-		display(loc, amount, offsetX, offsetY, offsetZ, 0);
+		display(null, loc, amount, offsetX, offsetY, offsetZ);
+	}
+
+	public void display(@Nullable final Ability ability, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ) {
+		display(ability, loc, amount, offsetX, offsetY, offsetZ, 0);
 	}
 	
 	/**
@@ -216,8 +226,12 @@ public enum ParticleEffect {
 	 * @param extra extra data to affect the particle, usually affects speed or does nothing
 	 */
 	public void display(Location loc, int amount, double offsetX, double offsetY, double offsetZ, double extra) {
+		display(null, loc, amount, offsetX, offsetY, offsetZ, extra);
+	}
+
+	public void display(@Nullable final Ability ability, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ, final double extra) {
 		if (particle == Particle.ENTITY_EFFECT) {
-			display(loc, amount, 0, 0, 0, extra, Color.fromRGB((int) (offsetX * 255), (int) (offsetY * 255), (int) (offsetZ * 255)));
+			display(ability, loc, amount, 0, 0, 0, extra, Color.fromRGB((int) (offsetX * 255), (int) (offsetY * 255), (int) (offsetZ * 255)));
 			return;
 		}
 
@@ -228,7 +242,7 @@ public enum ParticleEffect {
 		if (particle.getDataType() == Float.class) {
 			data = 1.0f; // default size
 		}
-		this.spawnScoped(loc, amount, offsetX, offsetY, offsetZ, extra, data);
+		this.spawnScoped(ability, loc, amount, offsetX, offsetY, offsetZ, extra, data);
 	}
 	
 	/**
@@ -241,7 +255,11 @@ public enum ParticleEffect {
 	 * @param data data to display the particle with, only applicable on several particle types (check the enum)
 	 */
 	public void display(Location loc, int amount, double offsetX, double offsetY, double offsetZ, Object data) {
-		display(loc, amount, offsetX, offsetY, offsetZ, 0, data);
+		display(null, loc, amount, offsetX, offsetY, offsetZ, data);
+	}
+
+	public void display(@Nullable final Ability ability, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ, final Object data) {
+		display(ability, loc, amount, offsetX, offsetY, offsetZ, 0, data);
 	}
 	
 	/**
@@ -255,23 +273,26 @@ public enum ParticleEffect {
 	 * @param data data to display the particle with, only applicable on several particle types (check the enum)
 	 */
 	public void display(Location loc, int amount, double offsetX, double offsetY, double offsetZ, double extra, Object data) {
+		display(null, loc, amount, offsetX, offsetY, offsetZ, extra, data);
+	}
+
+	public void display(@Nullable final Ability ability, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ, final double extra, final Object data) {
 		if (dataClass.isAssignableFrom(Void.class) || data == null || !dataClass.isAssignableFrom(data.getClass())) {
-			display(loc, amount, offsetX, offsetY, offsetZ, extra);
+			display(ability, loc, amount, offsetX, offsetY, offsetZ, extra);
 		} else {
-			this.spawnScoped(loc, amount, offsetX, offsetY, offsetZ, extra, data);
+			this.spawnScoped(ability, loc, amount, offsetX, offsetY, offsetZ, extra, data);
 		}
 	}
 
-	private void spawnScoped(final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ,
-			final double extra, final Object data) {
+	private void spawnScoped(@Nullable final Ability ability, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ, final double extra, final Object data) {
 		if (loc == null || loc.getWorld() == null) {
 			return;
 		}
 
+		final Ability sourceAbility = ability == null ? PhasedIntegrationManager.getCurrentAbilityContext() : ability;
 		for (final Player viewer : loc.getWorld().getPlayers()) {
 			final UUID viewerUuid = viewer.getUniqueId();
-			if (!PhasedIntegrationManager.shouldAllow(
-					PhasedIntegrationManager.requestFromAbility(null, null, GateStage.PARTICLE, loc, viewerUuid))) {
+			if (!PhasedIntegrationManager.shouldAllow(PhasedIntegrationManager.requestFromAbility(sourceAbility, null, GateStage.PARTICLE, loc, viewerUuid))) {
 				continue;
 			}
 			ParticleCompatibilityService.spawn(viewer, new ParticleSpawnRequest(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data));

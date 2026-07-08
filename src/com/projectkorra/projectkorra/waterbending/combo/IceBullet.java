@@ -183,7 +183,7 @@ public class IceBullet extends IceAbility implements ComboAbility {
 	}
 
 	public void createBlock(final Block block, final BlockData data) {
-		this.affectedBlocks.put(block, new TempBlock(block, data).setBendableSource(bendableIce));
+		this.affectedBlocks.put(block, new TempBlock(block, data, this).setBendableSource(bendableIce));
 	}
 
 	public void drawWaterCircle(final Location loc, final double theta, final double increment, final double radius) {
@@ -234,7 +234,7 @@ public class IceBullet extends IceAbility implements ComboAbility {
 			this.location = this.origin.clone();
 			this.state = AbilityState.ICE_BULLET_FORMING;
 			this.direction = new Vector(1, 0, 1);
-			this.waterGrabber = new WaterSourceGrabber(this.player, this.origin.clone());
+			this.waterGrabber = new WaterSourceGrabber(this.player, this.origin.clone(), this);
 		} else if (this.waterGrabber.getState() == WaterSourceGrabber.AnimationState.FAILED) {
 			this.remove();
 			return;

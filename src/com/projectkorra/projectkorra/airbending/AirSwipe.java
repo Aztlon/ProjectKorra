@@ -211,10 +211,10 @@ public class AirSwipe extends AirAbility {
 							LavaFlow.removeBlock(block);
 							return false;// TODO: Make more generic for future lava generating moves.
 						} else if (block.getBlockData() instanceof Levelled && ((Levelled) block.getBlockData()).getLevel() == 0) {
-							new TempBlock(block, Material.OBSIDIAN);
+							new TempBlock(block, Material.OBSIDIAN, this);
 							return false;
 						} else {
-							new TempBlock(block, Material.COBBLESTONE);
+							new TempBlock(block, Material.COBBLESTONE, this);
 							return false;
 						}
 					} else {

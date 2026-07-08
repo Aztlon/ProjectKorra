@@ -17,6 +17,7 @@ import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.airbending.AirSpout;
 import com.projectkorra.projectkorra.airbending.Suffocate;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.logging.PkLang;
 
@@ -161,7 +162,7 @@ public abstract class AirAbility extends ElementalAbility {
 			} catch (final IllegalArgumentException exception) {
 				PkLang.warning("Your current value for 'Properties.Air.Sound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}

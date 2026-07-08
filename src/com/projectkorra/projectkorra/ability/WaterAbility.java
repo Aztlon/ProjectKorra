@@ -25,6 +25,7 @@ import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.util.Collision;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ParticleEffect;
@@ -390,7 +391,7 @@ public abstract class WaterAbility extends ElementalAbility {
 			} catch (final IllegalArgumentException exception) {
 				PkLang.warning("Your current value for 'Properties.Water.IceSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}
@@ -407,7 +408,7 @@ public abstract class WaterAbility extends ElementalAbility {
 			} catch (final IllegalArgumentException exception) {
 				PkLang.warning("Your current value for 'Properties.Water.PlantSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}
@@ -424,7 +425,7 @@ public abstract class WaterAbility extends ElementalAbility {
 			} catch (final IllegalArgumentException exception) {
 				PkLang.warning("Your current value for 'Properties.Water.WaterSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}

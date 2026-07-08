@@ -14,7 +14,6 @@ import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.ability.ComboAbility;
-import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
@@ -50,7 +49,7 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 			if (RegionProtection.isRegionProtected(this, this.target.getLocation()) || ((this.target instanceof Player) && Commands.invincible.contains(this.target.getName()))) {
 				return;
 			}
-			paralyze(this.target, this.duration);
+			this.paralyze(this.target, this.duration);
 			this.bender.addCooldown(this);
 		}
 	}
@@ -62,8 +61,8 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 	 * @param target The Entity to be paralyzed
 	 * @param duration The time in milliseconds the target will be paralyzed
 	 */
-	private static void paralyze(final Entity target, final Long duration) {
-		final MovementHandler mh = new MovementHandler((LivingEntity) target, CoreAbility.getAbility(Immobilize.class));
+	private void paralyze(final Entity target, final Long duration) {
+		final MovementHandler mh = new MovementHandler((LivingEntity) target, this);
 		mh.stopWithDuration(duration / 1000 * 20, Element.NON.getColor() + "* Immobilized *");
 	}
 

@@ -183,7 +183,7 @@ public class WaterArmsSpear extends WaterAbility {
 				return;
 			}
 
-			waterBlocks.add(new TempBlock(this.location.getBlock(), Material.WATER));
+			waterBlocks.add(new TempBlock(this.location.getBlock(), Material.WATER, this));
 			getIceBlocks().put(this.location.getBlock(), System.currentTimeMillis() + 600L);
 			final Vector direction = GeneralMethods.getDirection(this.initLocation, GeneralMethods.getTargetedLocation(this.player, this.spearRange, getTransparentMaterials())).normalize();
 
@@ -207,7 +207,7 @@ public class WaterArmsSpear extends WaterAbility {
 						getIceBlocks().remove(block);
 					}
 
-					iceBlocks.add(new TempBlock(block, iceMaterial(this.player)).setBendableSource(bendableIce));
+					iceBlocks.add(new TempBlock(block, iceMaterial(this.player), this).setBendableSource(bendableIce));
 
 					getIceBlocks().put(block, System.currentTimeMillis() + this.spearDuration + (long) (Math.random() * 500));
 				}
@@ -254,7 +254,7 @@ public class WaterArmsSpear extends WaterAbility {
 					}
 				}
 				playIcebendingSound(block.getLocation());
-				new TempBlock(block, iceMaterial(this.player)).setBendableSource(bendableIce);
+				new TempBlock(block, iceMaterial(this.player), this).setBendableSource(bendableIce);
 				getIceBlocks().put(block, System.currentTimeMillis() + this.spearDuration + (long) (Math.random() * 500));
 			}
 		}

@@ -106,7 +106,6 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempFallingBlock;
 import com.projectkorra.projectkorra.util.logging.PkLang;
 import com.projectkorra.projectkorra.util.particles.ParticleCompatibilityService;
-import com.projectkorra.projectkorra.util.particles.ParticleSpawnRequest;
 import com.projectkorra.projectkorra.waterbending.WaterManipulation;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
 import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
@@ -266,6 +265,10 @@ public class GeneralMethods {
 	}
 
 	public static void displayColoredParticle(final Location loc, ParticleEffect type, final String hexVal, final int amount, final double xOffset, final double yOffset, final double zOffset) {
+		displayColoredParticle(null, loc, type, hexVal, amount, xOffset, yOffset, zOffset);
+	}
+
+	public static void displayColoredParticle(@Nullable final Ability ability, final Location loc, ParticleEffect type, final String hexVal, final int amount, final double xOffset, final double yOffset, final double zOffset) {
 		Location clone = loc.clone();
 		int r = 0;
 		int g = 0;
@@ -288,18 +291,12 @@ public class GeneralMethods {
 			type = ParticleEffect.RED_DUST;
 		}
 
+		final Color color = Color.fromRGB(r, g, b);
 		for (int i = 0; i < amount; i++) {
-			for (final Player viewer : clone.getWorld().getPlayers()) {
-				if (!PhasedIntegrationManager.shouldAllow(
-						PhasedIntegrationManager.requestFromAbility(null, null, GateStage.PARTICLE, clone, viewer.getUniqueId()))) {
-					continue;
-				}
-
-				if (type.getParticle() == Particle.DUST) {
-					ParticleCompatibilityService.spawn(viewer, new ParticleSpawnRequest(type.getParticle(), clone, 0, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(r, g, b), 1)));
-				} else { // entity effect
-					ParticleCompatibilityService.spawn(viewer, new ParticleSpawnRequest(type.getParticle(), clone, 1, 0, 0, 0, 0, Color.fromRGB(r, g, b)));
-				}
+			if (type.getParticle() == Particle.DUST) {
+				type.display(ability, clone, 0, 0, 0, 0, 0, new Particle.DustOptions(color, 1));
+			} else { // entity effect
+				type.display(ability, clone, 1, 0, 0, 0, 0, color);
 			}
 //			type.display(clone, 0, 0, 0, 0, Color.fromRGB(r, g, b));
 //			clone.getWorld().spawnParticle(Particle.ENTITY_EFFECT, clone, 0, Color.fromRGB(r, g, b));
@@ -317,6 +314,10 @@ public class GeneralMethods {
 	}
 
 	public static void displayColoredParticle(String hexVal, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ) {
+		displayColoredParticle(null, hexVal, loc, amount, offsetX, offsetY, offsetZ);
+	}
+
+	public static void displayColoredParticle(@Nullable final Ability ability, String hexVal, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ) {
 		int r = 0;
 		int g = 0;
 		int b = 0;
@@ -331,7 +332,7 @@ public class GeneralMethods {
 			b = Integer.valueOf(hexVal.substring(4, 6), 16).intValue();
 		}
 
-		new ColoredParticle(Color.fromRGB(r, g, b), 1F).display(loc, amount, offsetX, offsetY, offsetZ);
+		new ColoredParticle(Color.fromRGB(r, g, b), 1F).display(ability, loc, amount, offsetX, offsetY, offsetZ);
 	}
 
 	public static void displayColoredParticle(final String hexVal, final Location loc) {
@@ -1947,12 +1948,13 @@ public class GeneralMethods {
 	}
 	
 	public static void setVelocity(Ability ability, Entity entity, Vector vector) {
+		final Ability sourceAbility = ability == null ? PhasedIntegrationManager.getCurrentAbilityContext() : ability;
 		if (!PhasedIntegrationManager.shouldAllow(
-				PhasedIntegrationManager.requestFromAbility(ability, entity.getUniqueId(), GateStage.COLLISION, entity.getLocation(), null))) {
+				PhasedIntegrationManager.requestFromAbility(sourceAbility, entity.getUniqueId(), GateStage.COLLISION, entity.getLocation(), null))) {
 			return;
 		}
 
-		final AbilityVelocityAffectEntityEvent event = new AbilityVelocityAffectEntityEvent(ability, entity, vector);
+		final AbilityVelocityAffectEntityEvent event = new AbilityVelocityAffectEntityEvent(sourceAbility, entity, vector);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (event.isCancelled()) 
 			return;

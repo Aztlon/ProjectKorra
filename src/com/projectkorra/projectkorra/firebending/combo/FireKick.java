@@ -20,6 +20,7 @@ import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformatio
 import com.projectkorra.projectkorra.ability.util.ComboUtil;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -96,8 +97,8 @@ public class FireKick extends FireAbility implements ComboAbility {
 			final Vector eyeDir = this.caster.getEyeLocation().getDirection().normalize().multiply(this.range);
 			this.destination = this.caster.getEyeLocation().add(eyeDir);
 
-			this.caster.getWorld().playSound(this.caster.getLocation(), Sound.ENTITY_HORSE_JUMP, 0.5f, 0f);
-			this.caster.getWorld().playSound(this.caster.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 0.5f, 1f);
+			PhasedSoundManager.playSound(this, this.caster.getLocation(), Sound.ENTITY_HORSE_JUMP, 0.5f, 0f);
+			PhasedSoundManager.playSound(this, this.caster.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 0.5f, 1f);
 			for (int i = -30; i <= 30; i += 5) {
 				this.location = this.caster.getLocation().clone().add(0, 0.1, 0); // to account for dirt paths and other low blocks
 				Vector vec = GeneralMethods.getDirection(this.location, this.destination.clone());
@@ -113,7 +114,7 @@ public class FireKick extends FireAbility implements ComboAbility {
 				}
 				fs.runTaskTimer(ProjectKorra.plugin, 0, 1L);
 				this.tasks.add(fs);
-				this.caster.getWorld().playSound(this.caster.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 0.5f, 1f);
+				PhasedSoundManager.playSound(this, this.caster.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 0.5f, 1f);
 			}
 		} else if (this.tasks.isEmpty()) {
 			this.remove();

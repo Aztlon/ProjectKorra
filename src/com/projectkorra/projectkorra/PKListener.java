@@ -1013,13 +1013,13 @@ public class PKListener implements Listener {
 			} else {
 				if (e.getCause() == DamageCause.ENTITY_ATTACK) {
 					if (sourceBPlayer.canCurrentlyBendWithWeapons()) {
-						if (sourceBPlayer.isElementToggled(Element.NON)) {
-							if (entity instanceof final Player targetPlayer) {
-								if (ChiPassive.willChiBlock(sourcePlayer, targetPlayer)) {
-									ChiPassive.blockChi(targetPlayer);
+							if (sourceBPlayer.isElementToggled(Element.NON)) {
+								if (entity instanceof final Player targetPlayer) {
+									if (ChiPassive.willChiBlock(sourcePlayer, targetPlayer)) {
+										ChiPassive.blockChi(sourcePlayer, targetPlayer);
+									}
 								}
 							}
-						}
 					}
 				}
 			}
@@ -1296,7 +1296,7 @@ public class PKListener implements Listener {
 			final Location loc = Bloodbending.getBloodbendingLocation(player);
 			if (player.getWorld().equals(loc.getWorld())) {
 				if (!player.getVelocity().equals(Bloodbending.getBloodbendingVector(player))) {
-					player.setVelocity(Bloodbending.getBloodbendingVector(player));
+					GeneralMethods.setVelocity(Bloodbending.getBloodbendingAbility(player), player, Bloodbending.getBloodbendingVector(player));
 				}
 			}
 			return;

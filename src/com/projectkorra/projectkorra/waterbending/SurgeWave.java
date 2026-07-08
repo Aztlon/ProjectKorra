@@ -25,6 +25,8 @@ import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.firebending.FireBlast;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
@@ -123,7 +125,7 @@ public class SurgeWave extends WaterAbility {
 		if (RegionProtection.isRegionProtected(this, block.getLocation())) {
 			return;
 		} else if (!TempBlock.isTempBlock(block)) {
-			new TempBlock(block, Material.WATER);
+			new TempBlock(block, Material.WATER, this);
 			this.waveBlocks.put(block, block);
 		}
 	}
@@ -182,7 +184,7 @@ public class SurgeWave extends WaterAbility {
 					}
 				}
 
-				final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster)).setBendableSource(bendableIce);
+				final TempBlock tblock = new TempBlock(block, iceMaterial(this.caster), this).setBendableSource(bendableIce);
 
 				tblock.setRevertTask(() -> SurgeWave.this.frozenBlocks.remove(block));
 
@@ -339,12 +341,12 @@ public class SurgeWave extends WaterAbility {
 								TempBlock tempBlock;
 
 								if (levelled.getLevel() == 0)
-									tempBlock = new TempBlock(blockRelative, Material.OBSIDIAN);
+									tempBlock = new TempBlock(blockRelative, Material.OBSIDIAN, this);
 								else
-									tempBlock = new TempBlock(blockRelative, Material.COBBLESTONE);
+									tempBlock = new TempBlock(blockRelative, Material.COBBLESTONE, this);
 
 								tempBlock.setRevertTime(obsidianDuration);
-								tempBlock.getBlock().getWorld().playSound(tempBlock.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 0.2F, 1);
+								PhasedSoundManager.playSound(this, tempBlock.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 0.2F, 1);
 							}
 						}
 					}
@@ -386,10 +388,10 @@ public class SurgeWave extends WaterAbility {
 						GeneralMethods.setVelocity(this, entity, entity.getVelocity().clone().add(dir.clone().multiply(this.getNightFactor(this.knockback))));
 
 						entity.setFallDistance(0);
-						if (entity.getFireTicks() > 0) {
+						final boolean wasOnFire = entity.getFireTicks() > 0;
+						if (PhasedEntityEffectManager.setFireTicks(this, entity, 0) && wasOnFire) {
 							entity.getWorld().playEffect(entity.getLocation(), Effect.EXTINGUISH, 0);
 						}
-						entity.setFireTicks(0);
 						AirAbility.breakBreathbendingHold(entity);
 					}
 				}

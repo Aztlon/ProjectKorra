@@ -53,7 +53,7 @@ public class DensityShift extends EarthAbility implements PassiveAbility {
 							sand = Material.RED_SAND;
 						}
 
-						final TempBlock tb = new TempBlock(affectedBlock, sand);
+						final TempBlock tb = new TempBlock(affectedBlock, sand, player, "DensityShift");
 
 						if (!SAND_BLOCKS.contains(tb)) {
 							SAND_BLOCKS.add(tb);

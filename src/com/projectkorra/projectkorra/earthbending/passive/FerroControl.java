@@ -11,6 +11,7 @@ import org.bukkit.entity.Player;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.MetalAbility;
 import com.projectkorra.projectkorra.ability.PassiveAbility;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 
 public class FerroControl extends MetalAbility implements PassiveAbility {
@@ -57,7 +58,7 @@ public class FerroControl extends MetalAbility implements PassiveAbility {
 
 		if (used) {
 			final String sound = "BLOCK_IRON_" + (tDoor ? "TRAP" : "") + "DOOR_" + (open ? "OPEN" : "CLOSE");
-			this.block.getWorld().playSound(this.block.getLocation(), Sound.valueOf(sound), 0.5f, 0);
+			PhasedSoundManager.playSound(this, this.block.getLocation(), Sound.valueOf(sound), 0.5f, 0);
 			this.bPlayer.addCooldown(this, 200);
 		}
 		this.remove();

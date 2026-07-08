@@ -26,6 +26,8 @@ import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.object.HorizontalVelocityTracker;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
 
 public class AirSuction extends AirAbility {
@@ -165,7 +167,7 @@ public class AirSuction extends AirAbility {
 		}
 
 		final String sound = "block_wooden_" + (tDoor ? "trap" : "") + "door_" + (!open ? "open" : "close");
-		block.getWorld().playSound(block.getLocation(), sound, 0.5f, 0);
+		PhasedSoundManager.playSound(this, block.getLocation(), sound, 0.5f, 0);
 		this.affectedDoors.add(block);
 	}
 
@@ -240,10 +242,10 @@ public class AirSuction extends AirAbility {
 				new HorizontalVelocityTracker(entity, this.player, 200l, this);
 				entity.setFallDistance(0);
 
-				if (entity.getFireTicks() > 0) {
+				final boolean wasOnFire = entity.getFireTicks() > 0;
+				if (PhasedEntityEffectManager.setFireTicks(this, entity, 0) && wasOnFire) {
 					entity.getWorld().playEffect(entity.getLocation(), Effect.EXTINGUISH, 0);
 				}
-				entity.setFireTicks(0);
 				breakBreathbendingHold(entity);
 			}
 

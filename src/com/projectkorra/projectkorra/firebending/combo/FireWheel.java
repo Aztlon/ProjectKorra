@@ -23,6 +23,8 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
@@ -122,7 +124,7 @@ public class FireWheel extends FireAbility implements ComboAbility {
 
 		Block topBlock = GeneralMethods.getTopBlock(this.location, (int) this.radius, (int)this.radius + 2);
 		if (topBlock.getType().equals(Material.SNOW)) {
-			new TempBlock(topBlock, Material.AIR.createBlockData(), 60_000L + ThreadLocalRandom.current().nextLong(0, 1_000L));
+			new TempBlock(topBlock, Material.AIR.createBlockData(), 60_000L + ThreadLocalRandom.current().nextLong(0, 1_000L), this);
 //			topBlock.breakNaturally();
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
 		}
@@ -132,7 +134,7 @@ public class FireWheel extends FireAbility implements ComboAbility {
 		} else if (topBlock.getType() == Material.FIRE) {
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
 		} else if (isPlant(topBlock) && !isDecayablePlant(topBlock)) {
-			new TempBlock(topBlock, Material.AIR.createBlockData(), 60_000L + ThreadLocalRandom.current().nextLong(0, 1_000L));
+			new TempBlock(topBlock, Material.AIR.createBlockData(), 60_000L + ThreadLocalRandom.current().nextLong(0, 1_000L), this);
 //			topBlock.breakNaturally();
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
 		} else if (isAir(topBlock.getType())) {
@@ -157,14 +159,15 @@ public class FireWheel extends FireAbility implements ComboAbility {
 				if (!this.affectedEntities.contains(entity)) {
 					this.affectedEntities.add((LivingEntity) entity);
 					DamageHandler.damageEntity(entity, this.damage, this);
-					entity.setFireTicks((int) (this.fireTicks * 20));
-					new FireDamageTimer(entity, this.caster, this);
+					if (PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.fireTicks * 20))) {
+						new FireDamageTimer(entity, this.caster, this);
+					}
 				}
 			}
 		}
 
 		this.location = this.location.add(this.direction.clone().multiply(this.speed));
-		this.location.getWorld().playSound(this.location, Sound.BLOCK_FIRE_AMBIENT, 1, 1);
+		PhasedSoundManager.playSound(this, this.location, Sound.BLOCK_FIRE_AMBIENT, 1, 1);
 	}
 
 	@Override

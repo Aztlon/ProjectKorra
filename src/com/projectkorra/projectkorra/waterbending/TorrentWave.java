@@ -144,7 +144,7 @@ public class TorrentWave extends WaterAbility {
 				}
 
 				if (isTransparent(this.caster, block)) {
-					final TempBlock tempBlock = new TempBlock(block, Material.WATER);
+					final TempBlock tempBlock = new TempBlock(block, Material.WATER, this);
 					this.blocks.add(tempBlock);
 					torrentBlocks.add(block);
 				} else {

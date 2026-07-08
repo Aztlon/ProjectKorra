@@ -199,7 +199,7 @@ public class EarthGrab extends EarthAbility {
 			this.trap.setHealth(this.trapHP);
 			this.trap.setMetadata("earthgrab:trap", new FixedMetadataValue(ProjectKorra.plugin, this));
 
-			new TempBlock(this.target.getLocation().clone().subtract(0, 1, 0).getBlock(), this.target.getLocation().clone().subtract(0, 1, 0).getBlock().getType());
+			new TempBlock(this.target.getLocation().clone().subtract(0, 1, 0).getBlock(), this.target.getLocation().clone().subtract(0, 1, 0).getBlock().getType(), this);
 
 			this.mHandler = new MovementHandler(this.target, this);
 			this.mHandler.stop(Element.EARTH.getColor() + "* Trapped *");

@@ -515,7 +515,7 @@ public class WaterManipulation extends WaterAbility {
 
 			if (isTransparent(caster, block) && isTransparent(caster, eyeLoc.getBlock())) {
 				if (getTargetLocation(caster, range).distanceSquared(block.getLocation()) > 1) {
-					final TempBlock tb = new TempBlock(block, WATER);
+					final TempBlock tb = new TempBlock(block, WATER, caster, "WaterManipulation");
 
 					final WaterManipulation waterManip = new WaterManipulation(caster, block);
 					waterManip.moveWater();

@@ -82,7 +82,7 @@ public class PlantRegrowth extends PlantAbility {
 	}
 
 	@NotNull
-	private static TempBlock getTempBlock(Block b) {
+	private TempBlock getTempBlock(Block b) {
 		Material newMaterial = switch (b.getType()) {
 			case CRIMSON_NYLIUM, WARPED_NYLIUM -> Material.NETHERRACK;
 			case OAK_LOG -> Material.STRIPPED_OAK_LOG;
@@ -105,7 +105,7 @@ public class PlantRegrowth extends PlantAbility {
 			default -> Material.COARSE_DIRT;
 		};
 
-		return new TempBlock(b, newMaterial);
+		return new TempBlock(b, newMaterial, this);
 	}
 
 	public PlantRegrowth(final LivingEntity caster, final Block block) {

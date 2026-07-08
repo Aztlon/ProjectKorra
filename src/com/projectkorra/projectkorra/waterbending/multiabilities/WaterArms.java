@@ -342,7 +342,7 @@ public class WaterArms extends WaterAbility {
 				}
 			}
 		} else {
-			new TempBlock(b, data, revertTime);
+			new TempBlock(b, data, revertTime, this);
 		}
 	}
 

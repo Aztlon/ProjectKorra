@@ -15,16 +15,25 @@ public class GateRequest {
 	@Nullable
 	private final String abilityId;
 	@Nullable
+	private final String targetAbilityId;
+	@Nullable
 	private final Location location;
 	@Nullable
 	private final UUID viewerUuid;
 
 	public GateRequest(@Nullable final UUID sourceEntityUuid, @Nullable final UUID targetEntityUuid, final GateStage stage,
 			@Nullable final String abilityId, @Nullable final Location location, @Nullable final UUID viewerUuid) {
+		this(sourceEntityUuid, targetEntityUuid, stage, abilityId, location, viewerUuid, null);
+	}
+
+	public GateRequest(@Nullable final UUID sourceEntityUuid, @Nullable final UUID targetEntityUuid, final GateStage stage,
+			@Nullable final String abilityId, @Nullable final Location location, @Nullable final UUID viewerUuid,
+			@Nullable final String targetAbilityId) {
 		this.sourceEntityUuid = sourceEntityUuid;
 		this.targetEntityUuid = targetEntityUuid;
 		this.stage = stage;
 		this.abilityId = abilityId;
+		this.targetAbilityId = targetAbilityId;
 		this.location = location == null ? null : location.clone();
 		this.viewerUuid = viewerUuid;
 	}
@@ -46,6 +55,11 @@ public class GateRequest {
 	@Nullable
 	public String getAbilityId() {
 		return this.abilityId;
+	}
+
+	@Nullable
+	public String getTargetAbilityId() {
+		return this.targetAbilityId;
 	}
 
 	@Nullable

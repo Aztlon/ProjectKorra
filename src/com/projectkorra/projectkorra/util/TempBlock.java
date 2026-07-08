@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
+import com.projectkorra.projectkorra.phasing.PhasedBlockSource;
 import com.projectkorra.projectkorra.phasing.PhasedBlockVisibilityManager;
 import com.projectkorra.projectkorra.phasing.GateStage;
 import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
@@ -26,6 +27,7 @@ import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.block.data.Snowable;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import com.projectkorra.projectkorra.GeneralMethods;
@@ -54,12 +56,29 @@ public class TempBlock {
 	private boolean reverted;
 	private Runnable revertTask = null;
 	private Optional<CoreAbility> ability = Optional.empty(); // If we want this TempBlock to have an assigned ability created from it
+	private PhasedBlockSource blockSource = PhasedBlockSource.none();
 	private final boolean viewerOverlayOnly;
 	private boolean isBendableSource = false;
 	private boolean suffocate = true;
 
 	public TempBlock(final Block block, final Material newtype) {
-		this(block, newtype.createBlockData(), 0, Optional.empty(), true);
+		this(block, newtype.createBlockData(), 0, Optional.empty(), PhasedBlockSource.current(), true);
+	}
+
+	public TempBlock(final Block block, final Material newtype, final CoreAbility ability) {
+		this(block, newtype.createBlockData(), 0, ability);
+	}
+
+	public TempBlock(final Block block, final Material newtype, final long revertTime, final CoreAbility ability) {
+		this(block, newtype.createBlockData(), revertTime, ability);
+	}
+
+	public TempBlock(final Block block, final Material newtype, final LivingEntity source, final String abilityId) {
+		this(block, newtype.createBlockData(), 0, source, abilityId);
+	}
+
+	public TempBlock(final Block block, final Material newtype, final long revertTime, final LivingEntity source, final String abilityId) {
+		this(block, newtype.createBlockData(), revertTime, source, abilityId);
 	}
 
 	/**
@@ -67,29 +86,39 @@ public class TempBlock {
 	 */
 	@Deprecated
 	public TempBlock(final Block block, final Material newtype, final BlockData newData) {
-		this(block, newData, 0, Optional.empty(), true);
+		this(block, newData, 0, Optional.empty(), PhasedBlockSource.current(), true);
 	}
 	
 	public TempBlock(final Block block, final BlockData newData) {
-		this(block, newData, 0, Optional.empty(), true);
+		this(block, newData, 0, Optional.empty(), PhasedBlockSource.current(), true);
 	}
 	
 	public TempBlock(final Block block, final BlockData newData, final long revertTime, final CoreAbility ability) {
-		this(block, newData, revertTime, ability == null ? Optional.empty() : Optional.of(ability), true);
+		this(block, newData, revertTime, ability == null ? Optional.empty() : Optional.of(ability), PhasedBlockSource.fromAbility(ability), true);
 	}
 	
 	public TempBlock(final Block block, final BlockData newData, final CoreAbility ability) {
 		this(block, newData, 0, ability);
 	}
 
-	public TempBlock(final Block block, BlockData newData, final long revertTime) {
-		this(block, newData, revertTime, Optional.empty(), true);
+	public TempBlock(final Block block, final BlockData newData, final LivingEntity source, final String abilityId) {
+		this(block, newData, 0, source, abilityId);
 	}
 
-	private TempBlock(final Block block, BlockData newData, final long revertTime, final Optional<CoreAbility> sourceAbility, final boolean internalCtor) {
+	public TempBlock(final Block block, final BlockData newData, final long revertTime, final LivingEntity source, final String abilityId) {
+		this(block, newData, revertTime, Optional.empty(), PhasedBlockSource.fromEntity(source, abilityId), true);
+	}
+
+	public TempBlock(final Block block, BlockData newData, final long revertTime) {
+		this(block, newData, revertTime, Optional.empty(), PhasedBlockSource.current(), true);
+	}
+
+	private TempBlock(final Block block, BlockData newData, final long revertTime, final Optional<CoreAbility> sourceAbility,
+			final PhasedBlockSource blockSource, final boolean internalCtor) {
 		this.block = block;
 		this.newData = newData;
 		this.ability = sourceAbility;
+		this.blockSource = blockSource == null ? PhasedBlockSource.none() : blockSource;
 		this.attachedTempBlocks = new HashSet<>(0);
 		this.state = block.getState();
 		this.viewerOverlayOnly = this.shouldUseViewerOverlay(block.getLocation());
@@ -125,7 +154,7 @@ public class TempBlock {
 
 	private void applyInitialState(final BlockData newBlockData) {
 		if (this.viewerOverlayOnly) {
-			PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), newBlockData, this.ability.orElse(null));
+			PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), newBlockData, this.blockSource);
 			return;
 		}
 
@@ -494,21 +523,18 @@ public class TempBlock {
 		}
 		this.newData = data;
 		if (this.viewerOverlayOnly) {
-			PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), data, this.ability.orElse(null));
+			PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), data, this.blockSource);
 		} else {
 			this.block.setBlockData(data, applyPhysics(data.getMaterial()));
 		}
 	}
 
 	private boolean shouldUseViewerOverlay(final Location location) {
-		final CoreAbility sourceAbility = this.ability.orElse(null);
-		return PhasedBlockVisibilityManager.shouldUseViewerOverlay(sourceAbility, location);
+		return PhasedBlockVisibilityManager.shouldUseViewerOverlay(this.blockSource, location);
 	}
 
 	private boolean shouldAllowBlockMutation(final Location location) {
-		final CoreAbility sourceAbility = this.ability.orElse(null);
-		return PhasedIntegrationManager.shouldAllow(
-				PhasedIntegrationManager.requestFromAbility(sourceAbility, null, GateStage.BLOCK, location, null));
+		return PhasedIntegrationManager.shouldAllow(this.blockSource.request(GateStage.BLOCK, location, null));
 	}
 
 	public static void startReversion() {
@@ -537,7 +563,8 @@ public class TempBlock {
 	}
 
 	public TempBlock setAbility(CoreAbility ability) {
-		this.ability = Optional.of(ability);
+		this.ability = ability == null ? Optional.empty() : Optional.of(ability);
+		this.blockSource = PhasedBlockSource.fromAbility(ability);
 		return this;
 	}
 

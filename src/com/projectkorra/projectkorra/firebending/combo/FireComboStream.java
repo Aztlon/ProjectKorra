@@ -23,6 +23,8 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 
@@ -138,7 +140,7 @@ public class FireComboStream extends BukkitRunnable {
 	}
 
 	public void collision(final LivingEntity entity, final Vector direction, final CoreAbility coreAbility) {
-		entity.getLocation().getWorld().playSound(entity.getLocation(), Sound.ENTITY_VILLAGER_HURT, 0.3f, 0.3f);
+		PhasedSoundManager.playSound(coreAbility, entity.getLocation(), Sound.ENTITY_VILLAGER_HURT, 0.3f, 0.3f);
 
 		if (coreAbility.getName().equalsIgnoreCase("FireKick")) {
 			final FireKick fireKick = CoreAbility.getAbility(this.caster, FireKick.class);
@@ -167,8 +169,9 @@ public class FireComboStream extends BukkitRunnable {
 			if (!jetBlaze.getAffectedEntities().contains(entity)) {
 				jetBlaze.getAffectedEntities().add(entity);
 				DamageHandler.damageEntity(entity, this.damage, coreAbility);
-				entity.setFireTicks((int) (this.fireTicks * 20));
-				new FireDamageTimer(entity, this.caster, coreAbility);
+				if (PhasedEntityEffectManager.setFireTicks(coreAbility, entity, (int) (this.fireTicks * 20))) {
+					new FireDamageTimer(entity, this.caster, coreAbility);
+				}
 			}
 		} else if (coreAbility.getName().equalsIgnoreCase("FireWheel")) {
 			final FireWheel fireWheel = CoreAbility.getAbility(this.caster, FireWheel.class);
@@ -176,8 +179,9 @@ public class FireComboStream extends BukkitRunnable {
 			if (!fireWheel.getAffectedEntities().contains(entity)) {
 				fireWheel.getAffectedEntities().add(entity);
 				DamageHandler.damageEntity(entity, this.damage, coreAbility);
-				entity.setFireTicks((int) (this.fireTicks * 20));
-				new FireDamageTimer(entity, this.caster, coreAbility);
+				if (PhasedEntityEffectManager.setFireTicks(coreAbility, entity, (int) (this.fireTicks * 20))) {
+					new FireDamageTimer(entity, this.caster, coreAbility);
+				}
 				this.remove();
 			}
 		}

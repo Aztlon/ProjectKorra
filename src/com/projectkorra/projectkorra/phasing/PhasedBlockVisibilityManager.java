@@ -55,21 +55,29 @@ public final class PhasedBlockVisibilityManager {
 	}
 
 	public static boolean shouldUseViewerOverlay(@Nullable final Ability ability, @Nullable final Location location) {
-		if (!enabled || ability == null || location == null || location.getWorld() == null) {
+		return shouldUseViewerOverlay(PhasedBlockSource.fromAbility(ability), location);
+	}
+
+	public static boolean shouldUseViewerOverlay(@Nullable final PhasedBlockSource source, @Nullable final Location location) {
+		if (!enabled || source == null || source.isEmpty() || location == null || location.getWorld() == null) {
 			return false;
 		}
 
-		final GateRequest request = PhasedIntegrationManager.requestFromAbility(ability, null, GateStage.BLOCK, location, null);
+		final GateRequest request = source.request(GateStage.BLOCK, location, null);
 		return !PhasedIntegrationManager.shouldViewerObserve(request);
 	}
 
 	public static void applyOverlay(final Location location, final BlockData blockData, @Nullable final Ability ability) {
+		applyOverlay(location, blockData, PhasedBlockSource.fromAbility(ability));
+	}
+
+	public static void applyOverlay(final Location location, final BlockData blockData, @Nullable final PhasedBlockSource source) {
 		if (!enabled || location == null || location.getWorld() == null || blockData == null) {
 			return;
 		}
 
 		final BlockKey key = BlockKey.of(location);
-		OVERLAYS.put(key, new OverlayEntry(location, blockData, ability));
+		OVERLAYS.put(key, new OverlayEntry(location, blockData, source));
 		refreshOverlay(key);
 	}
 
@@ -95,6 +103,10 @@ public final class PhasedBlockVisibilityManager {
 	}
 
 	public static void sendScopedBlockChange(@Nullable final Ability ability, final Player viewer, final Location location, final BlockData allowedData) {
+		sendScopedBlockChange(PhasedBlockSource.fromAbility(ability), viewer, location, allowedData);
+	}
+
+	public static void sendScopedBlockChange(@Nullable final PhasedBlockSource source, final Player viewer, final Location location, final BlockData allowedData) {
 		if (viewer == null || location == null || location.getWorld() == null || allowedData == null) {
 			return;
 		}
@@ -104,7 +116,7 @@ public final class PhasedBlockVisibilityManager {
 			return;
 		}
 
-		final GateRequest request = PhasedIntegrationManager.requestFromAbility(ability, null, GateStage.BLOCK, location, viewer.getUniqueId());
+		final GateRequest request = source == null ? PhasedBlockSource.none().request(GateStage.BLOCK, location, viewer.getUniqueId()) : source.request(GateStage.BLOCK, location, viewer.getUniqueId());
 		if (PhasedIntegrationManager.shouldViewerObserve(request)) {
 			viewer.sendBlockChange(location, allowedData);
 		} else {
@@ -131,7 +143,7 @@ public final class PhasedBlockVisibilityManager {
 		final Block block = entry.location.getBlock();
 		final BlockData realData = block.getBlockData();
 		for (final Player viewer : world.getPlayers()) {
-			final GateRequest request = PhasedIntegrationManager.requestFromAbility(entry.ability, null, GateStage.BLOCK, entry.location, viewer.getUniqueId());
+			final GateRequest request = entry.source.request(GateStage.BLOCK, entry.location, viewer.getUniqueId());
 			if (PhasedIntegrationManager.shouldViewerObserve(request)) {
 				viewer.sendBlockChange(entry.location, entry.blockData);
 			} else {
@@ -168,13 +180,12 @@ public final class PhasedBlockVisibilityManager {
 	private static final class OverlayEntry {
 		private final Location location;
 		private final BlockData blockData;
-		@Nullable
-		private final Ability ability;
+		private final PhasedBlockSource source;
 
-		private OverlayEntry(final Location location, final BlockData blockData, @Nullable final Ability ability) {
+		private OverlayEntry(final Location location, final BlockData blockData, @Nullable final PhasedBlockSource source) {
 			this.location = location.clone();
 			this.blockData = blockData.clone();
-			this.ability = ability;
+			this.source = source == null ? PhasedBlockSource.none() : source;
 		}
 	}
 

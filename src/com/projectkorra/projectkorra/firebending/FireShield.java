@@ -14,6 +14,7 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 
 public class FireShield extends FireAbility {
@@ -141,8 +142,9 @@ public class FireShield extends FireAbility {
 					continue;
 				} else if (entity instanceof LivingEntity) {
 					if (this.caster.getEntityId() != entity.getEntityId() && this.ignite) {
-						entity.setFireTicks((int) (this.shieldFireTicks * 20));
-						new FireDamageTimer(entity, this.caster, this);
+						if (PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.shieldFireTicks * 20))) {
+							new FireDamageTimer(entity, this.caster, this);
+						}
 					}
 				} else if (entity instanceof Projectile) {
 					entity.remove();
@@ -168,8 +170,9 @@ public class FireShield extends FireAbility {
 					continue;
 				} else if (entity instanceof LivingEntity) {
 					if (this.caster.getEntityId() != entity.getEntityId() && this.ignite) {
-						entity.setFireTicks((int) (this.discFireTicks * 20));
-						new FireDamageTimer(entity, this.caster, this);
+						if (PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.discFireTicks * 20))) {
+							new FireDamageTimer(entity, this.caster, this);
+						}
 					}
 				} else if (entity instanceof Projectile) {
 					entity.remove();

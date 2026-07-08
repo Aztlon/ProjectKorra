@@ -38,6 +38,8 @@ import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.earthbending.lava.LavaFlow;
 import com.projectkorra.projectkorra.object.HorizontalVelocityTracker;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
@@ -228,9 +230,9 @@ public class AirBlast extends AirAbility {
 				if (LavaFlow.isLavaFlowBlock(block)) {
 					LavaFlow.removeBlock(block);
 				} else if (block.getBlockData() instanceof Levelled && ((Levelled)block.getBlockData()).getLevel() == 0) {
-					new TempBlock(block, Material.OBSIDIAN);
+					new TempBlock(block, Material.OBSIDIAN, this);
 				} else {
-					new TempBlock(block, Material.COBBLESTONE);
+					new TempBlock(block, Material.COBBLESTONE, this);
 				}
 			}
 			this.remove();
@@ -274,7 +276,7 @@ public class AirBlast extends AirAbility {
 				return;
 			}
 			GeneralMethods.setVelocity(this, entity, velocity);
-			entity.setFireTicks(0);
+			PhasedEntityEffectManager.setFireTicks(this, entity, 0);
 			AirBlast.breakBreathbendingHold(entity);
 		}
 	}
@@ -356,7 +358,7 @@ public class AirBlast extends AirAbility {
 				}
 				door.setOpen(!door.isOpen());
 				testblock.setBlockData(door);
-				testblock.getWorld().playSound(testblock.getLocation(), Sound.valueOf("BLOCK_WOODEN_DOOR_" + (door.isOpen() ? "OPEN" : "CLOSE")), 0.5f, 0.0f);
+				PhasedSoundManager.playSound(this, testblock.getLocation(), Sound.valueOf("BLOCK_WOODEN_DOOR_" + (door.isOpen() ? "OPEN" : "CLOSE")), 0.5f, 0.0f);
 				this.affectedLevers.add(testblock);
 			}
 		} else if (Arrays.asList(TDOORS).contains(testblock.getType())) {
@@ -366,7 +368,7 @@ public class AirBlast extends AirAbility {
 				}
 				tDoor.setOpen(!tDoor.isOpen());
 				testblock.setBlockData(tDoor);
-				testblock.getWorld().playSound(testblock.getLocation(), Sound.valueOf("BLOCK_WOODEN_TRAPDOOR_" + (tDoor.isOpen() ? "OPEN" : "CLOSE")), 0.5f, 0.0f);
+				PhasedSoundManager.playSound(this, testblock.getLocation(), Sound.valueOf("BLOCK_WOODEN_TRAPDOOR_" + (tDoor.isOpen() ? "OPEN" : "CLOSE")), 0.5f, 0.0f);
 			}
 		} else if (Arrays.asList(BUTTONS).contains(testblock.getType())) {
 			if (testblock.getBlockData() instanceof Switch button) {
@@ -380,18 +382,18 @@ public class AirBlast extends AirAbility {
 							button.setPowered(false);
 							testblock.setBlockData(button);
 							AirBlast.this.affectedLevers.remove(testblock);
-							testblock.getWorld().playSound(testblock.getLocation(), Sound.BLOCK_WOODEN_BUTTON_CLICK_OFF, 0.5f, 0.0f);
+							PhasedSoundManager.playSound(AirBlast.this, testblock.getLocation(), Sound.BLOCK_WOODEN_BUTTON_CLICK_OFF, 0.5f, 0.0f);
 						}
 					}.runTaskLater(ProjectKorra.plugin, 15L);
 				}
-				testblock.getWorld().playSound(testblock.getLocation(), Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 0.5f, 0.0f);
+				PhasedSoundManager.playSound(this, testblock.getLocation(), Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 0.5f, 0.0f);
 			}
 		} else if (testblock.getType() == Material.LEVER) {
 			if (testblock.getBlockData() instanceof Switch lever) {
 				lever.setPowered(!lever.isPowered());
 				testblock.setBlockData(lever);
 				this.affectedLevers.add(testblock);
-				testblock.getWorld().playSound(testblock.getLocation(), Sound.BLOCK_LEVER_CLICK, 0.5f, 0);
+				PhasedSoundManager.playSound(this, testblock.getLocation(), Sound.BLOCK_LEVER_CLICK, 0.5f, 0);
 			}
 		} else if ((testblock.getType().toString().contains("CANDLE") || testblock.getType().toString().contains("CAMPFIRE") || testblock.getType() == Material.REDSTONE_WALL_TORCH) && testblock.getBlockData() instanceof Lightable && (lightable = (Lightable)testblock.getBlockData()).isLit()) {
 			lightable.setLit(false);
@@ -453,10 +455,10 @@ public class AirBlast extends AirAbility {
 			DamageHandler.damageEntity(entity, this.damage, Objects.requireNonNullElse(this.source, this));
 			this.affectedEntities.add(entity);
 		}
-		if (entity.getFireTicks() > 0) {
+		final boolean wasOnFire = entity.getFireTicks() > 0;
+		if (PhasedEntityEffectManager.setFireTicks(this, entity, 0) && wasOnFire) {
 			entity.getWorld().playEffect(entity.getLocation(), Effect.EXTINGUISH, 0);
 		}
-		entity.setFireTicks(0);
 		AirBlast.breakBreathbendingHold(entity);
 	}
 

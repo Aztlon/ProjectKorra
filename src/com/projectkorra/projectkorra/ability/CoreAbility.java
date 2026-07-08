@@ -56,6 +56,8 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.AbilityEndEvent;
 import com.projectkorra.projectkorra.event.AbilityProgressEvent;
 import com.projectkorra.projectkorra.event.AbilityStartEvent;
+import com.projectkorra.projectkorra.phasing.GateStage;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import com.projectkorra.projectkorra.util.FlightHandler;
 import com.projectkorra.projectkorra.util.TimeUtil;
 import com.projectkorra.projectkorra.util.logging.PkLang;
@@ -183,11 +185,20 @@ public abstract class CoreAbility implements Ability {
 	 * @see #isRemoved()
 	 */
 	public void start() {
+		PhasedIntegrationManager.runWithAbilityContext(this, this::startWithAbilityContext);
+	}
+
+	private void startWithAbilityContext() {
 		if (this.caster == null || !this.isEnabled()) {
 			return;
 		}
 		if (player != null && !bender.hasUnlocked(getName())) {
 			removed = true;
+			return;
+		}
+		if (!PhasedIntegrationManager.shouldAllow(
+				PhasedIntegrationManager.requestFromAbility(this, null, GateStage.START, this.getLocation(), null))) {
+			this.remove();
 			return;
 		}
 		final AbilityStartEvent event = new AbilityStartEvent(this);
@@ -288,15 +299,17 @@ public abstract class CoreAbility implements Ability {
 				}
 
 				try {
-					if (!abil.attributesModified) {
-						abil.modifyAttributes();
-					}
+					PhasedIntegrationManager.runWithAbilityContext(abil, () -> {
+						if (!abil.attributesModified) {
+							abil.modifyAttributes();
+						}
 
 //					try (MCTiming timing = ProjectKorra.timing(abil.getName()).startTiming()) {
 						abil.progress();
 //					}
 
-					Bukkit.getServer().getPluginManager().callEvent(new AbilityProgressEvent(abil));
+						Bukkit.getServer().getPluginManager().callEvent(new AbilityProgressEvent(abil));
+					});
 				} catch (final Exception e) {
 					e.printStackTrace();
 					Bukkit.getLogger().severe(abil.toString());

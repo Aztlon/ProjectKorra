@@ -24,6 +24,7 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.FireBlast;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
@@ -130,7 +131,7 @@ public class SurgeWall extends WaterAbility {
 			final Block block = eyeLoc.add(eyeLoc.getDirection().normalize()).getBlock();
 
 			if (isTransparent(caster, block) && isTransparent(caster, eyeLoc.getBlock())) {
-				final TempBlock tempBlock = new TempBlock(block, Material.WATER);
+				final TempBlock tempBlock = new TempBlock(block, Material.WATER, this);
 				tempBlock.setBendableSource(true);
 				SOURCE_BLOCKS.add(tempBlock);
 
@@ -166,7 +167,7 @@ public class SurgeWall extends WaterAbility {
 		this.frozen = true;
 		for (final Block block : WALL_BLOCKS.keySet()) {
 			if (WALL_BLOCKS.get(block) == this.caster) {
-				new TempBlock(block, iceMaterial(this.caster));
+				new TempBlock(block, iceMaterial(this.caster), this);
 				playIcebendingSound(block.getLocation());
 			}
 		}
@@ -176,7 +177,7 @@ public class SurgeWall extends WaterAbility {
 		this.frozen = false;
 		for (final Block block : WALL_BLOCKS.keySet()) {
 			if (WALL_BLOCKS.get(block) == this.caster) {
-				new TempBlock(block, Material.WATER);
+				new TempBlock(block, Material.WATER, this);
 			}
 		}
 	}
@@ -339,12 +340,12 @@ public class SurgeWall extends WaterAbility {
 								TempBlock tempBlock;
 
 								if (levelled.getLevel() == 0)
-									tempBlock = new TempBlock(blockRelative, Material.OBSIDIAN);
+									tempBlock = new TempBlock(blockRelative, Material.OBSIDIAN, this);
 								else
-									tempBlock = new TempBlock(blockRelative, Material.COBBLESTONE);
+									tempBlock = new TempBlock(blockRelative, Material.COBBLESTONE, this);
 
 								tempBlock.setRevertTime(obsidianDuration);
-								tempBlock.getBlock().getWorld().playSound(tempBlock.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 0.2F, 1);
+								PhasedSoundManager.playSound(this, tempBlock.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 0.2F, 1);
 							}
 						}
 					}
@@ -397,9 +398,9 @@ public class SurgeWall extends WaterAbility {
 		}
 
 		if (this.frozen) {
-			new TempBlock(block, iceMaterial(this.caster));
+			new TempBlock(block, iceMaterial(this.caster), this);
 		} else {
-			new TempBlock(block, Material.WATER);
+			new TempBlock(block, Material.WATER, this);
 		}
 	}
 
@@ -466,7 +467,7 @@ public class SurgeWall extends WaterAbility {
 		if (RegionProtection.isRegionProtected(this, block.getLocation())) {
 			return;
 		} else if (!TempBlock.isTempBlock(block)) {
-			new TempBlock(block, Material.WATER);
+			new TempBlock(block, Material.WATER, this);
 			AFFECTED_BLOCKS.put(block, block);
 		}
 	}
@@ -508,7 +509,7 @@ public class SurgeWall extends WaterAbility {
 				final Block block = eyeLoc.add(eyeLoc.getDirection().normalize()).getBlock();
 
 				if (isTransparent(caster, block) && isTransparent(caster, eyeLoc.getBlock())) {
-					final TempBlock tempBlock = new TempBlock(block, Material.WATER);
+					final TempBlock tempBlock = new TempBlock(block, Material.WATER, caster, "SurgeWall");
 					tempBlock.setBendableSource(true);
 					SOURCE_BLOCKS.add(tempBlock);
 
