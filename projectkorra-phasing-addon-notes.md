@@ -43,6 +43,12 @@ Core `TempBlock` creation now generally carries caster and ability provenance in
 
 Addon code that creates `TempBlock`s from schedulers, listeners, static helpers, or before an ability calls `start()` should use source-aware constructors, such as `new TempBlock(block, data, ability)` or `new TempBlock(block, material, player, "AbilityName")`. `TempBlock#setAbility(...)` remains available for compatibility, but it runs after the constructor and is too late to affect the initial overlay-vs-world-mutation decision.
 
+## TempFallingBlock Creation and Visibility
+
+An ability-owned `TempFallingBlock` now spawns and registers synchronously even when a viewer-less `GateStage.BLOCK` request would be denied. The entity is always visible to its caster and is hidden or shown to other players using viewer-scoped block decisions. Collision and final placement remain independently gated.
+
+Addons such as JedCore EarthShard should pass their `CoreAbility` to the constructor and inspect `getCreationResult()` (or `wasCreated()` / `wasDenied()`) before using `getFallingBlock()`. `CreationResult.DENIED_BY_PHASED_BLOCK_GATE` is currently possible only for source-less construction; an ability-owned block is not invalidated by that viewer-less decision.
+
 ## Hit and Effect Hardening
 
 ProjectKorra now evaluates `GateStage.EFFECT` for non-HP entity effects such as movement locks, temporary potion effects, targeted potion applications, and fire tick changes. Velocity and knockback continue to use `GateStage.COLLISION`, while HP damage continues to use `GateStage.DAMAGE`.
@@ -58,10 +64,11 @@ When updating addon repos, search for these patterns and route out-of-context ca
 - `spawnParticle`, `ParticleEffect.display`, `displayColoredParticle`
 - `playSound`
 - `new TempBlock`
+- `new TempFallingBlock`
 - `setVelocity`, `setFireTicks`
 - `addPotionEffect`, `removePotionEffect`, `new TempPotionEffect`, `new MovementHandler`
 - delayed scheduler callbacks, async tasks, listener-only effects, and static helper methods
 
 ## Current Scope
 
-This note covers particle source propagation, the central ability start gate, the sound gate, ability-vs-ability collision gating, TempBlock provenance, and small hit/effect hardening. Target selection and broader effect APIs still need their own source propagation passes.
+This note covers particle source propagation, the central ability start gate, the sound gate, ability-vs-ability collision gating, TempBlock provenance, TempFallingBlock creation and visibility, and small hit/effect hardening. Target selection and broader effect APIs still need their own source propagation passes.

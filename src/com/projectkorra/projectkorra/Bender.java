@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Bukkit;
@@ -261,6 +262,17 @@ public class Bender {
 		}
 	}
 
+	/** Saves a snapshot of all ability slots and reports completion. */
+	public CompletableFuture<Void> saveAbilitiesAsync() {
+		final Map<Integer, String> snapshot = new HashMap<>(this.abilities);
+		final CompletableFuture<?>[] writes = new CompletableFuture<?>[9];
+		for (int i = 1; i <= 9; i++) {
+			final String value = snapshot.get(i);
+			writes[i - 1] = DBConnection.sql.modifyQueryAsync("UPDATE pk_players SET slot" + i + " = " + (value == null ? "NULL" : "'" + sql(value) + "'") + " WHERE uuid = '" + this.uuid + "'");
+		}
+		return CompletableFuture.allOf(writes);
+	}
+
 	/**
 	 * Save the bound ability in the slot to the database
 	 * @param ability The ability to save
@@ -274,6 +286,16 @@ public class Bender {
 
 		DBConnection.sql.modifyQuery("UPDATE pk_players SET slot" + slot + " = '" + (this.abilities.get(slot) == null ? null : abilities.get(slot)) + "' WHERE uuid = '" + uuid + "'");
 	}
+
+	/** Saves the supplied slot snapshot and reports completion. */
+	public CompletableFuture<Void> saveAbilityAsync(final String ability, final int slot) {
+		if (slot < 1 || slot > 9) return CompletableFuture.failedFuture(new IllegalArgumentException("slot must be between 1 and 9"));
+		if (this instanceof BendingPlayer bp && MultiAbilityManager.playerAbilities.containsKey(bp.getPlayer())) return CompletableFuture.completedFuture(null);
+		final String value = ability == null ? null : ability;
+		return DBConnection.sql.modifyQueryAsync("UPDATE pk_players SET slot" + slot + " = " + (value == null ? "NULL" : "'" + sql(value) + "'") + " WHERE uuid = '" + uuid + "'");
+	}
+
+	private static String sql(final String value) { return value.replace("'", "''"); }
 
 	public String getBoundAbilityName() {
 		return "";
@@ -426,7 +448,7 @@ public class Bender {
 					DBConnection.sql.modifyQuery("INSERT INTO  pk_cooldowns (uuid, cooldown, value) VALUES ('" + this.uuid.toString() + "', '" + name + "', " + cooldown.getCooldown() + ")", false);
 				}
 			} catch (final SQLException e) {
-				e.printStackTrace();
+				throw new java.util.concurrent.CompletionException(e);
 			}
 		}
 	}
@@ -438,6 +460,16 @@ public class Bender {
 
 	public void saveCooldowns() {
 		this.saveCooldowns(true);
+	}
+
+	/** Saves cooldowns and reports when the database work has finished. */
+	public CompletableFuture<Void> saveCooldownsAsync() {
+		final CompletableFuture<Void> future = new CompletableFuture<>();
+		Bukkit.getScheduler().runTaskAsynchronously(ProjectKorra.plugin, () -> {
+			try { this.saveCooldownsForce(); future.complete(null); }
+			catch (final Throwable error) { future.completeExceptionally(error); }
+		});
+		return future;
 	}
 
 	/**

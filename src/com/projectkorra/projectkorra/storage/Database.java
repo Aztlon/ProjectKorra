@@ -5,10 +5,10 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
-import org.bukkit.scheduler.BukkitRunnable;
-
+import org.bukkit.Bukkit;
 import com.projectkorra.projectkorra.ProjectKorra;
 
 public abstract class Database {
@@ -94,16 +94,29 @@ public abstract class Database {
 	 * @param async If to run asynchronously
 	 */
 	public void modifyQuery(final String query, final boolean async) {
-		if (async) {
-			new BukkitRunnable() {
-				@Override
-				public void run() {
-					Database.this.doQuery(query);
-				}
-			}.runTaskAsynchronously(ProjectKorra.plugin);
-		} else {
-			this.doQuery(query);
-		}
+		this.modifyQueryAsync(query, async).whenComplete((ignored, error) -> {
+			if (error != null) error.printStackTrace();
+		});
+	}
+
+	/** Executes a modifying query and reports its actual completion or failure. */
+	public CompletableFuture<Void> modifyQueryAsync(final String query) {
+		return this.modifyQueryAsync(query, true);
+	}
+
+	public CompletableFuture<Void> modifyQueryAsync(final String query, final boolean async) {
+		final CompletableFuture<Void> future = new CompletableFuture<>();
+		final Runnable queryTask = () -> {
+			try {
+				this.doQuery(query);
+				future.complete(null);
+			} catch (final Throwable error) {
+				future.completeExceptionally(error);
+			}
+		};
+		if (async) Bukkit.getScheduler().runTaskAsynchronously(ProjectKorra.plugin, queryTask);
+		else queryTask.run();
+		return future;
 	}
 
 	/**
@@ -169,7 +182,7 @@ public abstract class Database {
 		}
 	}
 
-	private synchronized void doQuery(final String query) {
+	private synchronized void doQuery(final String query) throws SQLException {
 		try {
 			if (this.connection == null || this.connection.isClosed()) {
 				this.open();
@@ -178,7 +191,7 @@ public abstract class Database {
 			stmt.execute();
 			stmt.close();
 		} catch (final SQLException e) {
-			e.printStackTrace();
+			throw e;
 		}
 	}
 

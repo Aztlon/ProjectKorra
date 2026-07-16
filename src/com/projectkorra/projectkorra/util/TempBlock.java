@@ -401,7 +401,7 @@ public class TempBlock {
 
 	private void applyNextTempBlockWhenReady(final TempBlock nextTempBlock) {
 		PaperLib.getChunkAtAsync(this.block.getLocation()).thenAccept(result -> {
-			if (TempBlock.get(this.block) == nextTempBlock && (nextTempBlock.viewerOverlayOnly || this.shouldAllowBlockMutation(this.block.getLocation()))) {
+			if (TempBlock.get(this.block) == nextTempBlock) {
 				if (nextTempBlock.viewerOverlayOnly) {
 					PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), nextTempBlock.newData, nextTempBlock.ability.orElse(null));
 				} else {
@@ -417,7 +417,7 @@ public class TempBlock {
 			if (!instances_.containsKey(this.block)) {
 				if (this.viewerOverlayOnly) {
 					PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
-				} else if (this.shouldAllowBlockMutation(this.block.getLocation())) {
+				} else {
 					revertState();
 				}
 			}

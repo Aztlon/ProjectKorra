@@ -1,5 +1,6 @@
 package com.projectkorra.projectkorra.util;
 
+import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.phasing.GateStage;
 import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
@@ -7,14 +8,24 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.FallingBlock;
+import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class TempFallingBlock {
+    public enum CreationResult {
+        CREATED,
+        DENIED_BY_PHASED_BLOCK_GATE
+    }
+
     public static ConcurrentHashMap<FallingBlock, TempFallingBlock> instances = new ConcurrentHashMap<>();
 
     private FallingBlock fallingblock;
@@ -22,7 +33,8 @@ public class TempFallingBlock {
     private long creation;
     private boolean expire;
     private boolean immuneToBending;
-    private boolean denied;
+    private final CreationResult creationResult;
+    private final Set<UUID> hiddenViewers = new HashSet<>();
     private Consumer<TempFallingBlock> onPlace, onTick;
 
     public TempFallingBlock(Location location, BlockData data, Vector velocity, CoreAbility ability) {
@@ -31,26 +43,31 @@ public class TempFallingBlock {
 
     public TempFallingBlock(Location location, BlockData data, Vector velocity, CoreAbility ability, boolean expire) {
         this.ability = ability;
-        if (!PhasedIntegrationManager.shouldAllow(
+        this.creation = System.currentTimeMillis();
+        this.expire = expire;
+
+        // A source-aware falling block needs to exist so its ability can continue processing it.
+        // Its audience is filtered per viewer below, while placement remains gated in tryPlace().
+        if (ability == null && !PhasedIntegrationManager.shouldAllow(
                 PhasedIntegrationManager.requestFromAbility(ability, null, GateStage.BLOCK, location, null))) {
-            this.denied = true;
-            this.creation = System.currentTimeMillis();
-            this.expire = expire;
+            this.creationResult = CreationResult.DENIED_BY_PHASED_BLOCK_GATE;
             return;
         }
 
         this.fallingblock = location.getWorld().spawnFallingBlock(location, data.clone());
         this.fallingblock.setVelocity(velocity);
         this.fallingblock.setDropItem(false);
-        this.creation = System.currentTimeMillis();
-        this.expire = expire;
-        instances.put(fallingblock, this);
+        this.creationResult = CreationResult.CREATED;
+        instances.put(this.fallingblock, this);
+        this.refreshViewerVisibility();
     }
 
     public static void manage() {
         long time = System.currentTimeMillis();
 
         for (TempFallingBlock tfb : instances.values()) {
+            tfb.refreshViewerVisibility();
+
             Consumer<TempFallingBlock> onTick = tfb.getOnTick();
             if (onTick != null) {
                 onTick.accept(tfb);
@@ -94,7 +111,7 @@ public class TempFallingBlock {
     public static List<TempFallingBlock> getFromAbility(CoreAbility ability) {
         List<TempFallingBlock> tfbs = new ArrayList<TempFallingBlock>();
         for (TempFallingBlock tfb : instances.values()) {
-            if (tfb.getAbility().equals(ability)) {
+            if (Objects.equals(tfb.getAbility(), ability)) {
                 tfbs.add(tfb);
             }
         }
@@ -150,8 +167,24 @@ public class TempFallingBlock {
         return expire;
     }
 
+    /**
+     * Returns the synchronous outcome of this wrapper's construction. Addons should check this
+     * before using {@link #getFallingBlock()} when constructing a source-less falling block.
+     */
+    public CreationResult getCreationResult() {
+        return this.creationResult;
+    }
+
+    public boolean wasCreated() {
+        return this.creationResult == CreationResult.CREATED;
+    }
+
+    public boolean wasDenied() {
+        return this.creationResult == CreationResult.DENIED_BY_PHASED_BLOCK_GATE;
+    }
+
     public void tryPlace() {
-        if (this.denied || this.fallingblock == null) {
+        if (!this.wasCreated() || this.fallingblock == null) {
             return;
         }
         if (!PhasedIntegrationManager.shouldAllow(
@@ -160,6 +193,27 @@ public class TempFallingBlock {
         }
         if (onPlace != null) {
             onPlace.accept(this);
+        }
+    }
+
+    private void refreshViewerVisibility() {
+        if (this.ability == null || this.fallingblock == null || this.fallingblock.isDead()) {
+            return;
+        }
+
+        final Location location = this.fallingblock.getLocation();
+        for (final Player viewer : this.fallingblock.getWorld().getPlayers()) {
+            final boolean isCaster = this.ability.getCaster() != null
+                    && this.ability.getCaster().getUniqueId().equals(viewer.getUniqueId());
+            final boolean visible = isCaster || PhasedIntegrationManager.shouldViewerObserve(
+                    PhasedIntegrationManager.requestFromAbility(this.ability, null, GateStage.BLOCK, location, viewer.getUniqueId()));
+            if (visible) {
+                if (this.hiddenViewers.remove(viewer.getUniqueId())) {
+                    viewer.showEntity(ProjectKorra.plugin, this.fallingblock);
+                }
+            } else if (this.hiddenViewers.add(viewer.getUniqueId())) {
+                viewer.hideEntity(ProjectKorra.plugin, this.fallingblock);
+            }
         }
     }
 

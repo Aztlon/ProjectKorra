@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.PassiveAbility;
 import com.projectkorra.projectkorra.command.CooldownCommand;
-import com.projectkorra.projectkorra.event.BendingPlayerCreationEvent;
 import com.projectkorra.projectkorra.event.PlayerStanceChangeEvent;
 import com.projectkorra.projectkorra.firebending.passive.FirePassive;
 import com.projectkorra.projectkorra.hooks.CanBendHook;
@@ -175,6 +174,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	 */
 	public static BendingPlayer getBendingPlayer(final OfflinePlayer oPlayer) {
 		if (oPlayer == null) return null;
+		if (getInitializationState(oPlayer) != BendingPlayerInitializationState.READY) return null;
 		return OfflineBendingPlayer.ONLINE_PLAYERS.get(oPlayer.getUniqueId());
 	}
 
@@ -195,6 +195,28 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	 */
 	public static CompletableFuture<OfflineBendingPlayer> getOrLoadOfflineAsync(@NotNull final OfflinePlayer oPlayer) {
 		return OfflineBendingPlayer.loadAsync(oPlayer.getUniqueId(), false);
+	}
+
+	/** Initializes an online player and completes only when the ready instance is public. */
+	public static CompletableFuture<BendingPlayer> initializeAsync(@NotNull final Player player) {
+		return OfflineBendingPlayer.loadAsync(player.getUniqueId(), false).thenApply(loaded -> {
+			if (loaded instanceof BendingPlayer bendingPlayer) return bendingPlayer;
+			throw new IllegalStateException("Player " + player.getUniqueId() + " disconnected during initialization");
+		});
+	}
+
+	/** Retries a failed initialization. Concurrent retry requests are coalesced. */
+	public static CompletableFuture<BendingPlayer> retryInitializationAsync(@NotNull final Player player) {
+		OfflineBendingPlayer.allowRetry(player.getUniqueId());
+		return initializeAsync(player);
+	}
+
+	public static BendingPlayerInitializationState getInitializationState(@NotNull final UUID uuid) {
+		return OfflineBendingPlayer.getInitializationState(uuid);
+	}
+
+	public static BendingPlayerInitializationState getInitializationState(@NotNull final OfflinePlayer player) {
+		return getInitializationState(player.getUniqueId());
 	}
 
 	/**
@@ -543,7 +565,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 			BendingBoardManager.changeWorld(this.player);
 		}, 1L);
 
-		Bukkit.getServer().getPluginManager().callEvent(new BendingPlayerCreationEvent(this));
 	}
 
 

@@ -1213,7 +1213,9 @@ public class PKListener implements Listener {
 		JUMPS.put(player, player.getStatistic(Statistic.JUMP));
 
 		//Load the player's bending data from the database
-		BendingPlayer.getOrLoadOfflineAsync(player);
+		final BendingPlayerInitializationState state = BendingPlayer.getInitializationState(player);
+		if (state == BendingPlayerInitializationState.FAILED) BendingPlayer.retryInitializationAsync(player);
+		else BendingPlayer.initializeAsync(player);
 
 		if (ProjectKorra.isStatisticsEnabled()) {
 			Manager.getManager(StatisticsManager.class).load(player.getUniqueId());
@@ -1387,8 +1389,10 @@ public class PKListener implements Listener {
 			}
 		}
 
-		Bukkit.getScheduler().runTaskLater(ProjectKorra.plugin, //Run 1 tick later so they actually are offline
-				() -> OfflineBendingPlayer.convertToOffline(bPlayer).uncacheAfter(ConfigManager.defaultConfig.get().getLong("Properties.PlayerDataUnloadTime", 5 * 60 * 1000)), 1L);
+		if (bPlayer != null) {
+			Bukkit.getScheduler().runTaskLater(ProjectKorra.plugin, //Run 1 tick later so they actually are offline
+					() -> OfflineBendingPlayer.convertToOffline(bPlayer).uncacheAfter(ConfigManager.defaultConfig.get().getLong("Properties.PlayerDataUnloadTime", 5 * 60 * 1000)), 1L);
+		}
 	}
 
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
