@@ -87,7 +87,9 @@ public final class PhasedBlockVisibilityManager {
 		}
 
 		final BlockKey key = BlockKey.of(location);
-		OVERLAYS.remove(key);
+		if (OVERLAYS.remove(key) == null) {
+			return;
+		}
 		sendRealBlockToWorld(location);
 	}
 

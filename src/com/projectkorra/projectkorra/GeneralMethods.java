@@ -571,19 +571,39 @@ public class GeneralMethods {
 	 */
 	public static List<Block> getBlocksAroundPoint(final Location location, final double radius) {
 		final List<Block> blocks = new ArrayList<Block>();
+		if (radius < 0) {
+			return blocks;
+		}
 
-		final int xorg = location.getBlockX();
-		final int yorg = location.getBlockY();
-		final int zorg = location.getBlockZ();
+		final World world = location.getWorld();
+		final double originX = location.getX();
+		final double originY = location.getY();
+		final double originZ = location.getZ();
+		final double radiusSquared = radius * radius;
 
-		final int r = (int) radius * 4;
+		// Block#getLocation uses the block's integer-coordinate origin, so these
+		// bounds preserve the method's existing distance semantics.
+		final int minX = (int) Math.ceil(originX - radius);
+		final int maxX = (int) Math.floor(originX + radius);
+		final int minY = (int) Math.ceil(originY - radius);
+		final int maxY = (int) Math.floor(originY + radius);
+		final int minZ = (int) Math.ceil(originZ - radius);
+		final int maxZ = (int) Math.floor(originZ + radius);
 
-		for (int x = xorg - r; x <= xorg + r; x++) {
-			for (int y = yorg - r; y <= yorg + r; y++) {
-				for (int z = zorg - r; z <= zorg + r; z++) {
-					final Block block = location.getWorld().getBlockAt(x, y, z);
-					if (block.getLocation().distanceSquared(location) <= radius * radius) {
-						blocks.add(block);
+		for (int x = minX; x <= maxX; x++) {
+			final double deltaX = x - originX;
+			final double distanceX = deltaX * deltaX;
+			for (int y = minY; y <= maxY; y++) {
+				final double deltaY = y - originY;
+				final double distanceXY = distanceX + deltaY * deltaY;
+				if (distanceXY > radiusSquared) {
+					continue;
+				}
+
+				for (int z = minZ; z <= maxZ; z++) {
+					final double deltaZ = z - originZ;
+					if (distanceXY + deltaZ * deltaZ <= radiusSquared) {
+						blocks.add(world.getBlockAt(x, y, z));
 					}
 				}
 			}
@@ -667,7 +687,10 @@ public class GeneralMethods {
 	 * @param center point to check around
 	 * @param radius distance from center to check within
 	 * @return null if not found
+	 * @deprecated Ability code should use {@link #getClosestEntity(Ability, Location, double)}
+	 * so entities outside the ability's phased encounter are ignored.
 	 */
+	@Deprecated
 	public static Entity getClosestEntity(Location center, double radius) {
 		Entity found = null;
 		Double distance = null;
@@ -685,11 +708,39 @@ public class GeneralMethods {
 	}
 
 	/**
+	 * Gets the closest entity within the specified radius that the supplied ability
+	 * is allowed to target.
+	 *
+	 * @param ability source ability
+	 * @param center point to check around
+	 * @param radius distance from center to check within
+	 * @return null if no targetable entity is found
+	 */
+	public static Entity getClosestEntity(final Ability ability, final Location center, final double radius) {
+		Entity found = null;
+		Double distance = null;
+
+		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(ability, center, radius)) {
+			final double check = center.distanceSquared(entity.getLocation());
+
+			if (distance == null || check < distance) {
+				found = entity;
+				distance = check;
+			}
+		}
+
+		return found;
+	}
+
+	/**
 	 * Gets the closest LivingEntity within the specified radius around a point
 	 * @param center point to check around
 	 * @param radius distance from center to check within
 	 * @return null if not found
+	 * @deprecated Ability code should use {@link #getClosestLivingEntity(Ability, Location, double)}
+	 * so entities outside the ability's phased encounter are ignored.
 	 */
+	@Deprecated
 	public static LivingEntity getClosestLivingEntity(Location center, double radius) {
 		LivingEntity le = null;
 		Double distance = null;
@@ -704,6 +755,31 @@ public class GeneralMethods {
 		}
 
 		return le;
+	}
+
+	/**
+	 * Gets the closest living entity within the specified radius that the supplied
+	 * ability is allowed to target.
+	 *
+	 * @param ability source ability
+	 * @param center point to check around
+	 * @param radius distance from center to check within
+	 * @return null if no targetable living entity is found
+	 */
+	public static LivingEntity getClosestLivingEntity(final Ability ability, final Location center, final double radius) {
+		LivingEntity found = null;
+		Double distance = null;
+
+		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(ability, center, radius)) {
+			final double check = center.distanceSquared(entity.getLocation());
+
+			if (entity instanceof LivingEntity && (distance == null || check < distance)) {
+				found = (LivingEntity) entity;
+				distance = check;
+			}
+		}
+
+		return found;
 	}
 
 	public static String getCurrentDate() {
@@ -771,8 +847,20 @@ public class GeneralMethods {
 	 * @param radius The radius of blocks to look for entities from the location
 	 * @param acceptable A function that determines if an entity is acceptable or not to be a part of this list
 	 * @return A list of entities around a point
+	 * @deprecated Ability code should use
+	 * {@link #getEntitiesAroundPoint(Ability, Location, double, Predicate)} so
+	 * entities outside the ability's phased encounter are ignored.
 	 */
+	@Deprecated
 	public static List<Entity> getEntitiesAroundPoint(final Location location, final double radius, Predicate<Entity> acceptable) {
+		final Ability currentAbility = PhasedIntegrationManager.getCurrentAbilityContext();
+		if (currentAbility != null) {
+			return getEntitiesAroundPoint(currentAbility, location, radius, acceptable);
+		}
+		return getEntitiesAroundPointInternal(location, radius, acceptable);
+	}
+
+	private static List<Entity> getEntitiesAroundPointInternal(final Location location, final double radius, final Predicate<Entity> acceptable) {
 		final List<Entity> entities = new ArrayList<>();
 		final HashSet<Integer> uniqueEntityIds = new HashSet<>();
 
@@ -791,20 +879,127 @@ public class GeneralMethods {
 	}
 
 	/**
+	 * Gets the entities around a point that satisfy the supplied predicate and are
+	 * targetable by the supplied ability.
+	 *
+	 * @param ability source ability
+	 * @param location center of the search
+	 * @param radius search radius
+	 * @param acceptable additional target predicate
+	 * @return targetable entities around the point
+	 */
+	public static List<Entity> getEntitiesAroundPoint(final Ability ability, final Location location, final double radius,
+			final Predicate<Entity> acceptable) {
+		return getEntitiesAroundPointInternal(location, radius,
+				acceptable.and(entity -> canAbilityTarget(ability, entity)));
+	}
+
+	/**
+	 * Gets the entities around a point that satisfy the supplied predicate and are
+	 * targetable by a source whose ability has not been instantiated yet.
+	 *
+	 * @param source source entity
+	 * @param abilityId source ability identifier
+	 * @param location center of the search
+	 * @param radius search radius
+	 * @param acceptable additional target predicate
+	 * @return targetable entities around the point
+	 */
+	public static List<Entity> getEntitiesAroundPoint(final LivingEntity source, final String abilityId, final Location location,
+			final double radius, final Predicate<Entity> acceptable) {
+		return getEntitiesAroundPointInternal(location, radius,
+				acceptable.and(entity -> canAbilityTarget(source, abilityId, entity)));
+	}
+
+	/**
 	 * Gets a {@code List<Entity>} of entities around a specified radius from
 	 * the specified area. Excludes dead entities, marker armorstands and spectators
 	 *
 	 * @param location The base location
 	 * @param radius The radius of blocks to look for entities from the location
 	 * @return A list of entities around a point
+	 * @deprecated Ability code should use
+	 * {@link #getEntitiesAroundPoint(Ability, Location, double)} so entities
+	 * outside the ability's phased encounter are ignored.
 	 */
+	@Deprecated
 	public static List<Entity> getEntitiesAroundPoint(final Location location, final double radius) {
-		return getEntitiesAroundPoint(location, radius, entity ->
-				!entity.isDead()
+		final Ability currentAbility = PhasedIntegrationManager.getCurrentAbilityContext();
+		if (currentAbility != null) {
+			return getEntitiesAroundPoint(currentAbility, location, radius);
+		}
+		return getEntitiesAroundPointInternal(location, radius, GeneralMethods::isDefaultEntityTarget);
+	}
+
+	/**
+	 * Gets the normally eligible entities around a point that the supplied ability
+	 * is allowed to target.
+	 *
+	 * @param ability source ability
+	 * @param location center of the search
+	 * @param radius search radius
+	 * @return targetable entities around the point
+	 */
+	public static List<Entity> getEntitiesAroundPoint(final Ability ability, final Location location, final double radius) {
+		return getEntitiesAroundPoint(ability, location, radius, GeneralMethods::isDefaultEntityTarget);
+	}
+
+	/**
+	 * Gets the normally eligible entities around a point that a source is allowed
+	 * to target before its ability has been instantiated.
+	 *
+	 * @param source source entity
+	 * @param abilityId source ability identifier
+	 * @param location center of the search
+	 * @param radius search radius
+	 * @return targetable entities around the point
+	 */
+	public static List<Entity> getEntitiesAroundPoint(final LivingEntity source, final String abilityId, final Location location,
+			final double radius) {
+		return getEntitiesAroundPoint(source, abilityId, location, radius, GeneralMethods::isDefaultEntityTarget);
+	}
+
+	private static boolean isDefaultEntityTarget(final Entity entity) {
+		return !entity.isDead()
 				&& (!(entity instanceof Player) || ((Player) entity).getGameMode() != GameMode.SPECTATOR)
 				&& (!(entity instanceof ArmorStand) || !((ArmorStand) entity).isMarker())
 				&& !entity.hasMetadata("temparmorstand")
-				&& !isDisplayEntity(entity));
+				&& !isDisplayEntity(entity);
+	}
+
+	/**
+	 * Checks whether an entity may participate in target selection for an ability.
+	 * A denied target must be treated as absent: it must not receive effects or
+	 * alter the selecting ability's lifecycle.
+	 *
+	 * @param ability source ability
+	 * @param target candidate target
+	 * @return whether the candidate may be selected
+	 */
+	public static boolean canAbilityTarget(final Ability ability, final Entity target) {
+		if (target == null) {
+			return false;
+		}
+		return PhasedIntegrationManager.shouldAllow(
+				PhasedIntegrationManager.requestFromAbility(ability, target.getUniqueId(), GateStage.TARGET_SELECT, target.getLocation(), null));
+	}
+
+	/**
+	 * Checks whether an entity may participate in target selection before the
+	 * source ability has been instantiated.
+	 *
+	 * @param source source entity
+	 * @param abilityId source ability identifier
+	 * @param target candidate target
+	 * @return whether the candidate may be selected
+	 */
+	public static boolean canAbilityTarget(final LivingEntity source, final String abilityId, final Entity target) {
+		if (target == null) {
+			return false;
+		}
+		return PhasedIntegrationManager.shouldAllow(
+				PhasedIntegrationManager.requestFromSource(source, abilityId, target.getUniqueId(), GateStage.TARGET_SELECT,
+						target.getLocation(), null));
 	}
 
 	public static long getGlobalCooldown() {
@@ -1009,12 +1204,27 @@ public class GeneralMethods {
 		return;
 	}
 
+	/**
+	 * @deprecated Ability code should use an ability-aware overload so entities
+	 * outside the ability's phased encounter are ignored.
+	 */
+	@Deprecated
 	public static Entity getTargetedEntity(final LivingEntity caster, final double range, final List<Entity> avoid) {
+		final Ability currentAbility = PhasedIntegrationManager.getCurrentAbilityContext();
+		if (currentAbility != null) {
+			return getTargetedEntity(currentAbility, caster, range, avoid);
+		}
+		return getTargetedEntity(caster, range, avoid, entity -> true);
+	}
+
+	private static Entity getTargetedEntity(final LivingEntity caster, final double range, final List<Entity> avoid,
+			final Predicate<Entity> targetable) {
 		double longestr = range + 1;
 		Entity target = null;
 		final Location origin = caster.getEyeLocation();
 		final Vector direction = caster.getEyeLocation().getDirection().normalize();
-		for (final Entity entity : getEntitiesAroundPoint(origin, range)) {
+		for (final Entity entity : getEntitiesAroundPointInternal(origin, range,
+				entity -> isDefaultEntityTarget(entity) && targetable.test(entity))) {
 			if (entity instanceof Player) {
 				if (entity.isDead() || ((Player) entity).getGameMode().equals(GameMode.SPECTATOR)) {
 					continue;
@@ -1038,8 +1248,51 @@ public class GeneralMethods {
 		return target;
 	}
 
+	/**
+	 * Gets the entity targeted by a caster while excluding entities the supplied
+	 * ability may not target.
+	 *
+	 * @param ability source ability
+	 * @param caster caster whose line of sight is used
+	 * @param range maximum target range
+	 * @param avoid entities to exclude
+	 * @return targeted entity, or null
+	 */
+	public static Entity getTargetedEntity(final Ability ability, final LivingEntity caster, final double range,
+			final List<Entity> avoid) {
+		return getTargetedEntity(caster, range, avoid, entity -> canAbilityTarget(ability, entity));
+	}
+
+	/**
+	 * Gets the entity targeted by a caster while excluding entities outside the
+	 * source's phased encounter before an ability has been instantiated.
+	 *
+	 * @param caster source and line-of-sight entity
+	 * @param abilityId source ability identifier
+	 * @param range maximum target range
+	 * @param avoid entities to exclude
+	 * @return targeted entity, or null
+	 */
+	public static Entity getTargetedEntity(final LivingEntity caster, final String abilityId, final double range,
+			final List<Entity> avoid) {
+		return getTargetedEntity(caster, range, avoid, entity -> canAbilityTarget(caster, abilityId, entity));
+	}
+
+	/**
+	 * @deprecated Ability code should use an ability-aware overload so entities
+	 * outside the ability's phased encounter are ignored.
+	 */
+	@Deprecated
 	public static Entity getTargetedEntity(final LivingEntity caster, final double range) {
 		return getTargetedEntity(caster, range, new ArrayList<>());
+	}
+
+	public static Entity getTargetedEntity(final Ability ability, final LivingEntity caster, final double range) {
+		return getTargetedEntity(ability, caster, range, new ArrayList<>());
+	}
+
+	public static Entity getTargetedEntity(final LivingEntity caster, final String abilityId, final double range) {
+		return getTargetedEntity(caster, abilityId, range, new ArrayList<>());
 	}
 
 	public static @Nullable BlockDefinition customBlockFromId(final String id) {
@@ -1460,6 +1713,13 @@ public class GeneralMethods {
 		ConfigManager.defaultConfig.reload();
 		ConfigManager.languageConfig.reload();
 		ConfigManager.presetConfig.reload();
+		final com.projectkorra.projectkorra.persistence.external.PlayerDataMode configuredPlayerDataMode =
+				com.projectkorra.projectkorra.persistence.external.PlayerDataMode.parse(ConfigManager.getConfig().getString("Storage.PlayerDataMode"));
+		if (configuredPlayerDataMode != com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.getMode()) {
+			PkLang.warning("Storage.PlayerDataMode changed from the active mode "
+					+ com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.getMode()
+					+ " to " + configuredPlayerDataMode + "; the change will take effect after a controlled restart");
+		}
 		PhasedIntegrationManager.reloadFromConfig();
 		PhasedBlockVisibilityManager.reloadFromConfig();
 		ParticleCompatibilityService.reload(ProjectKorra.plugin);
@@ -1628,6 +1888,22 @@ public class GeneralMethods {
 			f.add("ProjectKorra (Side Plugin) Information");
 			f.add("====================");
 			f.addAll(officialSidePlugins);
+		}
+
+		f.add("");
+		f.add("Player Persistence");
+		f.add("====================");
+		f.add("Mode: " + com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.getMode());
+		f.add("Provider: " + com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.getProvider()
+				.map(provider -> provider.providerName() + " " + provider.providerVersion() + " (contract " + provider.contractVersion() + ")").orElse("<none>"));
+		if (com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.isExternalMode()) {
+			for (final Player player : Bukkit.getOnlinePlayers()) {
+				final var diagnostics = com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence
+						.getExternalPersistenceDiagnostics(player.getUniqueId());
+				f.add(player.getUniqueId() + ": state=" + diagnostics.initializationState() + ", phase=" + diagnostics.initializationPhase()
+						+ ", revision=" + diagnostics.revision() + ", pending=" + diagnostics.pendingRequests()
+						+ ", guard=" + diagnostics.projectionGuardActive() + ", lastFailure=" + diagnostics.lastFailure());
+			}
 		}
 
 		f.add("");

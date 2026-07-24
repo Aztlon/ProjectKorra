@@ -305,6 +305,7 @@ public class Illumination extends FireAbility {
 		if (CoreAbility.hasAbility(player, Illumination.class)) return;
 		BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 		Illumination dummy = (Illumination) CoreAbility.getAbility(Illumination.class);
+		if (bPlayer == null || dummy == null) return;
 		if (!dummy.isEnabled() || !bPlayer.isIlluminating() || !bPlayer.canUsePassive(dummy) || !bPlayer.canBendPassive(dummy)) return;
 		if (!slotsFree(player)) return;
 

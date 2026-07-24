@@ -158,6 +158,7 @@ public class TempBlock {
 			return;
 		}
 
+		PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
 		this.block.setBlockData(newBlockData, applyPhysics(newBlockData.getMaterial()));
 	}
 
@@ -272,10 +273,21 @@ public class TempBlock {
 		if (instances_.containsKey(block)) {
 			final List<TempBlock> tempBlocks = new ArrayList<>(instances_.get(block));
 			final TempBlock finalTempBlock = tempBlocks.get(tempBlocks.size() - 1);
+			TempBlock finalPhysicalTempBlock = null;
+			boolean hadViewerOverlay = false;
+			for (final TempBlock tempBlock : tempBlocks) {
+				if (tempBlock.viewerOverlayOnly) {
+					hadViewerOverlay = true;
+				} else {
+					finalPhysicalTempBlock = tempBlock;
+				}
+			}
 
 			tempBlocks.forEach(TempBlock::remove);
 			tempBlocks.forEach(TempBlock::prepareForRevert);
-			finalTempBlock.applyOriginalStateWhenReady();
+			final TempBlock physicalStateOwner = finalPhysicalTempBlock;
+			final TempBlock reversionCoordinator = physicalStateOwner == null ? finalTempBlock : physicalStateOwner;
+			reversionCoordinator.applyOriginalStateWhenReady(physicalStateOwner != null, hadViewerOverlay);
 			tempBlocks.forEach(TempBlock::runRevertActions);
 		} else {
 			if ((defaulttype == Material.LAVA) && GeneralMethods.isAdjacentToThreeOrMoreSources(block, true)) {
@@ -375,9 +387,9 @@ public class TempBlock {
 	private void trueRevertBlock(final TempBlock nextTempBlock) {
 		prepareForRevert();
 		if (nextTempBlock != null) {
-			applyNextTempBlockWhenReady(nextTempBlock);
+			applyNextTempBlockWhenReady(nextTempBlock, getTopPhysicalTempBlock(this.block), !this.viewerOverlayOnly);
 		} else {
-			applyOriginalStateWhenReady();
+			applyOriginalStateWhenReady(!this.viewerOverlayOnly, this.viewerOverlayOnly);
 		}
 
 		runRevertActions();
@@ -399,29 +411,64 @@ public class TempBlock {
 		}
 	}
 
-	private void applyNextTempBlockWhenReady(final TempBlock nextTempBlock) {
-		PaperLib.getChunkAtAsync(this.block.getLocation()).thenAccept(result -> {
-			if (TempBlock.get(this.block) == nextTempBlock) {
-				if (nextTempBlock.viewerOverlayOnly) {
-					PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), nextTempBlock.newData, nextTempBlock.ability.orElse(null));
-				} else {
-					PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
-					this.block.setBlockData(nextTempBlock.newData, applyPhysics(nextTempBlock.newData.getMaterial()));
-				}
+	private static TempBlock getTopPhysicalTempBlock(final Block block) {
+		final LinkedList<TempBlock> tempBlocks = instances_.get(block);
+		if (tempBlocks == null) {
+			return null;
+		}
+
+		for (int index = tempBlocks.size() - 1; index >= 0; index--) {
+			final TempBlock tempBlock = tempBlocks.get(index);
+			if (!tempBlock.viewerOverlayOnly) {
+				return tempBlock;
 			}
-		});
+		}
+		return null;
 	}
 
-	private void applyOriginalStateWhenReady() {
-		PaperLib.getChunkAtAsync(this.block.getLocation()).thenAccept(result -> {
-			if (!instances_.containsKey(this.block)) {
-				if (this.viewerOverlayOnly) {
-					PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
-				} else {
-					revertState();
-				}
+	private void applyNextTempBlockWhenReady(final TempBlock nextTempBlock, final TempBlock nextPhysicalTempBlock,
+			final boolean restorePhysicalState) {
+		PaperLib.getChunkAtAsync(this.block.getLocation())
+				.thenAccept(result -> applyNextTempBlock(nextTempBlock, nextPhysicalTempBlock, restorePhysicalState));
+	}
+
+	private void applyNextTempBlock(final TempBlock nextTempBlock, final TempBlock nextPhysicalTempBlock,
+			final boolean restorePhysicalState) {
+		if (TempBlock.get(this.block) != nextTempBlock) {
+			return;
+		}
+
+		if (restorePhysicalState) {
+			if (nextPhysicalTempBlock == null) {
+				revertState();
+			} else if (getTopPhysicalTempBlock(this.block) == nextPhysicalTempBlock
+					&& !this.block.getBlockData().equals(nextPhysicalTempBlock.newData)) {
+				this.block.setBlockData(nextPhysicalTempBlock.newData, applyPhysics(nextPhysicalTempBlock.newData.getMaterial()));
 			}
-		});
+		}
+
+		if (nextTempBlock.viewerOverlayOnly) {
+			PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), nextTempBlock.newData, nextTempBlock.blockSource);
+		} else {
+			PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
+		}
+	}
+
+	private void applyOriginalStateWhenReady(final boolean restorePhysicalState, final boolean clearViewerOverlay) {
+		PaperLib.getChunkAtAsync(this.block.getLocation())
+				.thenAccept(result -> applyOriginalState(restorePhysicalState, clearViewerOverlay));
+	}
+
+	private void applyOriginalState(final boolean restorePhysicalState, final boolean clearViewerOverlay) {
+		if (instances_.containsKey(this.block)) {
+			return;
+		}
+		if (restorePhysicalState) {
+			revertState();
+		}
+		if (clearViewerOverlay) {
+			PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
+		}
 	}
 
 	/**
@@ -525,6 +572,7 @@ public class TempBlock {
 		if (this.viewerOverlayOnly) {
 			PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), data, this.blockSource);
 		} else {
+			PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
 			this.block.setBlockData(data, applyPhysics(data.getMaterial()));
 		}
 	}

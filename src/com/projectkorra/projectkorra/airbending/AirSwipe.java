@@ -226,7 +226,7 @@ public class AirSwipe extends AirAbility {
 		return true;
 	}
 	private void affectPeople(final Location location, final Vector direction) {
-		final List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(location, this.radius);
+		final List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(this, location, this.radius);
 		final Vector fDirection = direction.clone();
 
 		for (int i = 0; i < entities.size(); i++) {
@@ -243,6 +243,9 @@ public class AirSwipe extends AirAbility {
 			new BukkitRunnable() {
 				@Override
 				public void run() {
+					if (!GeneralMethods.canAbilityTarget(AirSwipe.this, entity)) {
+						return;
+					}
 					if (RegionProtection.isRegionProtected(AirSwipe.this, entity.getLocation())) {
 						return;
 					}

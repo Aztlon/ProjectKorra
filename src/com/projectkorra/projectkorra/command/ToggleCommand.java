@@ -12,6 +12,9 @@ import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.PassiveAbility;
 import com.projectkorra.projectkorra.util.ChatUtil;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -67,7 +70,9 @@ public class ToggleCommand extends PKCommand {
 	public void execute(final CommandSender sender, final List<String> args) {
 		if (!this.correctLength(sender, args.size(), 0, 2)) {
 			return;
-		} else if (args.size() == 0) { // bending toggle,
+		}
+		if (ExternalPersistenceCoordinator.isExternalMode() && this.executeExternalDurableToggle(sender, args)) return;
+		if (args.size() == 0) { // bending toggle,
 			if (!this.hasPermission(sender) || !this.isPlayer(sender)) {
 				return;
 			}
@@ -177,6 +182,57 @@ public class ToggleCommand extends PKCommand {
 		} else {
 			this.help(sender, false);
 		}
+	}
+
+	private boolean executeExternalDurableToggle(final CommandSender sender, final List<String> args) {
+		if (args.isEmpty()) {
+			if (!this.hasPermission(sender) || !this.isPlayer(sender)) return true;
+			final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(sender.getName());
+			final boolean enabled = !bPlayer.isToggled();
+			bPlayer.requestMutationAsync(new BendingPlayerMutationOperation.SetBendingEnabled(enabled), commandSource(sender, "toggle-bending"))
+					.thenAccept(result -> {
+						if (!result.accepted()) ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "The external player-data provider rejected the toggle.");
+						else ChatUtil.sendBrandingMessage(sender, enabled ? ChatColor.GREEN + this.toggleOnSelf : ChatColor.RED + this.toggleOffSelf);
+					});
+			return true;
+		}
+		if (args.size() == 1) {
+			final String value = args.get(0).toLowerCase();
+			if (value.equals("all") || value.contains("passives")) return false;
+			final Element element = Element.fromString(value);
+			if (!(sender instanceof Player) || element == null || element instanceof SubElement) return false;
+			final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(sender.getName());
+			if (!bPlayer.hasElement(element)) { ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.wrongElement); return true; }
+			final boolean enabled = !bPlayer.isElementToggled(element);
+			bPlayer.requestMutationAsync(new BendingPlayerMutationOperation.SetElementEnabled(element.getName(), enabled), commandSource(sender, "toggle-element"))
+					.thenAccept(result -> {
+						if (!result.accepted()) ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "The external player-data provider rejected the toggle.");
+						else ChatUtil.sendBrandingMessage(sender, element.getColor() + (enabled ? this.toggledOnSingleElement : this.toggledOffSingleElement)
+								.replace("{element}", element.getName() + (element.getType() == null ? "" : element.getType().getBending())));
+					});
+			return true;
+		}
+		if (args.size() == 2 && sender instanceof Player && Element.fromString(args.get(0)) instanceof Element element && !(element instanceof SubElement)) {
+			if (!this.hasAdminPermission(sender)) return true;
+			final Player target = Bukkit.getPlayer(args.get(1));
+			if (target == null) { ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.notFound); return true; }
+			final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(target);
+			if (bPlayer == null || !bPlayer.hasElement(element)) { ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.wrongElementOther.replace("{target}", target.getName())); return true; }
+			final boolean enabled = !bPlayer.isElementToggled(element);
+			bPlayer.requestMutationAsync(new BendingPlayerMutationOperation.SetElementEnabled(element.getName(), enabled), commandSource(sender, "toggle-other-element"))
+					.thenAccept(result -> {
+						if (!result.accepted()) ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "The external player-data provider rejected the toggle.");
+						else ChatUtil.sendBrandingMessage(sender, element.getColor() + (enabled ? this.toggledOnOtherElementConfirm : this.toggledOffOtherElementConfirm)
+								.replace("{target}", target.getName()).replace("{element}", element.getName()));
+					});
+			return true;
+		}
+		return false;
+	}
+
+	private static MutationSource commandSource(final CommandSender sender, final String detail) {
+		return new MutationSource(MutationSource.Kind.COMMAND, sender instanceof Player player ? player.getUniqueId() : null,
+				sender.getName(), "ProjectKorra", detail);
 	}
 
 	public boolean hasAdminPermission(final CommandSender sender) {

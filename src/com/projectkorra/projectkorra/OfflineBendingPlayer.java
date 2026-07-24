@@ -8,9 +8,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -25,11 +27,12 @@ import org.jetbrains.annotations.NotNull;
 import com.projectkorra.projectkorra.Element.SubElement;
 import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.CoreAbility;
-import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.storage.internal.InternalPlayerDataStore;
 import com.projectkorra.projectkorra.event.BendingPlayerCreationEvent;
 import com.projectkorra.projectkorra.event.BendingPlayerInitializationFailureEvent;
 import com.projectkorra.projectkorra.util.Cooldown;
 import com.projectkorra.projectkorra.util.logging.PkLang;
+import com.projectkorra.projectkorra.persistence.external.FlushReason;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -49,6 +52,8 @@ public class OfflineBendingPlayer extends Bender {
 	protected static final Map<UUID, BendingPlayer> ONLINE_PLAYERS = new ConcurrentHashMap<>();
 	private static final Map<UUID, CompletableFuture<OfflineBendingPlayer>> LOADS = new ConcurrentHashMap<>();
 	private static final Map<UUID, BendingPlayerInitializationState> INITIALIZATION_STATES = new ConcurrentHashMap<>();
+	private static final Map<UUID, AtomicLong> GENERATIONS = new ConcurrentHashMap<>();
+	private static final Map<UUID, Player> LOAD_PLAYERS = new ConcurrentHashMap<>();
 
 	@Getter
 	protected final OfflinePlayer player;
@@ -73,35 +78,61 @@ public class OfflineBendingPlayer extends Bender {
 	}
 
 	protected static CompletableFuture<OfflineBendingPlayer> loadAsync(@NotNull final UUID uuid, final boolean onStartup) {
+		return loadAsync(uuid, onStartup, null);
+	}
+
+	private static CompletableFuture<OfflineBendingPlayer> loadAsync(@NotNull final UUID uuid, final boolean onStartup,
+			final Player requestedPlayer) {
 		final OfflineBendingPlayer cached = PLAYERS.get(uuid);
 		if (cached != null && INITIALIZATION_STATES.get(uuid) == BendingPlayerInitializationState.READY) {
-			if (Bukkit.getPlayer(uuid) != null && !(cached instanceof BendingPlayer)) return promoteAsync(cached);
+			if (requestedPlayer != null) {
+				if (cached instanceof BendingPlayer bending && bending.getPlayer() == requestedPlayer && isCurrentConnection(uuid, requestedPlayer))
+					return CompletableFuture.completedFuture(cached);
+				return restartOnlineInitializationAsync(requestedPlayer);
+			}
+			if (Bukkit.getPlayer(uuid) != null && !(cached instanceof BendingPlayer))
+				return promoteAsync(cached, currentGeneration(uuid), Bukkit.getPlayer(uuid));
 			if (!(cached instanceof BendingPlayer)) cached.lastAccessed = System.currentTimeMillis();
 			return CompletableFuture.completedFuture(cached);
 		}
-		return LOADS.computeIfAbsent(uuid, key -> startAtomicLoad(key, onStartup));
+		final CompletableFuture<OfflineBendingPlayer> active = LOADS.get(uuid);
+		if (active != null) {
+			if (requestedPlayer == null || LOAD_PLAYERS.get(uuid) == requestedPlayer) return active;
+			return restartOnlineInitializationAsync(requestedPlayer);
+		}
+		final CompletableFuture<OfflineBendingPlayer> load = LOADS.computeIfAbsent(uuid,
+				key -> startAtomicLoad(key, onStartup, currentGeneration(key), requestedPlayer));
+		if (load.isDone()) cleanupLoad(uuid, load, requestedPlayer);
+		return load;
 	}
 
-	private static CompletableFuture<OfflineBendingPlayer> startAtomicLoad(final UUID uuid, final boolean onStartup) {
+	private static CompletableFuture<OfflineBendingPlayer> startAtomicLoad(final UUID uuid, final boolean onStartup,
+			final long generation, final Player requestedPlayer) {
 		INITIALIZATION_STATES.put(uuid, BendingPlayerInitializationState.LOADING);
+		if (requestedPlayer == null) LOAD_PLAYERS.remove(uuid); else LOAD_PLAYERS.put(uuid, requestedPlayer);
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			final CompletableFuture<OfflineBendingPlayer> external = ExternalPersistenceCoordinator.loadExternal(uuid, onStartup, generation, requestedPlayer);
+			external.whenComplete((value, error) -> cleanupLoad(uuid, external, requestedPlayer));
+			return external;
+		}
 		final CompletableFuture<OfflineBendingPlayer> result = new CompletableFuture<>();
 		final Runnable hydrate = () -> {
 			BendingPlayerInitializationPhase phase = BendingPlayerInitializationPhase.DATABASE_LOOKUP;
 			try {
 				final OfflinePlayer identity = Bukkit.getOfflinePlayer(uuid);
 				final OfflineBendingPlayer snapshot = new OfflineBendingPlayer(identity);
-				ResultSet row = DBConnection.sql.readQuery("SELECT * FROM pk_players WHERE uuid = '" + uuid + "'");
+				ResultSet row = InternalPlayerDataStore.findPlayer(uuid);
 				if (row == null) throw new SQLException("Player lookup returned no ResultSet");
 				if (!row.next()) {
 					phase = BendingPlayerInitializationPhase.ROW_CREATION;
-					final String name = sql(identity.getName() == null ? uuid.toString() : identity.getName());
+					final String name = identity.getName() == null ? uuid.toString() : identity.getName();
 					try {
-						DBConnection.sql.modifyQueryAsync("INSERT INTO pk_players (uuid, player) VALUES ('" + uuid + "', '" + name + "')", false).join();
+						InternalPlayerDataStore.createPlayer(uuid, name).join();
 					} catch (final CompletionException duplicateOrFailure) {
-						row = DBConnection.sql.readQuery("SELECT * FROM pk_players WHERE uuid = '" + uuid + "'");
+						row = InternalPlayerDataStore.findPlayer(uuid);
 						if (row == null || !row.next()) throw duplicateOrFailure;
 					}
-					row = DBConnection.sql.readQuery("SELECT * FROM pk_players WHERE uuid = '" + uuid + "'");
+					row = InternalPlayerDataStore.findPlayer(uuid);
 					if (row == null || !row.next()) throw new SQLException("Created player row could not be reread");
 					PkLang.info("Created new BendingPlayer for " + identity.getName());
 				}
@@ -109,17 +140,24 @@ public class OfflineBendingPlayer extends Bender {
 				hydrateRow(snapshot, row, onStartup);
 				snapshot.loading = false;
 				phase = BendingPlayerInitializationPhase.MAIN_THREAD_FINALIZATION;
-				Bukkit.getScheduler().callSyncMethod(ProjectKorra.plugin, () -> publish(snapshot)).get();
+				Bukkit.getScheduler().callSyncMethod(ProjectKorra.plugin, () -> publish(snapshot, generation, requestedPlayer)).get();
 				result.complete(PLAYERS.get(uuid));
 			} catch (final Throwable raw) {
 				final Throwable error = raw instanceof java.util.concurrent.ExecutionException && raw.getCause() != null ? raw.getCause() : raw;
-				failInitialization(uuid, Bukkit.getOfflinePlayer(uuid).getName(), phase, error, result);
+				if (error instanceof CancellationException || !isCurrentGeneration(uuid, generation)) result.completeExceptionally(error);
+				else failInitialization(uuid, Bukkit.getOfflinePlayer(uuid).getName(), phase, error, result);
 			}
 		};
 		// Always enqueue so computeIfAbsent publishes the shared future before it can complete.
 		Bukkit.getScheduler().runTaskAsynchronously(ProjectKorra.plugin, hydrate);
-		result.whenComplete((value, error) -> LOADS.remove(uuid, result));
+		result.whenComplete((value, error) -> cleanupLoad(uuid, result, requestedPlayer));
 		return result;
+	}
+
+	private static void cleanupLoad(final UUID uuid, final CompletableFuture<OfflineBendingPlayer> expected,
+			final Player requestedPlayer) {
+		if (LOADS.remove(uuid, expected) && (requestedPlayer == null || LOAD_PLAYERS.get(uuid) == requestedPlayer))
+			LOAD_PLAYERS.remove(uuid);
 	}
 
 	private static void hydrateRow(final OfflineBendingPlayer target, final ResultSet row, final boolean onStartup) throws Exception {
@@ -127,7 +165,7 @@ public class OfflineBendingPlayer extends Bender {
 		final String currentName = target.player.getName();
 		final String storedName = row.getString("player");
 		if (currentName != null && (storedName == null || !currentName.equalsIgnoreCase(storedName))) {
-			DBConnection.sql.modifyQueryAsync("UPDATE pk_players SET player = '" + sql(currentName) + "' WHERE uuid = '" + uuid + "'", false).join();
+			InternalPlayerDataStore.updatePlayerName(uuid, currentName, false).join();
 		}
 		parseElements(target, row.getString("element"), false, onStartup);
 		parseElements(target, row.getString("subelement"), true, onStartup);
@@ -146,7 +184,7 @@ public class OfflineBendingPlayer extends Bender {
 		}
 		target.permaRemoved = "true".equalsIgnoreCase(row.getString("permaremoved"));
 		if (ProjectKorra.isDatabaseCooldownsEnabled()) {
-			try (ResultSet cooldowns = DBConnection.sql.readQuery("SELECT * FROM pk_cooldowns WHERE uuid = '" + uuid + "'")) {
+			try (ResultSet cooldowns = InternalPlayerDataStore.findCooldowns(uuid)) {
 				if (cooldowns != null) while (cooldowns.next()) target.cooldowns.put(cooldowns.getString("cooldown"), new Cooldown(cooldowns.getLong("value"), true));
 			}
 		}
@@ -186,12 +224,16 @@ public class OfflineBendingPlayer extends Bender {
 
 	private static void repairSlot(final UUID uuid, final int slot, final String value) {
 		PkLang.warning("Repairing corrupt ability binding for " + uuid + " slot " + slot + ": " + value);
-		DBConnection.sql.modifyQueryAsync("UPDATE pk_players SET slot" + slot + " = NULL WHERE uuid = '" + uuid + "'", false).join();
+		InternalPlayerDataStore.clearAbility(uuid, slot);
 	}
 
-	private static OfflineBendingPlayer publish(final OfflineBendingPlayer snapshot) {
+	private static OfflineBendingPlayer publish(final OfflineBendingPlayer snapshot, final long generation,
+			final Player requestedPlayer) {
 		final UUID uuid = snapshot.getUUID();
+		if (!isCurrentGeneration(uuid, generation)) throw new CancellationException("Initialization was superseded");
 		final Player online = Bukkit.getPlayer(uuid);
+		if (requestedPlayer != null && (online != requestedPlayer || !requestedPlayer.isOnline()))
+			throw new CancellationException("Player connection changed during initialization");
 		if (online == null || !online.isOnline()) {
 			PLAYERS.put(uuid, snapshot);
 			ONLINE_PLAYERS.remove(uuid);
@@ -208,6 +250,47 @@ public class OfflineBendingPlayer extends Bender {
 		return ready;
 	}
 
+	static void publishExternal(final BendingPlayer ready, final long generation, final Player requestedPlayer) {
+		final UUID uuid = ready.getUUID();
+		if (!canPublishRuntime(uuid, generation, requestedPlayer)) throw new CancellationException("Initialization was superseded");
+		PLAYERS.put(uuid, ready);
+		ONLINE_PLAYERS.put(uuid, ready);
+		INITIALIZATION_STATES.put(uuid, BendingPlayerInitializationState.READY);
+	}
+
+	static void completeExternalPublication(final BendingPlayer ready) {
+		Bukkit.getPluginManager().callEvent(new BendingPlayerCreationEvent(ready));
+	}
+
+	static void markExternalReady(final UUID uuid, final long generation) {
+		if (!isCurrentGeneration(uuid, generation)) throw new CancellationException("Initialization was superseded");
+		INITIALIZATION_STATES.put(uuid, BendingPlayerInitializationState.READY);
+	}
+
+	static void markExternalFailed(final UUID uuid) {
+		INITIALIZATION_STATES.put(uuid, BendingPlayerInitializationState.FAILED);
+		PLAYERS.remove(uuid);
+		ONLINE_PLAYERS.remove(uuid);
+	}
+
+	static void detachExternalRuntime(final Player player) {
+		final UUID uuid = player.getUniqueId();
+		generationCounter(uuid).incrementAndGet();
+		final CompletableFuture<OfflineBendingPlayer> active = LOADS.get(uuid);
+		if (active != null && LOADS.remove(uuid, active)) active.cancel(false);
+		LOAD_PLAYERS.remove(uuid, player);
+		PLAYERS.computeIfPresent(uuid, (key, value) -> value instanceof BendingPlayer bending && bending.getPlayer() == player ? null : value);
+		ONLINE_PLAYERS.computeIfPresent(uuid, (key, value) -> value.getPlayer() == player ? null : value);
+		INITIALIZATION_STATES.remove(uuid);
+	}
+
+	static CompletableFuture<OfflineBendingPlayer> failExternalInitialization(final UUID uuid,
+			final BendingPlayerInitializationPhase phase, final Throwable error) {
+		final CompletableFuture<OfflineBendingPlayer> future = new CompletableFuture<>();
+		failInitialization(uuid, Bukkit.getOfflinePlayer(uuid).getName(), phase, error, future);
+		return future;
+	}
+
 	private static BendingPlayer copyToOnline(final OfflineBendingPlayer source, final Player player) {
 		final BendingPlayer target = new BendingPlayer(player);
 		target.abilities = new java.util.HashMap<>(source.abilities);
@@ -218,10 +301,12 @@ public class OfflineBendingPlayer extends Bender {
 		return target;
 	}
 
-	private static CompletableFuture<OfflineBendingPlayer> promoteAsync(final OfflineBendingPlayer cached) {
+	private static CompletableFuture<OfflineBendingPlayer> promoteAsync(final OfflineBendingPlayer cached, final long generation,
+			final Player requestedPlayer) {
 		final CompletableFuture<OfflineBendingPlayer> result = new CompletableFuture<>();
 		Bukkit.getScheduler().runTask(ProjectKorra.plugin, () -> {
-			try { result.complete(publish(cached)); } catch (Throwable error) { failInitialization(cached.getUUID(), cached.getName(), BendingPlayerInitializationPhase.MAIN_THREAD_FINALIZATION, error, result); }
+			try { result.complete(publish(cached, generation, requestedPlayer)); }
+			catch (Throwable error) { result.completeExceptionally(error); }
 		});
 		return result;
 	}
@@ -235,10 +320,57 @@ public class OfflineBendingPlayer extends Bender {
 		future.completeExceptionally(error);
 	}
 
-	private static String sql(final String value) { return value.replace("'", "''"); }
-
-	static BendingPlayerInitializationState getInitializationState(final UUID uuid) { return INITIALIZATION_STATES.get(uuid); }
+	static BendingPlayerInitializationState getInitializationState(final UUID uuid) {
+		final BendingPlayerInitializationState state = INITIALIZATION_STATES.get(uuid);
+		if (state != BendingPlayerInitializationState.READY) return state;
+		final Player online = Bukkit.getPlayer(uuid);
+		if (online == null || !online.isOnline()) return state;
+		final BendingPlayer runtime = ONLINE_PLAYERS.get(uuid);
+		if (runtime != null && runtime.getPlayer() == online) return state;
+		INITIALIZATION_STATES.remove(uuid, BendingPlayerInitializationState.READY);
+		return null;
+	}
 	static void allowRetry(final UUID uuid) { if (INITIALIZATION_STATES.get(uuid) == BendingPlayerInitializationState.FAILED) INITIALIZATION_STATES.remove(uuid); }
+
+	static CompletableFuture<OfflineBendingPlayer> initializeOnlineAsync(final Player player) {
+		final UUID uuid = player.getUniqueId();
+		final BendingPlayer runtime = ONLINE_PLAYERS.get(uuid);
+		if (INITIALIZATION_STATES.get(uuid) == BendingPlayerInitializationState.READY && runtime != null
+				&& runtime.getPlayer() == player && isCurrentConnection(uuid, player))
+			return CompletableFuture.completedFuture(runtime);
+		if (INITIALIZATION_STATES.get(uuid) == BendingPlayerInitializationState.READY
+				|| PLAYERS.get(uuid) != null && !(PLAYERS.get(uuid) instanceof BendingPlayer)
+				|| INITIALIZATION_STATES.get(uuid) == BendingPlayerInitializationState.LOADING
+						&& (LOADS.get(uuid) == null || LOAD_PLAYERS.get(uuid) != player))
+			return restartOnlineInitializationAsync(player);
+		return loadAsync(uuid, false, player);
+	}
+
+	static synchronized CompletableFuture<OfflineBendingPlayer> restartOnlineInitializationAsync(final Player player) {
+		final UUID uuid = player.getUniqueId();
+		final long generation = generationCounter(uuid).incrementAndGet();
+		final CompletableFuture<OfflineBendingPlayer> old = LOADS.remove(uuid);
+		if (old != null) old.cancel(false);
+		LOAD_PLAYERS.remove(uuid);
+		PLAYERS.remove(uuid);
+		ONLINE_PLAYERS.remove(uuid);
+		INITIALIZATION_STATES.remove(uuid);
+		final CompletableFuture<OfflineBendingPlayer> fresh = startAtomicLoad(uuid, false, generation, player);
+		LOADS.put(uuid, fresh);
+		if (fresh.isDone()) cleanupLoad(uuid, fresh, player);
+		return fresh;
+	}
+
+	static boolean canPublishRuntime(final UUID uuid, final long generation, final Player player) {
+		return player != null && isCurrentGeneration(uuid, generation) && isCurrentConnection(uuid, player);
+	}
+
+	static boolean isCurrentGeneration(final UUID uuid, final long generation) { return currentGeneration(uuid) == generation; }
+	private static long currentGeneration(final UUID uuid) { return generationCounter(uuid).get(); }
+	private static AtomicLong generationCounter(final UUID uuid) { return GENERATIONS.computeIfAbsent(uuid, ignored -> new AtomicLong()); }
+	private static boolean isCurrentConnection(final UUID uuid, final Player player) {
+		return player != null && player.isOnline() && Bukkit.getPlayer(uuid) == player;
+	}
 
 	@Deprecated
 	private static CompletableFuture<OfflineBendingPlayer> legacyLoadAsync(@NotNull final UUID uuid, boolean onStartup) {
@@ -268,10 +400,10 @@ public class OfflineBendingPlayer extends Bender {
 
 			PLAYERS.put(uuid, bPlayer);
 
-			final ResultSet rs2 = DBConnection.sql.readQuery("SELECT * FROM pk_players WHERE uuid = '" + uuid + "'");
+			final ResultSet rs2 = InternalPlayerDataStore.findPlayer(uuid);
 			try {
 				if (!rs2.next()) { // Data doesn't exist, we want a completely new player.
-					DBConnection.sql.modifyQuery("INSERT INTO pk_players (uuid, player, slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9) VALUES ('" + uuid.toString() + "', '" + offlinePlayer.getName() + "', 'null', 'null', 'null', 'null', 'null', 'null', 'null', 'null', 'null')");
+					InternalPlayerDataStore.createLegacyPlayer(uuid, offlinePlayer.getName());
 					Bukkit.getScheduler().runTask(ProjectKorra.plugin, () -> PkLang.info("Created new BendingPlayer for " + offlinePlayer.getName()));
 					OfflineBendingPlayer newPlayer;
 					if (offlinePlayer.isOnline()) {
@@ -291,7 +423,7 @@ public class OfflineBendingPlayer extends Bender {
 					// The player has at least played before.
 					final String player2 = rs2.getString("player");
 					if (!offlinePlayer.getName().equalsIgnoreCase(player2)) {
-						DBConnection.sql.modifyQuery("UPDATE pk_players SET player = '" + offlinePlayer.getName() + "' WHERE uuid = '" + uuid.toString() + "'");
+						InternalPlayerDataStore.updatePlayerName(uuid, offlinePlayer.getName());
 						// They have changed names.
 						PkLang.info("Updating Player Name for " + offlinePlayer.getName());
 					}
@@ -538,7 +670,7 @@ public class OfflineBendingPlayer extends Bender {
 
 					//Load cooldowns
 					if (ProjectKorra.isDatabaseCooldownsEnabled()) {
-						try (ResultSet rs = DBConnection.sql.readQuery("SELECT * FROM pk_cooldowns WHERE uuid = '" + uuid + "'")) {
+						try (ResultSet rs = InternalPlayerDataStore.findCooldowns(uuid)) {
 							while (rs.next()) {
 								final String name = rs.getString("cooldown");
 								final long value = rs.getLong("value");
@@ -578,6 +710,11 @@ public class OfflineBendingPlayer extends Bender {
 	 * Saves the subelements of a BendingPlayer to the database.
 	 */
 	public void saveSubElements() {
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			ExternalPersistenceCoordinator.warnLegacySave(this, "saveSubElements");
+			ExternalPersistenceCoordinator.flush(this, FlushReason.LEGACY_SAVE);
+			return;
+		}
 		final StringBuilder subs = new StringBuilder();
 		if (this.hasSubElement(Element.METAL)) {
 			subs.append("m");
@@ -652,11 +789,12 @@ public class OfflineBendingPlayer extends Bender {
 			subs.append("NULL");
 		}
 
-		DBConnection.sql.modifyQuery("UPDATE pk_players SET subelement = '" + subs.toString() + "' WHERE uuid = '" + uuid + "'");
+		InternalPlayerDataStore.saveSubelements(uuid, subs.toString());
 	}
 
 	/** Saves a snapshot of the current subelements and reports SQL completion. */
 	public CompletableFuture<Void> saveSubElementsAsync() {
+		if (ExternalPersistenceCoordinator.isExternalMode()) { ExternalPersistenceCoordinator.warnLegacySave(this, "saveSubElementsAsync"); return ExternalPersistenceCoordinator.flush(this, FlushReason.LEGACY_SAVE).toCompletableFuture(); }
 		final StringBuilder value = new StringBuilder();
 		final SubElement[] core = {Element.METAL,Element.LAVA,Element.SAND,Element.COMBUSTION,Element.LIGHTNING,Element.SPIRITUAL,Element.FLIGHT,Element.SUFFOCATION,Element.ICE,Element.HEALING,Element.BLOOD,Element.DAY_BLOOD,Element.PLANT,Element.BLUE_FIRE,Element.CHI,Element.ARCHER,Element.WARRIOR,Element.BLACK_SAND,Element.WHITE_FIRE};
 		final String[] codes = {"m","v","s","c","l","t","f","x","i","h","b","d","p","r","k","j","w","a","wf"};
@@ -668,13 +806,18 @@ public class OfflineBendingPlayer extends Bender {
 			value.append(element.getName()).append(',');
 		}
 		if (value.length() == 0) value.append("NULL");
-		return DBConnection.sql.modifyQueryAsync("UPDATE pk_players SET subelement = '" + sql(value.toString()) + "' WHERE uuid = '" + uuid + "'");
+		return InternalPlayerDataStore.saveSubelementsAsync(uuid, value.toString());
 	}
 
 	/**
 	 * Saves the elements of a BendingPlayer to the database.
 	 */
 	public void saveElements() {
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			ExternalPersistenceCoordinator.warnLegacySave(this, "saveElements");
+			ExternalPersistenceCoordinator.flush(this, FlushReason.LEGACY_SAVE);
+			return;
+		}
 		final StringBuilder elements = new StringBuilder();
 		if (this.hasElement(Element.AIR)) {
 			elements.append("a");
@@ -707,11 +850,12 @@ public class OfflineBendingPlayer extends Bender {
 			elements.append("NULL");
 		}
 
-		DBConnection.sql.modifyQuery("UPDATE pk_players SET element = '" + elements.toString() + "' WHERE uuid = '" + uuid + "'");
+		InternalPlayerDataStore.saveElements(uuid, elements.toString());
 	}
 
 	/** Saves a snapshot of the current elements and reports SQL completion. */
 	public CompletableFuture<Void> saveElementsAsync() {
+		if (ExternalPersistenceCoordinator.isExternalMode()) { ExternalPersistenceCoordinator.warnLegacySave(this, "saveElementsAsync"); return ExternalPersistenceCoordinator.flush(this, FlushReason.LEGACY_SAVE).toCompletableFuture(); }
 		final StringBuilder value = new StringBuilder();
 		if (this.hasElement(Element.AIR)) value.append('a');
 		if (this.hasElement(Element.WATER)) value.append('w');
@@ -725,7 +869,7 @@ public class OfflineBendingPlayer extends Bender {
 			value.append(element.getName()).append(',');
 		}
 		if (value.length() == 0) value.append("NULL");
-		return DBConnection.sql.modifyQueryAsync("UPDATE pk_players SET element = '" + sql(value.toString()) + "' WHERE uuid = '" + uuid + "'");
+		return InternalPlayerDataStore.saveElementsAsync(uuid, value.toString());
 	}
 
 	/**

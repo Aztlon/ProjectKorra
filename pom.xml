@@ -111,6 +111,12 @@
             <version>1.18.42</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
         <!-- lang3 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -264,6 +270,7 @@
         <defaultGoal>clean package install</defaultGoal>
         <finalName>${project.name}-${project.version}</finalName>
         <sourceDirectory>${project.basedir}/src/</sourceDirectory>
+        <testSourceDirectory>${project.basedir}/test/</testSourceDirectory>
         <resources>
             <resource>
                 <targetPath>.</targetPath>
@@ -289,6 +296,14 @@
                             <version>1.18.42</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+                <configuration>
+                    <useModulePath>false</useModulePath>
                 </configuration>
             </plugin>
             <plugin>

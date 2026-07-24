@@ -77,6 +77,8 @@ import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence;
+import com.projectkorra.projectkorra.persistence.external.FlushReason;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
@@ -1361,7 +1363,9 @@ public class PKListener implements Listener {
 			Manager.getManager(StatisticsManager.class).store(player.getUniqueId());
 		}
 		if (bPlayer != null) {
-			if (ProjectKorra.isDatabaseCooldownsEnabled()) {
+			if (ExternalPersistenceCoordinator.isExternalMode()) {
+				ExternalPersistenceCoordinator.flush(bPlayer, FlushReason.PLAYER_QUIT);
+			} else if (ProjectKorra.isDatabaseCooldownsEnabled()) {
 				bPlayer.saveCooldowns();
 			}
 		}
@@ -1389,7 +1393,10 @@ public class PKListener implements Listener {
 			}
 		}
 
-		if (bPlayer != null) {
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			ExternalPersistenceCoordinator.detach(player.getUniqueId());
+			OfflineBendingPlayer.detachExternalRuntime(player);
+		} else if (bPlayer != null) {
 			Bukkit.getScheduler().runTaskLater(ProjectKorra.plugin, //Run 1 tick later so they actually are offline
 					() -> OfflineBendingPlayer.convertToOffline(bPlayer).uncacheAfter(ConfigManager.defaultConfig.get().getLong("Properties.PlayerDataUnloadTime", 5 * 60 * 1000)), 1L);
 		}
@@ -2061,6 +2068,7 @@ public class PKListener implements Listener {
 
 	@EventHandler
 	public void onPluginUnload(PluginDisableEvent event) {
+		ExternalBendingPlayerPersistence.unregisterProvider(event.getPlugin());
 		RegionProtection.unloadPlugin((JavaPlugin) event.getPlugin());
 		BendingPlayer.HOOKS.remove((JavaPlugin) event.getPlugin());
 	}

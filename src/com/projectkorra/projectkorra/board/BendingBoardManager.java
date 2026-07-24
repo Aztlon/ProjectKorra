@@ -1,7 +1,5 @@
 package com.projectkorra.projectkorra.board;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashSet;
@@ -13,12 +11,16 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.projectkorra.projectkorra.BendingPlayer;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.ComboAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.util.MultiAbilityManager;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
-import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.storage.internal.InternalPlayerDataStore;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.BoardPreference;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
 
 import com.projectkorra.projectkorra.util.ChatUtil;
 import org.bukkit.Bukkit;
@@ -107,6 +109,21 @@ public final class BendingBoardManager {
 	public static void toggleBoard(Player player, boolean force) {
 		if (!force && (!enabled || disabledWorlds.contains(player.getWorld().getName()))) {
 			ChatUtil.sendBrandingMessage(player, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Board.Disabled"));
+			return;
+		}
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			final BendingPlayer bendingPlayer = BendingPlayer.getBendingPlayer(player);
+			if (bendingPlayer == null) return;
+			final BoardPreference requested = disabledPlayers.contains(player.getUniqueId()) ? BoardPreference.ENABLED : BoardPreference.DISABLED;
+			ExternalPersistenceCoordinator.mutate(bendingPlayer, new BendingPlayerMutationOperation.SetBoardPreference(requested),
+					MutationSource.projectKorra("board-toggle")).thenAccept(result -> {
+				if (!result.accepted()) {
+					ChatUtil.sendBrandingMessage(player, ChatColor.RED + "The external player-data provider rejected the board preference change.");
+					return;
+				}
+				if (requested == BoardPreference.DISABLED) ChatUtil.sendBrandingMessage(player, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Board.ToggledOff"));
+				else ChatUtil.sendBrandingMessage(player, ChatColor.GREEN + ConfigManager.languageConfig.get().getString("Commands.Board.ToggledOn"));
+			});
 			return;
 		}
 
@@ -267,11 +284,14 @@ public final class BendingBoardManager {
 	 * Load into memory the list of players who have toggled the bending board off.
 	 */
 	public static void loadDisabledPlayers() {
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			disabledPlayers.clear();
+			return;
+		}
 		Bukkit.getScheduler().runTaskAsynchronously(ProjectKorra.plugin, () -> {
 			Set<UUID> disabled = new HashSet<>();
 			try {
-				final ResultSet rs = DBConnection.sql.readQuery("SELECT uuid FROM pk_board WHERE enabled = 0");
-				while (rs.next()) disabled.add(UUID.fromString(rs.getString("uuid")));
+				disabled = InternalPlayerDataStore.loadDisabledBoards();
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
@@ -290,23 +310,29 @@ public final class BendingBoardManager {
 		if (holder != null) {
 			holder.board().destroy();
 		}
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			disabledPlayers.remove(player.getUniqueId());
+			return;
+		}
 		final UUID uuid = player.getUniqueId();
-		final String updateQuery = "UPDATE pk_board SET enabled = " + (disabledPlayers.contains(uuid) ? 0 : 1) + " WHERE uuid = ?";
-		Bukkit.getScheduler().runTaskAsynchronously(ProjectKorra.plugin, () -> {
-			try {
-				PreparedStatement ps = DBConnection.sql.getConnection().prepareStatement("SELECT enabled FROM pk_board WHERE uuid = ? LIMIT 1");
-				ps.setString(1, uuid.toString());
-				PreparedStatement ps2;
-				if (!ps.executeQuery().next()) { // if the entry doesn't exist in the DB, create it.
-					ps2 = DBConnection.sql.getConnection().prepareStatement("INSERT INTO pk_board (uuid, enabled) VALUES (?, 1)");
-				} else { // if the entry exists in the DB, update it
-					ps2 = DBConnection.sql.getConnection().prepareStatement(updateQuery);
-				}
-				ps2.setString(1, uuid.toString());
-				ps2.execute();
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
-		});
+		InternalPlayerDataStore.saveBoardPreference(uuid, !disabledPlayers.contains(uuid));
+	}
+
+	/** Applies provider-owned board state without causing an outbound persistence callback. */
+	public static void applyExternalPreference(final Player player, final BoardPreference preference) {
+		if (player == null || preference == null) return;
+		if (preference == BoardPreference.DISABLED) {
+			disabledPlayers.add(player.getUniqueId());
+			final BoardHolder holder = scoreboardPlayers.remove(player);
+			if (holder != null) holder.board().destroy();
+		} else {
+			// UNSPECIFIED uses ProjectKorra's normal per-player default: visible.
+			disabledPlayers.remove(player.getUniqueId());
+		}
+	}
+
+	/** Returns the currently projected runtime preference for rollback/diagnostics. */
+	public static BoardPreference getExternalRuntimePreference(final UUID uuid) {
+		return disabledPlayers.contains(uuid) ? BoardPreference.DISABLED : BoardPreference.ENABLED;
 	}
 }

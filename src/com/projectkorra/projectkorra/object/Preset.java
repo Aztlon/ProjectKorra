@@ -1,7 +1,5 @@
 package com.projectkorra.projectkorra.object;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletionStage;
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -17,12 +16,16 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import com.projectkorra.projectkorra.BendingPlayer;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
+import com.projectkorra.projectkorra.OfflineBendingPlayer;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.board.BendingBoardManager;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.PlayerBindChangeEvent;
-import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.storage.internal.InternalPlayerDataStore;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
 import com.projectkorra.projectkorra.util.logging.PkLang;
 
 /**
@@ -40,11 +43,6 @@ public class Preset {
 	public static Map<UUID, List<Preset>> presets = new ConcurrentHashMap<>();
 	public static FileConfiguration config = ConfigManager.presetConfig.get();
 	public static HashMap<String, ArrayList<String>> externalPresets = new HashMap<>();
-	static String loadQuery = "SELECT * FROM pk_presets WHERE uuid = ?";
-	static String deleteQuery = "DELETE FROM pk_presets WHERE uuid = ? AND name = ?";
-	static String insertQuery = "INSERT INTO pk_presets (uuid, name, slot1, slot2, slot3, slot4, slot5, slot6, slot7, " +
-			"slot8, slot9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
 	private final UUID uuid;
 	private final HashMap<Integer, String> abilities;
 	private final String name;
@@ -61,6 +59,7 @@ public class Preset {
 		this.uuid = uuid;
 		this.name = name;
 		this.abilities = abilities;
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(uuid)) return;
 		if (!presets.containsKey(uuid)) {
 			presets.put(uuid, new ArrayList<>());
 		}
@@ -83,6 +82,7 @@ public class Preset {
 	 * @param player The Player who's Presets should be loaded
 	 */
 	public static void loadPresets(final Player player) {
+		if (ExternalPersistenceCoordinator.isExternalMode()) return;
 		new BukkitRunnable() {
 			@Override
 			public void run() {
@@ -91,24 +91,9 @@ public class Preset {
 					return;
 				}
 				try {
-					final PreparedStatement ps = DBConnection.sql.getConnection().prepareStatement(loadQuery);
-					ps.setString(1, uuid.toString());
-					final ResultSet rs = ps.executeQuery();
-					if (rs.next()) { // Presets exist.
-						int i = 0;
-						do {
-							final HashMap<Integer, String> moves = new HashMap<Integer, String>();
-							for (int total = 1; total <= 9; total++) {
-								final String slot = rs.getString("slot" + total);
-								if (slot != null) {
-									moves.put(total, slot);
-								}
-							}
-							new Preset(uuid, rs.getString("name"), moves);
-							i++;
-						} while (rs.next());
-						PkLang.info("Loaded " + i + " presets for " + player.getName());
-					}
+					final List<InternalPlayerDataStore.PresetRow> rows = InternalPlayerDataStore.loadPresets(uuid);
+					for (final InternalPlayerDataStore.PresetRow row : rows) new Preset(uuid, row.name(), new HashMap<>(row.abilities()));
+					if (!rows.isEmpty()) PkLang.info("Loaded " + rows.size() + " presets for " + player.getName());
 				} catch (final SQLException ex) {
 					ex.printStackTrace();
 				}
@@ -285,16 +270,19 @@ public class Preset {
 	 * Deletes the Preset from the database.
 	 */
 	public CompletableFuture<Boolean> delete() {
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			final OfflineBendingPlayer bender = BendingPlayer.getCachedOffline(Bukkit.getOfflinePlayer(this.uuid));
+			if (bender == null) return CompletableFuture.completedFuture(false);
+			return ExternalPersistenceCoordinator.mutate(bender, new BendingPlayerMutationOperation.DeletePreset(this.name),
+					MutationSource.projectKorra("preset-delete")).thenApply(result -> result.accepted()).toCompletableFuture();
+		}
 		Preset instance = this;
 		CompletableFuture<Boolean> future = new CompletableFuture<>();
 		new BukkitRunnable() {
 			@Override
 			public void run() {
 				try {
-					final PreparedStatement ps = DBConnection.sql.getConnection().prepareStatement(deleteQuery);
-					ps.setString(1, uuid.toString());
-					ps.setString(2, name);
-					ps.execute();
+					InternalPlayerDataStore.deletePreset(uuid, name);
 					presets.get(uuid).remove(instance);
 					future.complete(true);
 				} catch (final SQLException e) {
@@ -319,18 +307,21 @@ public class Preset {
 	 * Saves the Preset to the database async
 	 */
 	public CompletableFuture<Boolean> save(final Player player) {
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			final OfflineBendingPlayer bender = BendingPlayer.getCachedOffline(Bukkit.getOfflinePlayer(this.uuid));
+			if (bender == null) return CompletableFuture.completedFuture(false);
+			return ExternalPersistenceCoordinator.mutate(bender, new BendingPlayerMutationOperation.UpsertPreset(this.name, this.abilities),
+					MutationSource.projectKorra("preset-save")).thenApply(result -> {
+					if (!result.accepted()) removeExternalPreset(this.uuid, this.name);
+					return result.accepted();
+				}).toCompletableFuture();
+		}
 		CompletableFuture<Boolean> future = new CompletableFuture<>();
 		new BukkitRunnable() {
 			@Override
 			public void run() {
 				try {
-					PreparedStatement ps = DBConnection.sql.getConnection().prepareStatement(insertQuery);
-					ps.setString(1, uuid.toString());
-					ps.setString(2, name);
-					for (int i = 1; i <= 9; i++) {
-						ps.setString(2 + i, abilities.get(i));
-					}
-					ps.execute();
+					InternalPlayerDataStore.insertPreset(uuid, name, abilities);
 					future.complete(true);
 				} catch (final SQLException e) {
 					e.printStackTrace();
@@ -347,5 +338,75 @@ public class Preset {
 
 	public UUID getUUID() {
 		return uuid;
+	}
+
+	public record BindResult(boolean persisted, boolean boundAll) {}
+
+	public static CompletionStage<BindResult> bindPresetAsync(final Player player, final Preset preset) {
+		if (!ExternalPersistenceCoordinator.isExternalMode()) return CompletableFuture.completedFuture(new BindResult(true, bindPreset(player, preset)));
+		return bindAbilitiesAsync(player, new HashMap<>(preset.abilities), "preset-bind");
+	}
+
+	public static CompletionStage<BindResult> bindExternalPresetAsync(final Player player, final String name) {
+		if (!ExternalPersistenceCoordinator.isExternalMode()) return CompletableFuture.completedFuture(new BindResult(true, bindExternalPreset(player, name)));
+		final ArrayList<String> configured = externalPresets.get(name.toLowerCase());
+		if (configured == null) return CompletableFuture.completedFuture(new BindResult(false, false));
+		final HashMap<Integer, String> abilities = new HashMap<>();
+		for (int index = 0; index < configured.size() && index < 9; index++) {
+			final CoreAbility ability = CoreAbility.getAbility(configured.get(index));
+			if (ability != null) abilities.put(index + 1, ability.getName());
+		}
+		return bindAbilitiesAsync(player, abilities, "external-preset-bind");
+	}
+
+	private static CompletionStage<BindResult> bindAbilitiesAsync(final Player player, final HashMap<Integer, String> supplied, final String detail) {
+		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
+		if (bPlayer == null) return CompletableFuture.completedFuture(new BindResult(false, false));
+		boolean boundAll = true;
+		for (int slot = 1; slot <= 9; slot++) {
+			final String name = supplied.get(slot);
+			final CoreAbility ability = CoreAbility.getAbility(name);
+			if (ability != null && !bPlayer.canBind(ability)) { supplied.remove(slot); boundAll = false; continue; }
+			final PlayerBindChangeEvent event = new PlayerBindChangeEvent(player, name, slot, true, false);
+			Bukkit.getPluginManager().callEvent(event);
+			if (event.isCancelled()) { supplied.remove(slot); boundAll = false; }
+		}
+		final boolean finalBoundAll = boundAll;
+		return bPlayer.requestMutationAsync(new BendingPlayerMutationOperation.ReplaceBinds(supplied), MutationSource.projectKorra(detail))
+				.thenApply(result -> {
+					if (result.accepted()) BendingBoardManager.updateAllSlots(player);
+					return new BindResult(result.accepted(), finalBoundAll);
+				});
+	}
+
+	public static void replaceExternalPresets(final UUID uuid, final Map<String, Map<Integer, String>> supplied) {
+		presets.remove(uuid);
+		for (final Map.Entry<String, Map<Integer, String>> entry : supplied.entrySet()) {
+			new Preset(uuid, entry.getKey(), new HashMap<>(entry.getValue()));
+		}
+	}
+
+	public static void applyExternalPresetMutation(final UUID uuid, final String name, final Map<Integer, String> abilities) {
+		removeExternalPreset(uuid, name);
+		new Preset(uuid, name, new HashMap<>(abilities));
+	}
+
+	public static void removeExternalPreset(final UUID uuid, final String name) {
+		final List<Preset> values = presets.get(uuid);
+		if (values == null) return;
+		values.removeIf(preset -> preset.name.equalsIgnoreCase(name));
+		if (values.isEmpty()) presets.remove(uuid);
+	}
+
+	public static void clearExternalPresets(final UUID uuid) {
+		presets.remove(uuid);
+	}
+
+	/** Returns a defensive snapshot used only for atomic external projection rollback. */
+	public static Map<String, Map<Integer, String>> snapshotExternalPresets(final UUID uuid) {
+		final Map<String, Map<Integer, String>> snapshot = new java.util.LinkedHashMap<>();
+		final List<Preset> values = presets.get(uuid);
+		if (values != null) for (final Preset preset : values) snapshot.put(preset.name, Map.copyOf(preset.abilities));
+		return Map.copyOf(snapshot);
 	}
 }

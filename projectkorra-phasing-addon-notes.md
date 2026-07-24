@@ -37,6 +37,24 @@ ProjectKorra now evaluates `GateStage.COLLISION` for real `CollisionManager` abi
 
 Collision gate requests include the source caster UUID, target caster UUID, source ability name, target ability name, and a collision location. Allowed collision handlers still run inside the active ability context for the handler's ability.
 
+## Entity Target Selection
+
+Ability-aware entity queries now evaluate `GateStage.TARGET_SELECT` before returning candidates. A denied entity is treated as absent, so it cannot receive effects, obscure a valid target, count toward target limits, or change an ability's lifecycle. Target selection is blocked in both `soft-block` and `enforce` rollout modes.
+
+See [`docs/phased-entity-targeting-convention.md`](docs/phased-entity-targeting-convention.md) for the complete core and addon migration convention, including custom Bukkit queries, ray tracing, delayed tasks, target caches, lifecycle rules, and testing guidance.
+
+Core and addon abilities should use the ability-first `GeneralMethods` overloads:
+
+- `getEntitiesAroundPoint(ability, location, radius)`
+- `getEntitiesAroundPoint(ability, location, radius, predicate)`
+- `getClosestEntity(ability, location, radius)`
+- `getClosestLivingEntity(ability, location, radius)`
+- `getTargetedEntity(ability, caster, range)`
+
+For targeting that occurs before an ability instance exists, use the source-and-identifier overloads, such as `getTargetedEntity(caster, "AbilityName", range)`. The old sourceless overloads remain binary/source compatible and inherit the active ability context during normal `start()`, `progress()`, and collision handling. They are deprecated because constructors, listeners, schedulers, and other out-of-context calls cannot reliably identify the phase that owns the query.
+
+Scheduled or delayed effects should call `GeneralMethods.canAbilityTarget(ability, entity)` again immediately before applying the effect, since phase membership may have changed after the initial query.
+
 ## TempBlock Provenance
 
 Core `TempBlock` creation now generally carries caster and ability provenance into `GateStage.BLOCK` requests. Existing addon constructors such as `new TempBlock(block, material)` still compile and inherit the active ability context when called during normal ProjectKorra ability execution.
@@ -71,4 +89,4 @@ When updating addon repos, search for these patterns and route out-of-context ca
 
 ## Current Scope
 
-This note covers particle source propagation, the central ability start gate, the sound gate, ability-vs-ability collision gating, TempBlock provenance, TempFallingBlock creation and visibility, and small hit/effect hardening. Target selection and broader effect APIs still need their own source propagation passes.
+This note covers particle source propagation, the central ability start gate, the sound gate, ability-vs-ability collision gating, entity target-selection helpers, TempBlock provenance, TempFallingBlock creation and visibility, and small hit/effect hardening. Existing sourceless calls made during managed ability execution inherit the active source as a compatibility bridge. The initial explicit target-selection migration covers FireBlast, WaterManipulation, and AirSwipe; remaining abilities should still move to the source-aware overloads so targeting remains correct outside managed execution.

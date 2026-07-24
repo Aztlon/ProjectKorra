@@ -10,6 +10,10 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.PlayerCooldownChangeEvent;
 import com.projectkorra.projectkorra.util.ChatUtil;
 import com.projectkorra.projectkorra.util.Cooldown;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.CooldownPersistence;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
 import com.projectkorra.projectkorra.util.TimeUtil;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
@@ -107,6 +111,11 @@ public class CooldownCommand extends PKCommand {
                 return;
             }
 
+			if (ExternalPersistenceCoordinator.isExternalMode()) {
+				handleExternalMutation(sender, oPlayer, bPlayer, list);
+				return;
+			}
+
             boolean set = Arrays.asList(new String[] {"set", "s"}).contains(list.get(0).toLowerCase());
 
             String cooldown;
@@ -164,6 +173,74 @@ public class CooldownCommand extends PKCommand {
             }
         });
     }
+
+	private void handleExternalMutation(final CommandSender sender, final OfflinePlayer player, final OfflineBendingPlayer bPlayer,
+			final List<String> arguments) {
+		final boolean set = Arrays.asList("set", "s").contains(arguments.get(0).toLowerCase());
+		final String requested = arguments.size() < 3 ? "ALL" : arguments.get(2);
+		long duration = 0;
+		if (set) {
+			if (arguments.size() < 4) { ChatUtil.sendBrandingMessage(sender, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Cooldown.SetNoValue")); return; }
+			try { duration = TimeUtil.unformatTime(arguments.get(3)); }
+			catch (final NumberFormatException error) { ChatUtil.sendBrandingMessage(sender, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Cooldown.InvalidTime").replace("{value}", arguments.get(3))); return; }
+		}
+		final MutationSource source = new MutationSource(MutationSource.Kind.COMMAND,
+				sender instanceof Player p ? p.getUniqueId() : null, sender.getName(), "ProjectKorra", "cooldown");
+		if (requested.equals("*") || requested.equalsIgnoreCase("ALL")) {
+			if (set && duration > 0) { ChatUtil.sendBrandingMessage(sender, ChatColor.GREEN + ConfigManager.languageConfig.get().getString("Commands.Cooldown.SetAll").replace("{player}", player.getName())); return; }
+			if (!fireExternalClearEvents(bPlayer)) return;
+			bPlayer.requestMutationAsync(new BendingPlayerMutationOperation.ClearPersistentCooldowns(), source).thenAccept(result -> {
+				if (!result.accepted()) ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "The external player-data provider rejected the cooldown reset.");
+				else {
+					bPlayer.clearRuntimeCooldowns();
+					ChatUtil.sendBrandingMessage(sender, ChatColor.GREEN + ConfigManager.languageConfig.get().getString("Commands.Cooldown.ResetAll").replace("{player}", player.getName()));
+				}
+			});
+			return;
+		}
+		final String fixed = COOLDOWNS.stream().filter(name -> name.equalsIgnoreCase(requested)).findFirst().orElse(null);
+		if (fixed == null) { ChatUtil.sendBrandingMessage(sender, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Cooldown.InvalidCooldown")); return; }
+		final Long eventDuration = fireExternalCooldownEvent(bPlayer, fixed, duration);
+		if (eventDuration == null) return;
+		duration = eventDuration;
+		final CooldownPersistence persistence = ExternalPersistenceCoordinator.classifyCooldown(bPlayer, fixed, true);
+		if (!persistence.isPersistent()) {
+			if (duration <= 0) bPlayer.removeRuntimeCooldown(fixed); else bPlayer.setRuntimeCooldown(fixed, System.currentTimeMillis() + duration);
+			ChatUtil.sendBrandingMessage(sender, ChatColor.GREEN + (duration <= 0
+					? ConfigManager.languageConfig.get().getString("Commands.Cooldown.Reset").replace("{player}", player.getName()).replace("{cooldown}", fixed)
+					: ConfigManager.languageConfig.get().getString("Commands.Cooldown.Set").replace("{player}", player.getName()).replace("{cooldown}", fixed).replace("{value}", TimeUtil.formatTime(duration))));
+			return;
+		}
+		final BendingPlayerMutationOperation operation = duration <= 0
+				? new BendingPlayerMutationOperation.RemovePersistentCooldown(fixed)
+				: new BendingPlayerMutationOperation.SetPersistentCooldown(fixed, System.currentTimeMillis() + duration, persistence);
+		final long finalDuration = duration;
+		bPlayer.requestMutationAsync(operation, source).thenAccept(result -> {
+			if (!result.accepted()) ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "The external player-data provider rejected the cooldown change.");
+			else ChatUtil.sendBrandingMessage(sender, ChatColor.GREEN + (finalDuration <= 0
+					? ConfigManager.languageConfig.get().getString("Commands.Cooldown.Reset").replace("{player}", player.getName()).replace("{cooldown}", fixed)
+					: ConfigManager.languageConfig.get().getString("Commands.Cooldown.Set").replace("{player}", player.getName()).replace("{cooldown}", fixed).replace("{value}", TimeUtil.formatTime(finalDuration))));
+		});
+	}
+
+	private static boolean fireExternalClearEvents(final OfflineBendingPlayer bPlayer) {
+		if (!(bPlayer instanceof BendingPlayer online)) return true;
+		boolean allowed = true;
+		for (final String key : new ArrayList<>(bPlayer.getCooldowns().keySet())) {
+			final PlayerCooldownChangeEvent event = new PlayerCooldownChangeEvent(online.getPlayer(), key, 0, PlayerCooldownChangeEvent.Result.REMOVED);
+			Bukkit.getPluginManager().callEvent(event);
+			if (event.isCancelled()) allowed = false;
+		}
+		return allowed;
+	}
+
+	private static Long fireExternalCooldownEvent(final OfflineBendingPlayer bPlayer, final String key, final long duration) {
+		if (!(bPlayer instanceof BendingPlayer online)) return duration;
+		final PlayerCooldownChangeEvent event = new PlayerCooldownChangeEvent(online.getPlayer(), key, duration,
+				duration <= 0 ? PlayerCooldownChangeEvent.Result.REMOVED : PlayerCooldownChangeEvent.Result.SET);
+		Bukkit.getPluginManager().callEvent(event);
+		return event.isCancelled() ? null : event.getCooldown();
+	}
 
     private String setCooldown(CommandSender sender, OfflineBendingPlayer bPlayer, String cooldown, long time) {
         String fixedCooldown = COOLDOWNS.stream().filter(s -> s.equalsIgnoreCase(cooldown)).findFirst().orElse(null);

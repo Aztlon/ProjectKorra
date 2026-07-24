@@ -167,7 +167,8 @@ public final class PhasedIntegrationManager {
 			case OBSERVE:
 				return false;
 			case SOFT_BLOCK:
-				return stage == GateStage.DAMAGE || stage == GateStage.COLLISION || stage == GateStage.EFFECT;
+				return stage == GateStage.TARGET_SELECT || stage == GateStage.DAMAGE
+						|| stage == GateStage.COLLISION || stage == GateStage.EFFECT;
 			case ENFORCE:
 			default:
 				return true;

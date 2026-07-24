@@ -239,7 +239,7 @@ public class FireBlast extends FireAbility {
 			return;
 		}
 
-		Entity entity = GeneralMethods.getClosestEntity(this.location, this.collisionRadius);
+		Entity entity = GeneralMethods.getClosestEntity(this, this.location, this.collisionRadius);
 		if (entity != null) {
 			this.affect(entity);
 		}

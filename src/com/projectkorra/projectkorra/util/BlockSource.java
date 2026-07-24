@@ -1,6 +1,5 @@
 package com.projectkorra.projectkorra.util;
 
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.function.Predicate;
 
@@ -178,16 +177,27 @@ public class BlockSource {
 
 	public static @Nullable Block getNearbyBlock(final LivingEntity caster, final double range, final Predicate<Block> filter) {
 		// not min. actually prefer something closest to the forward edge of this range
-		var target = caster.getEyeLocation().add(caster.getEyeLocation().getDirection().normalize().multiply(range));
-		return GeneralMethods.getBlocksAroundPoint(caster.getEyeLocation(), range).stream()
-				.filter(filter)
-				.filter(b -> b.getLocation().distanceSquared(caster.getEyeLocation()) <= range * range)
-				.min(Comparator.comparingDouble(b -> b.getLocation().distanceSquared(target)))
-				.orElse(null);
-//		return GeneralMethods.getBlocksAroundPoint(caster.getEyeLocation(), range).stream()
-//				.filter(filter)
-//				.min(Comparator.comparingDouble(b -> b.getLocation().add(0.5, 0.5, 0.5).distanceSquared(caster.getEyeLocation())))
-//				.orElse(null);
+		final Location eyeLocation = caster.getEyeLocation();
+		final Location target = eyeLocation.clone().add(eyeLocation.getDirection().normalize().multiply(range));
+		Block nearestBlock = null;
+		double nearestDistanceSquared = Double.MAX_VALUE;
+
+		for (final Block block : GeneralMethods.getBlocksAroundPoint(eyeLocation, range)) {
+			if (!filter.test(block)) {
+				continue;
+			}
+
+			final double deltaX = block.getX() - target.getX();
+			final double deltaY = block.getY() - target.getY();
+			final double deltaZ = block.getZ() - target.getZ();
+			final double distanceSquared = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
+			if (distanceSquared < nearestDistanceSquared) {
+				nearestBlock = block;
+				nearestDistanceSquared = distanceSquared;
+			}
+		}
+
+		return nearestBlock;
 	}
 
 	public static @Nullable Block getNearbyEarthBlock(final LivingEntity caster, final double range) {

@@ -65,14 +65,15 @@ public class MultiAbilityManager {
 
 		final List<MultiAbilityInfoSub> modes = getMultiAbility(multiAbility).getAbilities();
 
-		bPlayer.getAbilities().clear();
+		final HashMap<Integer, String> temporaryBinds = new HashMap<>();
 		for (int i = 0; i < modes.size(); i++) {
 			if (!player.hasPermission("bending.ability." + multiAbility + "." + modes.get(i).getName())) {
-				bPlayer.getAbilities().put(i + 1, new StringBuilder().append(modes.get(i).getAbilityColor()).append(ChatColor.STRIKETHROUGH).append(modes.get(i).getName()).toString());
+				temporaryBinds.put(i + 1, new StringBuilder().append(modes.get(i).getAbilityColor()).append(ChatColor.STRIKETHROUGH).append(modes.get(i).getName()).toString());
 			} else {
-				bPlayer.getAbilities().put(i + 1, modes.get(i).getAbilityColor() + modes.get(i).getName());
+				temporaryBinds.put(i + 1, modes.get(i).getAbilityColor() + modes.get(i).getName());
 			}
 		}
+		bPlayer.replaceRuntimeAbilities(temporaryBinds);
 		
 		player.getInventory().setHeldItemSlot(0);
 	}
@@ -185,13 +186,21 @@ public class MultiAbilityManager {
 		playerBoundAbility.remove(player);
 		playerSlot.remove(player);
 	}
+
+	/** Drops transient multi-ability state when an authoritative profile projection replaces binds. */
+	public static void clearExternalProjectionState(final Player player) {
+		playerAbilities.remove(player);
+		playerBoundAbility.remove(player);
+		playerSlot.remove(player);
+	}
 	
 	private static HashMap<Integer, String> resetBinds(OfflinePlayer player, HashMap<Integer, String> prevBinds) {
 		if (prevBinds == null) {
 			return null;
 		}
 		
-		final OfflineBendingPlayer bPlayer = BendingPlayer.getOrLoadOffline(player);
+		final OfflineBendingPlayer bPlayer = player instanceof Player online
+				? BendingPlayer.getBendingPlayer(online) : BendingPlayer.getOrLoadOffline(player);
 		if (bPlayer == null) {
 			return null;
 		}
@@ -202,8 +211,7 @@ public class MultiAbilityManager {
 			ProjectKorra.plugin.getServer().getPluginManager().callEvent(new PlayerBindChangeEvent((Player) player, playerBoundAbility.get(player), false, true));
 		}
 
-		bPlayer.getAbilities().clear();
-		bPlayer.getAbilities().putAll(prevBinds);
+		bPlayer.replaceRuntimeAbilities(prevBinds);
 		
 		return null;
 	}

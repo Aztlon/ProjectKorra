@@ -218,6 +218,7 @@ public class ConfigManager {
 			config.addDefault("Commands.PermaRemove.RestoredConfirm", "You have restored the bending of {target}.");
 			config.addDefault("Commands.PermaRemove.Removed", "Your bending has been permanently removed.");
 			config.addDefault("Commands.PermaRemove.RemovedConfirm", "You have removed the bending of {target}.");
+			config.addDefault("Commands.PermaRemove.ExternalDisabled", "ProjectKorra permaremove is disabled while external player persistence is active. Use Avatarverse administrative tooling instead.");
 
 			config.addDefault("Commands.Invincible.Description", "This command will make you immune to all bending damage. Once you use this command, you will stay invincible until you log off or use this command again.");
 			config.addDefault("Commands.Invincible.ToggledOn", "You are now invincible to all bending damage and effects. Use this command again to disable this.");
@@ -1873,6 +1874,10 @@ public class ConfigManager {
 			config.addDefault("Abilities.Chi.SwiftKick.Cooldown", 4000);
 
 			config.addDefault("Storage.engine", "sqlite");
+			config.addDefault("Storage.PlayerDataMode", "INTERNAL");
+			config.addDefault("Storage.External.LoadTimeoutMillis", 10000L);
+			config.addDefault("Storage.External.MutationTimeoutMillis", 5000L);
+			config.addDefault("Storage.External.FlushTimeoutMillis", 5000L);
 
 			config.addDefault("Storage.MySQL.host", "localhost");
 			config.addDefault("Storage.MySQL.port", 3306);

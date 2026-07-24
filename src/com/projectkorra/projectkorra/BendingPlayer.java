@@ -49,6 +49,10 @@ import com.projectkorra.projectkorra.event.PlayerCooldownChangeEvent;
 import com.projectkorra.projectkorra.event.PlayerCooldownChangeEvent.Result;
 import com.projectkorra.projectkorra.util.Cooldown;
 import com.projectkorra.projectkorra.util.MovementHandler;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.CooldownPersistence;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
+import com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence;
 import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -87,7 +91,15 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		Bukkit.getServer().getPluginManager().callEvent(event);
 
 		if (!event.isCancelled()) {
-			this.cooldowns.put(ability, new Cooldown(cooldown + System.currentTimeMillis(), database));
+			if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+				final CooldownPersistence persistence = ExternalPersistenceCoordinator.classifyCooldown(this, ability, database);
+				if (persistence.isPersistent()) {
+					this.requestMutationAsync(new BendingPlayerMutationOperation.SetPersistentCooldown(ability,
+							cooldown + System.currentTimeMillis(), persistence), MutationSource.legacy("addCooldown"));
+					return;
+				}
+			}
+			this.cooldowns.put(ability, new Cooldown(cooldown + System.currentTimeMillis(), database && !ExternalPersistenceCoordinator.isExternalMode()));
 
 			if (this.getBoundAbilityName() != null && this.getBoundAbilityName().equalsIgnoreCase(ability)) {
 				ChatUtil.displayMovePreview(this.player);
@@ -100,6 +112,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 
 	@Override
 	protected boolean canBend(@NotNull final CoreAbility ability, final boolean ignoreBinds, final boolean ignoreCooldowns) {
+		if (isExternalPersistenceUnavailable()) return false;
 		if (!super.canBend(ability, ignoreBinds, ignoreCooldowns)) return false;
 		if (this.player.getGameMode() == GameMode.SPECTATOR) return false;
 		if (isAvatarState()) return true;
@@ -109,6 +122,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	}
 
 	public boolean canBendPassive(final CoreAbility ability) {
+		if (isExternalPersistenceUnavailable()) return false;
 		if (ability == null || !this.isPassiveToggled(ability.getElement()) || !this.isToggledPassives()) {
 			return false; // If the passive is disabled.
 		}
@@ -136,6 +150,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	}
 
 	public boolean canUsePassive(final CoreAbility ability) {
+		if (isExternalPersistenceUnavailable()) return false;
 		final Element element = ability.getElement();
 		if (!this.isToggled() || !this.isElementToggled(element) || !this.isPassiveToggled(element) || !this.isToggledPassives()) {
 			return false;
@@ -178,6 +193,12 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		return OfflineBendingPlayer.ONLINE_PLAYERS.get(oPlayer.getUniqueId());
 	}
 
+	private boolean isExternalPersistenceUnavailable() {
+		return ExternalPersistenceCoordinator.isExternalMode()
+				&& (BendingPlayer.getInitializationState(this.uuid) != BendingPlayerInitializationState.READY
+						|| ExternalBendingPlayerPersistence.getProvider().isEmpty());
+	}
+
 	/**
 	 * Gets a OfflineBendingPlayer instance for the provided player
 	 * @param oPlayer The player
@@ -199,8 +220,8 @@ public class BendingPlayer extends OfflineBendingPlayer {
 
 	/** Initializes an online player and completes only when the ready instance is public. */
 	public static CompletableFuture<BendingPlayer> initializeAsync(@NotNull final Player player) {
-		return OfflineBendingPlayer.loadAsync(player.getUniqueId(), false).thenApply(loaded -> {
-			if (loaded instanceof BendingPlayer bendingPlayer) return bendingPlayer;
+		return OfflineBendingPlayer.initializeOnlineAsync(player).thenApply(loaded -> {
+			if (loaded instanceof BendingPlayer bendingPlayer && bendingPlayer.getPlayer() == player) return bendingPlayer;
 			throw new IllegalStateException("Player " + player.getUniqueId() + " disconnected during initialization");
 		});
 	}
@@ -209,6 +230,14 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	public static CompletableFuture<BendingPlayer> retryInitializationAsync(@NotNull final Player player) {
 		OfflineBendingPlayer.allowRetry(player.getUniqueId());
 		return initializeAsync(player);
+	}
+
+	/** Invalidates all cached initialization state for this connection and starts a clean load. */
+	public static CompletableFuture<BendingPlayer> restartInitializationAsync(@NotNull final Player player) {
+		return OfflineBendingPlayer.restartOnlineInitializationAsync(player).thenApply(loaded -> {
+			if (loaded instanceof BendingPlayer bendingPlayer && bendingPlayer.getPlayer() == player) return bendingPlayer;
+			throw new IllegalStateException("Player " + player.getUniqueId() + " disconnected during initialization");
+		});
 	}
 
 	public static BendingPlayerInitializationState getInitializationState(@NotNull final UUID uuid) {
@@ -227,6 +256,9 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	 * @return The OfflineBendingPlayer instance
 	 */
 	public static OfflineBendingPlayer getOrLoadOffline(@NotNull final OfflinePlayer oPlayer) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && Bukkit.isPrimaryThread()) {
+			throw new IllegalStateException("Synchronous external player-data loading is forbidden on the server thread; use getOrLoadOfflineAsync");
+		}
 		try {
 			return getOrLoadOfflineAsync(oPlayer).get();
 		} catch (ExecutionException | InterruptedException e) {
@@ -392,6 +424,13 @@ public class BendingPlayer extends OfflineBendingPlayer {
 		final PlayerCooldownChangeEvent event = new PlayerCooldownChangeEvent(this.player, ability, 0, Result.REMOVED);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (!event.isCancelled()) {
+			if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+				final Cooldown current = this.cooldowns.get(ability);
+				if (current != null && current.isDatabase()) {
+					this.requestMutationAsync(new BendingPlayerMutationOperation.RemovePersistentCooldown(ability), MutationSource.legacy("removeCooldown"));
+					return;
+				}
+			}
 			this.cooldowns.remove(ability);
 
 			
@@ -422,7 +461,12 @@ public class BendingPlayer extends OfflineBendingPlayer {
 				final PlayerCooldownChangeEvent event = new PlayerCooldownChangeEvent(this.player, entry.getKey(), 0, Result.REMOVED);
 				Bukkit.getServer().getPluginManager().callEvent(event);
 				if (!event.isCancelled()) {
+					final boolean persistent = entry.getValue().isDatabase();
+					final String expiredKey = entry.getKey();
 					iterator.remove();
+					if (persistent && ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+						this.requestMutationAsync(new BendingPlayerMutationOperation.RemovePersistentCooldown(expiredKey), MutationSource.projectKorra("cooldown-expired"));
+					}
 
 					final String abilityName = event.getAbility();
 
@@ -457,6 +501,10 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	 */
 	@Override
 	public void toggleBending() {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			super.toggleBending();
+			return;
+		}
 		this.toggled = !this.toggled;
 		PassiveManager.registerPassives(this.player);
 	}
@@ -469,6 +517,10 @@ public class BendingPlayer extends OfflineBendingPlayer {
 
 	@Override
 	public void toggleElement(final Element element) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			super.toggleElement(element);
+			return;
+		}
 		super.toggleElement(element);
 		PassiveManager.registerPassives(this.player);
 	}
@@ -505,7 +557,8 @@ public class BendingPlayer extends OfflineBendingPlayer {
 				finalAbilities.put(i, slots.get(i));
 			}
 		}
-		this.setAbilities(finalAbilities);
+		if (ExternalPersistenceCoordinator.isExternalMode()) this.abilities = finalAbilities;
+		else this.setAbilities(finalAbilities);
 	}
 
 	/**
@@ -518,20 +571,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 
 		Preset.loadPresets(this.player);
 
-		final boolean chatEnabled = ConfigManager.languageConfig.get().getBoolean("Chat.Enable");
-
-		String prefix = ChatColor.WHITE + ChatColor.translateAlternateColorCodes('&', ConfigManager.languageConfig.get().getString("Chat.Prefixes.Nonbender", "")) + " ";
-		if (this.player.hasPermission("bending.avatar") || (this.hasElement(Element.AIR) && this.hasElement(Element.EARTH) && this.hasElement(Element.FIRE) && this.hasElement(Element.WATER))) {
-			prefix = Element.AVATAR.getPrefix();
-		} else if (this.getElements().size() > 0) {
-			Element element = this.getElements().get(0);
-			prefix = element.getPrefix();
-		}
-
-		if (chatEnabled) {
-			this.player.setDisplayName(this.player.getName());
-			this.player.setDisplayName(prefix + ChatColor.RESET + this.player.getDisplayName());
-		}
+		this.refreshChatPrefix();
 
 		// Handle the AirSpout/WaterSpout login glitches.
 		if (this.player.getGameMode() != GameMode.CREATIVE) {
@@ -565,6 +605,17 @@ public class BendingPlayer extends OfflineBendingPlayer {
 			BendingBoardManager.changeWorld(this.player);
 		}, 1L);
 
+	}
+
+	/** Refreshes the display-name projection after externally owned elements are replaced. */
+	public void refreshChatPrefix() {
+		if (!ConfigManager.languageConfig.get().getBoolean("Chat.Enable")) return;
+		String prefix = ChatColor.WHITE + ChatColor.translateAlternateColorCodes('&', ConfigManager.languageConfig.get().getString("Chat.Prefixes.Nonbender", "")) + " ";
+		if (this.player.hasPermission("bending.avatar") || (this.hasElement(Element.AIR) && this.hasElement(Element.EARTH)
+				&& this.hasElement(Element.FIRE) && this.hasElement(Element.WATER))) prefix = Element.AVATAR.getPrefix();
+		else if (!this.getElements().isEmpty()) prefix = this.getElements().get(0).getPrefix();
+		this.player.setDisplayName(this.player.getName());
+		this.player.setDisplayName(prefix + ChatColor.RESET + this.player.getDisplayName());
 	}
 
 

@@ -10,6 +10,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.logging.PkLang;
+import com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence;
 
 public class DBConnection {
 
@@ -38,6 +39,7 @@ public class DBConnection {
 			}
 			isOpen = true;
 			PkLang.info("Database connection established.");
+			if (ExternalBendingPlayerPersistence.isExternalMode()) return;
 
 			convertOldCooldownsTable();
 
@@ -84,6 +86,7 @@ public class DBConnection {
 				return;
 			}
 			isOpen = true;
+			if (ExternalBendingPlayerPersistence.isExternalMode()) return;
 
 			convertOldCooldownsTable();
 

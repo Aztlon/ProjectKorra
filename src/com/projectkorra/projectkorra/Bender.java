@@ -1,7 +1,5 @@
 package com.projectkorra.projectkorra;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -13,6 +11,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletionStage;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -36,11 +35,16 @@ import com.projectkorra.projectkorra.event.PlayerBindChangeEvent;
 import com.projectkorra.projectkorra.event.PlayerStanceChangeEvent;
 import com.projectkorra.projectkorra.hooks.CanBendHook;
 import com.projectkorra.projectkorra.region.RegionProtection;
-import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.storage.internal.InternalPlayerDataStore;
 import com.projectkorra.projectkorra.util.ChatUtil;
 import com.projectkorra.projectkorra.util.Cooldown;
 import com.projectkorra.projectkorra.util.MovementHandler;
 import com.projectkorra.projectkorra.util.logging.PkLang;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.CooldownPersistence;
+import com.projectkorra.projectkorra.persistence.external.FlushReason;
+import com.projectkorra.projectkorra.persistence.external.MutationResult;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
 import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
 
 import lombok.Getter;
@@ -224,11 +228,18 @@ public class Bender {
 			}
 		}
 
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.SetBind(slot, name), MutationSource.legacy("bindAbility"))
+					.thenAccept(result -> {
+						if (player == null) return;
+						if (result.accepted()) ChatUtil.sendBrandingMessage(player, coreAbil.getElement().getColor() + ConfigManager.languageConfig.get().getString("Commands.Bind.SuccessfullyBound").replace("{ability}", name).replace("{slot}", String.valueOf(slot)));
+						else ChatUtil.sendBrandingMessage(player, ChatColor.RED + "The external player-data provider rejected the bind change.");
+					});
+			return;
+		}
 		setAbility(slot, name);
 
-		if (player != null) {
-			ChatUtil.sendBrandingMessage(player, coreAbil.getElement().getColor() + ConfigManager.languageConfig.get().getString("Commands.Bind.SuccessfullyBound").replace("{ability}", name).replace("{slot}", String.valueOf(slot)));
-		}
+		if (player != null) ChatUtil.sendBrandingMessage(player, coreAbil.getElement().getColor() + ConfigManager.languageConfig.get().getString("Commands.Bind.SuccessfullyBound").replace("{ability}", name).replace("{slot}", String.valueOf(slot)));
 	}
 
 	public void clearAbility(final int slot) {
@@ -242,6 +253,10 @@ public class Bender {
 	}
 
 	public void setAbility(final int slot, final String ability) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.SetBind(slot, ability), MutationSource.legacy("setAbility"));
+			return;
+		}
 		this.abilities.put(slot, ability);
 		this.saveAbility(ability, slot);
 	}
@@ -254,23 +269,20 @@ public class Bender {
 	 */
 	public void setAbilities(@NotNull final HashMap<Integer, String> abilities) {
 		if (this.abilities.equals(abilities)) return;
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.ReplaceBinds(abilities), MutationSource.legacy("setAbilities"));
+			return;
+		}
 
 		this.abilities = abilities;
 
-		for (int i = 1; i <= 9; i++) {
-			DBConnection.sql.modifyQuery("UPDATE pk_players SET slot" + i + " = '" + abilities.get(i) + "' WHERE uuid = '" + this.uuid + "'");
-		}
+		InternalPlayerDataStore.writeAbilitiesLegacy(this.uuid, abilities);
 	}
 
 	/** Saves a snapshot of all ability slots and reports completion. */
 	public CompletableFuture<Void> saveAbilitiesAsync() {
-		final Map<Integer, String> snapshot = new HashMap<>(this.abilities);
-		final CompletableFuture<?>[] writes = new CompletableFuture<?>[9];
-		for (int i = 1; i <= 9; i++) {
-			final String value = snapshot.get(i);
-			writes[i - 1] = DBConnection.sql.modifyQueryAsync("UPDATE pk_players SET slot" + i + " = " + (value == null ? "NULL" : "'" + sql(value) + "'") + " WHERE uuid = '" + this.uuid + "'");
-		}
-		return CompletableFuture.allOf(writes);
+		if (ExternalPersistenceCoordinator.isExternalMode()) { ExternalPersistenceCoordinator.warnLegacySave(this, "saveAbilitiesAsync"); return ExternalPersistenceCoordinator.flush(this, FlushReason.LEGACY_SAVE).toCompletableFuture(); }
+		return InternalPlayerDataStore.writeAbilities(this.uuid, new HashMap<>(this.abilities));
 	}
 
 	/**
@@ -284,18 +296,21 @@ public class Bender {
 			return;
 		}
 
-		DBConnection.sql.modifyQuery("UPDATE pk_players SET slot" + slot + " = '" + (this.abilities.get(slot) == null ? null : abilities.get(slot)) + "' WHERE uuid = '" + uuid + "'");
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			ExternalPersistenceCoordinator.warnLegacySave(this, "saveAbility");
+			ExternalPersistenceCoordinator.flush(this, FlushReason.LEGACY_SAVE);
+			return;
+		}
+		InternalPlayerDataStore.writeAbilityLegacy(this.uuid, slot, this.abilities.get(slot));
 	}
 
 	/** Saves the supplied slot snapshot and reports completion. */
 	public CompletableFuture<Void> saveAbilityAsync(final String ability, final int slot) {
 		if (slot < 1 || slot > 9) return CompletableFuture.failedFuture(new IllegalArgumentException("slot must be between 1 and 9"));
+		if (ExternalPersistenceCoordinator.isExternalMode()) { ExternalPersistenceCoordinator.warnLegacySave(this, "saveAbilityAsync"); return ExternalPersistenceCoordinator.flush(this, FlushReason.LEGACY_SAVE).toCompletableFuture(); }
 		if (this instanceof BendingPlayer bp && MultiAbilityManager.playerAbilities.containsKey(bp.getPlayer())) return CompletableFuture.completedFuture(null);
-		final String value = ability == null ? null : ability;
-		return DBConnection.sql.modifyQueryAsync("UPDATE pk_players SET slot" + slot + " = " + (value == null ? "NULL" : "'" + sql(value) + "'") + " WHERE uuid = '" + uuid + "'");
+		return InternalPlayerDataStore.writeAbility(this.uuid, slot, ability);
 	}
-
-	private static String sql(final String value) { return value.replace("'", "''"); }
 
 	public String getBoundAbilityName() {
 		return "";
@@ -310,7 +325,28 @@ public class Bender {
 	}
 
 	public List<Element.SubElement> getSubElements() {
-		return this.subelements;
+		return ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)
+				? List.copyOf(this.subelements) : this.subelements;
+	}
+
+	public List<Element> getElements() {
+		return ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)
+				? List.copyOf(this.elements) : this.elements;
+	}
+
+	public HashMap<Integer, String> getAbilities() {
+		return ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)
+				? new HashMap<>(this.abilities) : this.abilities;
+	}
+
+	public Map<String, Cooldown> getCooldowns() {
+		return ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)
+				? Map.copyOf(this.cooldowns) : this.cooldowns;
+	}
+
+	public Set<Element> getToggledElements() {
+		return ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)
+				? Set.copyOf(this.toggledElements) : this.toggledElements;
 	}
 
 	public UUID getUUID() {
@@ -324,23 +360,43 @@ public class Bender {
 	 * @param element The element to set
 	 */
 	public void setElement(@NotNull final Element element) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.ReplaceElements(List.of(element.getName())), MutationSource.legacy("setElement"));
+			return;
+		}
 		this.elements.clear();
 		this.elements.add(element);
 	}
 
 	public void addElement(final Element element) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.AddElement(element.getName()), MutationSource.legacy("addElement"));
+			return;
+		}
 		this.elements.add(element);
 	}
 
 	public void addSubElement(final Element.SubElement subelement) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.AddSubelement(subelement.getName()), MutationSource.legacy("addSubElement"));
+			return;
+		}
 		this.subelements.add(subelement);
 	}
 
 	public void removeElement(final Element element) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.RemoveElement(element.getName()), MutationSource.legacy("removeElement"));
+			return;
+		}
 		this.elements.remove(element);
 	}
 
 	public void removeSubElement(final Element.SubElement subelement) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.RemoveSubelement(subelement.getName()), MutationSource.legacy("removeSubElement"));
+			return;
+		}
 		this.subelements.remove(subelement);
 	}
 
@@ -383,6 +439,13 @@ public class Bender {
 	}
 
 	public void removeCooldown(final String ability) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			final Cooldown current = this.cooldowns.get(ability);
+			if (current != null && current.isDatabase()) {
+				this.requestMutationAsync(new BendingPlayerMutationOperation.RemovePersistentCooldown(ability), MutationSource.legacy("removeCooldown"));
+				return;
+			}
+		}
 		this.cooldowns.remove(ability);
 	}
 
@@ -391,7 +454,15 @@ public class Bender {
 	}
 
 	protected void removeOldCooldowns() {
-		this.cooldowns.entrySet().removeIf(entry -> System.currentTimeMillis() >= entry.getValue().getCooldown());
+		final List<String> expiredPersistent = new ArrayList<>();
+		this.cooldowns.entrySet().removeIf(entry -> {
+			final boolean expired = System.currentTimeMillis() >= entry.getValue().getCooldown();
+			if (expired && entry.getValue().isDatabase()) expiredPersistent.add(entry.getKey());
+			return expired;
+		});
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			for (final String key : expiredPersistent) this.requestMutationAsync(new BendingPlayerMutationOperation.RemovePersistentCooldown(key), MutationSource.projectKorra("cooldown-expired"));
+		}
 	}
 
 	public boolean isOnCooldown(@NotNull final Ability ability) {
@@ -427,7 +498,14 @@ public class Bender {
 			return;
 		}
 
-		this.cooldowns.put(ability, new Cooldown(cooldown + System.currentTimeMillis(), database));
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			final CooldownPersistence persistence = ExternalPersistenceCoordinator.classifyCooldown(this, ability, database);
+			if (persistence.isPersistent()) {
+				this.requestMutationAsync(new BendingPlayerMutationOperation.SetPersistentCooldown(ability, cooldown + System.currentTimeMillis(), persistence), MutationSource.legacy("addCooldown"));
+				return;
+			}
+		}
+		this.cooldowns.put(ability, new Cooldown(cooldown + System.currentTimeMillis(), database && !ExternalPersistenceCoordinator.isExternalMode()));
 
 		CooldownCommand.addCooldownType(ability);
 	}
@@ -436,24 +514,16 @@ public class Bender {
 	 * Commits cooldowns to the database
 	 */
 	private void saveCooldownsForce() {
-		DBConnection.sql.modifyQuery("DELETE FROM pk_cooldowns WHERE uuid = '" + this.uuid.toString() + "'", false);
-		for (final Map.Entry<String, Cooldown> entry : this.cooldowns.entrySet()) {
-			final String name = entry.getKey();
-			final Cooldown cooldown = entry.getValue();
-			if (!cooldown.isDatabase()) continue;
-			try (ResultSet rs = DBConnection.sql.readQuery("SELECT value FROM pk_cooldowns WHERE uuid = '" + this.uuid.toString() + "' AND cooldown = '" + name + "'")) {
-				if (rs.next()) {
-					DBConnection.sql.modifyQuery("UPDATE pk_cooldowns SET value = " + cooldown.getCooldown() + " WHERE uuid = '" + this.uuid.toString() + "' AND cooldown = '" + name + "'", false);
-				} else {
-					DBConnection.sql.modifyQuery("INSERT INTO  pk_cooldowns (uuid, cooldown, value) VALUES ('" + this.uuid.toString() + "', '" + name + "', " + cooldown.getCooldown() + ")", false);
-				}
-			} catch (final SQLException e) {
-				throw new java.util.concurrent.CompletionException(e);
-			}
-		}
+		if (ExternalPersistenceCoordinator.isExternalMode()) return;
+		InternalPlayerDataStore.saveCooldowns(this.uuid, this.cooldowns);
 	}
 
 	public void saveCooldowns(boolean async) {
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			ExternalPersistenceCoordinator.warnLegacySave(this, "saveCooldowns");
+			ExternalPersistenceCoordinator.flush(this, FlushReason.LEGACY_SAVE);
+			return;
+		}
 		if (async) Bukkit.getScheduler().runTaskAsynchronously(ProjectKorra.plugin, this::saveCooldownsForce);
 		else this.saveCooldownsForce();
 	}
@@ -464,6 +534,7 @@ public class Bender {
 
 	/** Saves cooldowns and reports when the database work has finished. */
 	public CompletableFuture<Void> saveCooldownsAsync() {
+		if (ExternalPersistenceCoordinator.isExternalMode()) { ExternalPersistenceCoordinator.warnLegacySave(this, "saveCooldownsAsync"); return ExternalPersistenceCoordinator.flush(this, FlushReason.LEGACY_SAVE).toCompletableFuture(); }
 		final CompletableFuture<Void> future = new CompletableFuture<>();
 		Bukkit.getScheduler().runTaskAsynchronously(ProjectKorra.plugin, () -> {
 			try { this.saveCooldownsForce(); future.complete(null); }
@@ -478,11 +549,19 @@ public class Bender {
 	 * @param permaRemoved If they should be permaremoved
 	 */
 	public void setPermaRemoved(final boolean permaRemoved) {
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			PkLang.warning("Ignoring ProjectKorra permaremove mutation in external player-data mode; use the external authority's administrative tools");
+			return;
+		}
 		this.permaRemoved = permaRemoved;
-		DBConnection.sql.modifyQuery("UPDATE pk_players SET permaremoved = '" + (permaRemoved ? "true" : "false") + "' WHERE uuid = '" + uuid + "'");
+		InternalPlayerDataStore.setPermaRemoved(this.uuid, permaRemoved);
 	}
 
 	public void toggleBending() {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.SetBendingEnabled(!this.toggled), MutationSource.legacy("toggleBending"));
+			return;
+		}
 		this.toggled = !this.toggled;
 	}
 
@@ -491,12 +570,34 @@ public class Bender {
 	}
 
 	public void toggleElement(final Element element) {
+		if (ExternalPersistenceCoordinator.isExternalMode() && !ExternalPersistenceCoordinator.isProjectionGuardActive(this.uuid)) {
+			this.requestMutationAsync(new BendingPlayerMutationOperation.SetElementEnabled(element.getName(), !this.isElementToggled(element)), MutationSource.legacy("toggleElement"));
+			return;
+		}
 		if (this.toggledElements.contains(element)) {
 			this.toggledElements.remove(element);
 		} else {
 			this.toggledElements.add(element);
 		}
 	}
+
+	public CompletionStage<MutationResult> requestMutationAsync(final BendingPlayerMutationOperation operation, final MutationSource source) {
+		return ExternalPersistenceCoordinator.mutate(this, operation, source);
+	}
+
+	/** Replaces transient runtime bindings without persistence; intended for ProjectKorra multi-abilities and snapshot projection only. */
+	public void replaceRuntimeAbilities(final Map<Integer, String> runtimeAbilities) {
+		this.abilities.clear();
+		this.abilities.putAll(runtimeAbilities);
+	}
+
+	public void setRuntimeCooldown(final String key, final long expiration) {
+		if (expiration <= System.currentTimeMillis()) this.cooldowns.remove(key);
+		else this.cooldowns.put(key, new Cooldown(expiration, false));
+	}
+
+	public void removeRuntimeCooldown(final String key) { this.cooldowns.remove(key); }
+	public void clearRuntimeCooldowns() { this.cooldowns.entrySet().removeIf(entry -> !entry.getValue().isDatabase()); }
 
 	public void togglePassive(final Element element) {
 		if (this.toggledPassives.contains(element)) {

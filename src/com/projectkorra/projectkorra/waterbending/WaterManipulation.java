@@ -298,7 +298,7 @@ public class WaterManipulation extends WaterAbility {
 				}
 
 				if (!this.displacing) {
-					for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, this.collisionRadius)) {
+					for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this, this.location, this.collisionRadius)) {
 						if (entity instanceof LivingEntity && entity.getEntityId() != this.caster.getEntityId()) {
 							if (RegionProtection.isRegionProtected(this.caster, entity.getLocation(), "WaterManipulation") || ((entity instanceof Player) && Commands.invincible.contains(entity.getName()))) {
 								continue;
@@ -470,7 +470,7 @@ public class WaterManipulation extends WaterAbility {
 
 	private static Location getTargetLocation(final LivingEntity caster, final double range) {
 		Location location;
-		final Entity target = GeneralMethods.getTargetedEntity(caster, range);
+		final Entity target = GeneralMethods.getTargetedEntity(caster, "WaterManipulation", range);
 
 		if (target == null) {
 			location = GeneralMethods.getTargetedLocation(caster, range, getTransparentMaterials());

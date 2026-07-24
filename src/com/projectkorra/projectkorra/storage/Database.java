@@ -126,6 +126,7 @@ public abstract class Database {
 	 * @return Result set of ran query
 	 */
 	public ResultSet readQuery(final String query) {
+		PlayerDataSqlGuard.checkQuery(query);
 		try {
 			if (this.connection == null || this.connection.isClosed()) {
 				this.open();
@@ -147,6 +148,7 @@ public abstract class Database {
 	 * @return true if table exists, else false
 	 */
 	public boolean tableExists(final String table) {
+		PlayerDataSqlGuard.checkTable(table);
 		try {
 			if (this.connection == null || this.connection.isClosed()) {
 				this.open();
@@ -169,6 +171,7 @@ public abstract class Database {
 	 * @return true if column exists within table, else false
 	 */
 	public boolean columnExists(final String table, final String column) {
+		PlayerDataSqlGuard.checkTable(table);
 		try {
 			if (this.connection == null || this.connection.isClosed()) {
 				this.open();
@@ -183,6 +186,7 @@ public abstract class Database {
 	}
 
 	private synchronized void doQuery(final String query) throws SQLException {
+		PlayerDataSqlGuard.checkQuery(query);
 		try {
 			if (this.connection == null || this.connection.isClosed()) {
 				this.open();

@@ -14,6 +14,9 @@ import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.util.MultiAbilityManager;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.PlayerBindChangeEvent;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
 
 /**
  * Executor for /bending clear. Extends {@link PKCommand}.
@@ -46,6 +49,35 @@ public class ClearCommand extends PKCommand {
 		}
 
 		BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(sender.getName());
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			final java.util.HashMap<Integer, String> replacement = bPlayer.getAbilities();
+			if (args.isEmpty()) {
+				for (int i = 1; i <= 9; i++) {
+					if (!replacement.containsKey(i)) continue;
+					final PlayerBindChangeEvent event = new PlayerBindChangeEvent(bPlayer.getPlayer(), replacement.get(i), i, false, false);
+					ProjectKorra.plugin.getServer().getPluginManager().callEvent(event);
+					if (!event.isCancelled()) replacement.remove(i);
+				}
+			} else {
+				final int slot;
+				try { slot = Integer.parseInt(args.get(0)); }
+				catch (final NumberFormatException error) { ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.wrongNumber); return; }
+				if (slot < 1 || slot > 9) { ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.wrongNumber); return; }
+				if (!replacement.containsKey(slot)) { ChatUtil.sendBrandingMessage(sender, ChatColor.YELLOW + this.alreadyEmpty); return; }
+				final PlayerBindChangeEvent event = new PlayerBindChangeEvent(bPlayer.getPlayer(), replacement.get(slot), slot, false, false);
+				ProjectKorra.plugin.getServer().getPluginManager().callEvent(event);
+				if (event.isCancelled()) return;
+				replacement.remove(slot);
+			}
+			bPlayer.requestMutationAsync(new BendingPlayerMutationOperation.ReplaceBinds(replacement),
+					new MutationSource(MutationSource.Kind.COMMAND, ((Player) sender).getUniqueId(), sender.getName(), "ProjectKorra", "clear"))
+					.thenAccept(result -> {
+						if (!result.accepted()) ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "The external player-data provider rejected the bind change.");
+						else if (args.isEmpty()) ChatUtil.sendBrandingMessage(sender, ChatColor.YELLOW + this.cleared);
+						else ChatUtil.sendBrandingMessage(sender, ChatColor.YELLOW + this.clearedSlot.replace("{slot}", args.get(0)));
+					});
+			return;
+		}
 		if (args.isEmpty()) {
 			for (int i = 1; i <= 9; i++) {
 				if (!bPlayer.getAbilities().containsKey(i)) {

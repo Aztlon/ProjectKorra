@@ -2,8 +2,10 @@ package com.projectkorra.projectkorra.command;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 
+import com.projectkorra.projectkorra.OfflineBendingPlayer;
 import com.projectkorra.projectkorra.util.ChatUtil;
 import org.bukkit.Bukkit;
 import net.md_5.bungee.api.ChatColor;
@@ -18,6 +20,9 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.PlayerChangeElementEvent;
 import com.projectkorra.projectkorra.event.PlayerChangeElementEvent.Result;
 import com.projectkorra.projectkorra.event.PlayerChangeSubElementEvent;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
 
 /**
  * Executor for /bending add. Extends {@link PKCommand}.
@@ -95,6 +100,10 @@ public class AddCommand extends PKCommand {
 
 			if (bPlayer.isPermaRemoved()) { // ignore permabanned users.
 				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Preset.Other.BendingPermanentlyRemoved"));
+				return;
+			}
+			if (ExternalPersistenceCoordinator.isExternalMode()) {
+				this.addExternal(sender, target, element, bPlayer);
 				return;
 			}
 
@@ -232,7 +241,7 @@ public class AddCommand extends PKCommand {
 						}
 					}
 					bPlayer.saveSubElements();
-					if (online) Bukkit.getServer().getPluginManager().callEvent(new PlayerChangeSubElementEvent(sender, (Player) target, sub, com.projectkorra.projectkorra.event.PlayerChangeSubElementEvent.Result.ADD));
+					if (online) Bukkit.getServer().getPluginManager().callEvent(new PlayerChangeSubElementEvent(sender, (Player) target, sub, PlayerChangeSubElementEvent.Result.ADD));
 					return;
 
 				} else { // bad element.
@@ -241,6 +250,56 @@ public class AddCommand extends PKCommand {
 			}
 		});
 
+	}
+
+	private void addExternal(final CommandSender sender, final OfflinePlayer target, final String requested, final OfflineBendingPlayer bPlayer) {
+		final boolean online = bPlayer instanceof BendingPlayer;
+		final List<Element> added = new ArrayList<>();
+		final BendingPlayerMutationOperation operation;
+		if (requested.equalsIgnoreCase("all") || Element.fromString(requested) == Element.AVATAR) {
+			final LinkedHashSet<String> replacement = new LinkedHashSet<>();
+			for (final Element existing : bPlayer.getElements()) replacement.add(existing.getName());
+			for (final Element candidate : Element.getAllElements()) {
+				if (candidate == Element.AVATAR || candidate instanceof SubElement) continue;
+				if (!bPlayer.hasElement(candidate)) added.add(candidate);
+				replacement.add(candidate.getName());
+			}
+			if (added.isEmpty()) {
+				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.alreadyHasAllElements);
+				return;
+			}
+			operation = new BendingPlayerMutationOperation.ReplaceElements(List.copyOf(replacement));
+		} else {
+			final Element element = Element.fromString(requested);
+			if (element == null) { ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.invalidElement); return; }
+			if (bPlayer.hasElement(element)) {
+				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + (element instanceof SubElement ? this.alreadyHasSubElement : this.alreadyHasElement));
+				return;
+			}
+			added.add(element);
+			operation = element instanceof SubElement sub
+					? new BendingPlayerMutationOperation.AddSubelement(sub.getName())
+					: new BendingPlayerMutationOperation.AddElement(element.getName());
+		}
+
+		final MutationSource source = new MutationSource(MutationSource.Kind.COMMAND,
+				sender instanceof Player p ? p.getUniqueId() : null, sender.getName(), "ProjectKorra", "add");
+		PKCommand.requestAdministrativeMutation(bPlayer, operation, source).thenAccept(result -> {
+			if (!result.accepted()) {
+				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "The external player-data provider rejected the element change.");
+				return;
+			}
+			if (added.size() > 1) {
+				ChatUtil.sendBrandingMessage(sender, ChatColor.YELLOW + this.addedOtherAll.replace("{target}", ChatColor.DARK_AQUA + target.getName() + ChatColor.YELLOW));
+			} else {
+				final Element element = added.get(0);
+				ChatUtil.sendBrandingMessage(sender, element.getColor() + this.addedOtherCFW.replace("{target}", ChatColor.DARK_AQUA + target.getName() + element.getColor()).replace("{element}", element.getName() + element.getType().getBender()));
+			}
+			if (online) for (final Element element : added) {
+				if (element instanceof SubElement sub) Bukkit.getPluginManager().callEvent(new PlayerChangeSubElementEvent(sender, (Player) target, sub, PlayerChangeSubElementEvent.Result.ADD));
+				else Bukkit.getPluginManager().callEvent(new PlayerChangeElementEvent(sender, (Player) target, element, Result.ADD));
+			}
+		});
 	}
 
 	public static boolean isVowel(final char c) {
