@@ -18,6 +18,9 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.PlayerChangeElementEvent;
 import com.projectkorra.projectkorra.event.PlayerChangeElementEvent.Result;
 import com.projectkorra.projectkorra.event.PlayerChangeSubElementEvent;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
 import com.projectkorra.projectkorra.util.TimeUtil;
 
 /**
@@ -76,8 +79,8 @@ public class ChooseCommand extends PKCommand {
 				element = "fire";
 			} else if (element.equalsIgnoreCase("w")) {
 				element = "water";
-			} else if (element.equalsIgnoreCase("c")) {
-				element = "chi";
+			} else if (element.equalsIgnoreCase("n") || element.equalsIgnoreCase("c") || element.equalsIgnoreCase("chi")) {
+				element = "non";
 			}
 			final Element targetElement = Element.getElement(element);
 			if (Arrays.asList(Element.getAllElements()).contains(targetElement)) {
@@ -93,9 +96,11 @@ public class ChooseCommand extends PKCommand {
 					}
 				}
 
-				this.add(sender, (Player) sender, targetElement);
+				final boolean bypassCooldown = sender.hasPermission("bending.command.choose.ignorecooldown") || sender.hasPermission("bending.admin.choose");
+				this.add(sender, (Player) sender, targetElement, ExternalPersistenceCoordinator.isExternalMode() && !bypassCooldown);
+				if (ExternalPersistenceCoordinator.isExternalMode()) return;
 
-				if (sender.hasPermission("bending.command.choose.ignorecooldown") || sender.hasPermission("bending.admin.choose")) {
+				if (bypassCooldown) {
 					return;
 				}
 
@@ -122,18 +127,16 @@ public class ChooseCommand extends PKCommand {
 				element = "fire";
 			} else if (element.equalsIgnoreCase("w")) {
 				element = "water";
-			} else if (element.equalsIgnoreCase("c")) {
-				element = "chi";
+			} else if (element.equalsIgnoreCase("n") || element.equalsIgnoreCase("c") || element.equalsIgnoreCase("chi")) {
+				element = "non";
 			}
 			final Element targetElement = Element.getElement(element);
 			if (Arrays.asList(Element.getAllElements()).contains(targetElement) && targetElement != Element.AVATAR) {
-				this.add(sender, target, targetElement);
+				final boolean bypassCooldown = target.isOnline() && (((Player)target).hasPermission("bending.command.choose.ignorecooldown") || ((Player)target).hasPermission("bending.admin.choose"));
+				this.add(sender, target, targetElement, ExternalPersistenceCoordinator.isExternalMode() && !bypassCooldown);
+				if (ExternalPersistenceCoordinator.isExternalMode()) return;
 
-				if (target.isOnline()) {
-					if (((Player)target).hasPermission("bending.command.choose.ignorecooldown") || ((Player)target).hasPermission("bending.admin.choose")) {
-						return;
-					}
-				}
+				if (bypassCooldown) return;
 
 				BendingPlayer.getOrLoadOfflineAsync(target).thenAccept(bPlayer -> {
 					bPlayer.addCooldown("ChooseElement", this.cooldown, true);
@@ -151,15 +154,36 @@ public class ChooseCommand extends PKCommand {
 	 * @param target The Player to add the element to
 	 * @param element The element to add to the Player
 	 */
-	private void add(final CommandSender sender, final OfflinePlayer target, final Element element) {
+	private void add(final CommandSender sender, final OfflinePlayer target, final Element element, final boolean addCooldownAfterAcceptance) {
 		BendingPlayer.getOrLoadOfflineAsync(target).thenAccept(bPlayer -> {
 			boolean online = bPlayer instanceof BendingPlayer;
+			if (ExternalPersistenceCoordinator.isExternalMode()) {
+				final BendingPlayerMutationOperation operation;
+				if (element instanceof SubElement sub) operation = new BendingPlayerMutationOperation.AddSubelement(sub.getName());
+				else if (element == Element.AVATAR) operation = new BendingPlayerMutationOperation.ReplaceElements(List.of(Element.AIR.getName(), Element.EARTH.getName(), Element.FIRE.getName(), Element.WATER.getName()));
+				else operation = new BendingPlayerMutationOperation.ReplaceElements(List.of(element.getName()));
+				final MutationSource source = new MutationSource(MutationSource.Kind.COMMAND,
+						sender instanceof Player p ? p.getUniqueId() : null, sender.getName(), "ProjectKorra", "choose");
+				bPlayer.requestMutationAsync(operation, source).thenAccept(result -> {
+					if (!result.accepted()) {
+						ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "The external player-data provider rejected the element choice.");
+						return;
+					}
+					final ChatColor color = element.getColor();
+					if (!(sender instanceof Player) || !sender.equals(target)) ChatUtil.sendBrandingMessage(sender, color + this.chosenOtherCFW.replace("{target}", ChatColor.DARK_AQUA + target.getName() + color).replace("{element}", element.getName() + element.getType().getBender()));
+					else if (online) ChatUtil.sendBrandingMessage((Player) target, color + this.chosenCFW.replace("{element}", element.getName() + element.getType().getBender()));
+					if (online && element instanceof SubElement sub) Bukkit.getPluginManager().callEvent(new PlayerChangeSubElementEvent(sender, (Player) target, sub, PlayerChangeSubElementEvent.Result.CHOOSE));
+					else if (online) Bukkit.getPluginManager().callEvent(new PlayerChangeElementEvent(sender, (Player) target, element, Result.CHOOSE));
+					if (addCooldownAfterAcceptance) bPlayer.addCooldown("ChooseElement", this.cooldown, true);
+				});
+				return;
+			}
 
 			if (element instanceof SubElement) {
 				final SubElement sub = (SubElement) element;
 				bPlayer.addSubElement(sub);
 				final ChatColor color = sub.getColor();
-				if (!(sender instanceof Player) || !((Player) sender).equals(target)) {
+				if (!(sender instanceof Player) || !sender.equals(target)) {
 					ChatUtil.sendBrandingMessage(sender, color + this.chosenOtherCFW.replace("{target}", ChatColor.DARK_AQUA + target.getName() + color).replace("{element}", sub.getName() + sub.getType().getBender()));
 				} else {
 					if (online) ChatUtil.sendBrandingMessage((Player) target, color + this.chosenCFW.replace("{element}", sub.getName() + sub.getType().getBender()));
@@ -175,29 +199,29 @@ public class ChooseCommand extends PKCommand {
 					for (Element e : new Element[] {Element.AIR, Element.EARTH, Element.FIRE, Element.WATER}) {
 						bPlayer.addElement(e);
 
-						if (online) {
-							for (final SubElement sub : Element.getSubElements(element)) {
-								if (((BendingPlayer) bPlayer).hasSubElementPermission(sub)) {
-									bPlayer.addSubElement(sub);
-								}
-							}
-						}
+//						if (online) {
+//							for (final SubElement sub : Element.getSubElements(element)) {
+//								if (((BendingPlayer) bPlayer).hasSubElementPermission(sub)) {
+//									bPlayer.addSubElement(sub);
+//								}
+//							}
+//						}
 					}
 				} else {
 					bPlayer.setElement(element);
-					bPlayer.getSubElements().clear();
-
-					if (online) {
-						for (final SubElement sub : Element.getSubElements(element)) {
-							if (((BendingPlayer) bPlayer).hasSubElementPermission(sub)) {
-								bPlayer.addSubElement(sub);
-							}
-						}
-					}
+//					bPlayer.getSubElements().clear();
+//
+//					if (online) {
+//						for (final SubElement sub : Element.getSubElements(element)) {
+//							if (((BendingPlayer) bPlayer).hasSubElementPermission(sub)) {
+//								bPlayer.addSubElement(sub);
+//							}
+//						}
+//					}
 				}
 
 				final ChatColor color = element.getColor();
-				if (!(sender instanceof Player) || !((Player) sender).equals(target)) {
+				if (!(sender instanceof Player) || !sender.equals(target)) {
 					if (element != Element.AIR && element != Element.EARTH) {
 						ChatUtil.sendBrandingMessage(sender, color + this.chosenOtherCFW.replace("{target}", ChatColor.DARK_AQUA + target.getName() + color).replace("{element}", element.getName() + element.getType().getBender()));
 					} else {
@@ -232,13 +256,13 @@ public class ChooseCommand extends PKCommand {
 		}
 
 		final List<String> l = new ArrayList<String>();
-		if (args.size() == 0) {
+		if (args.isEmpty()) {
 
 			l.add("Air");
 			l.add("Earth");
 			l.add("Fire");
 			l.add("Water");
-			l.add("Chi");
+			l.add("Non");
 			for (final Element e : Element.getAddonElements()) {
 				l.add(e.getName());
 			}

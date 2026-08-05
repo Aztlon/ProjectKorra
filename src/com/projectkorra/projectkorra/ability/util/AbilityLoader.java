@@ -19,6 +19,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.event.AbilityLoadEvent;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 public class AbilityLoader<T> {
 
@@ -33,7 +34,7 @@ public class AbilityLoader<T> {
 		this.path = packageBase.replace('.', '/');
 
 		if (plugin == null || this.loader == null) {
-			ProjectKorra.log.severe("Could not find classloader! Will not load abilities from " + packageBase);
+			PkLang.severe("Could not find classloader! Will not load abilities from " + packageBase);
 			return;
 		}
 

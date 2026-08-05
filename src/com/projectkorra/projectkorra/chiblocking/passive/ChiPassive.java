@@ -1,11 +1,18 @@
 package com.projectkorra.projectkorra.chiblocking.passive;
 
+import java.util.Comparator;
+
 import org.bukkit.Sound;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
+import com.projectkorra.projectkorra.Bender;
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
+import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
@@ -14,22 +21,23 @@ import com.projectkorra.projectkorra.chiblocking.AcrobatStance;
 import com.projectkorra.projectkorra.chiblocking.QuickStrike;
 import com.projectkorra.projectkorra.chiblocking.SwiftKick;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.ActionBar;
 
 public class ChiPassive {
-	public static boolean willChiBlock(final Player attacker, final Player player) {
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null) {
+	public static boolean willChiBlock(final LivingEntity attacker, final LivingEntity target) {
+		final Bender bender = Bender.get(target);
+		if (bender == null) {
 			return false;
 		}
 
-		final ChiAbility stance = bPlayer.getStance();
-		final QuickStrike quickStrike = CoreAbility.getAbility(player, QuickStrike.class);
-		final SwiftKick swiftKick = CoreAbility.getAbility(player, SwiftKick.class);
+		final ChiAbility stance = bender.getStance();
+		final QuickStrike quickStrike = CoreAbility.getAbility(target, QuickStrike.class);
+		final SwiftKick swiftKick = CoreAbility.getAbility(target, SwiftKick.class);
 		double newChance = getChance();
 
-		if (stance != null && stance instanceof AcrobatStance) {
-			newChance += ((AcrobatStance) stance).getChiBlockBoost();
+		if (stance instanceof AcrobatStance acro) {
+			newChance += acro.getChiBlockBoost();
 		}
 
 		if (quickStrike != null) {
@@ -40,37 +48,49 @@ public class ChiPassive {
 
 		if (Math.random() > newChance / 100.0) {
 			return false;
-		} else if (bPlayer.isChiBlocked()) {
-			return false;
-		}
-
-		return true;
+		} else return !bender.isChiBlocked();
 	}
 
-	public static void blockChi(final Player player) {
-		if (Suffocate.isChannelingSphere(player)) {
-			Suffocate.remove(player);
+	public static void blockChi(final LivingEntity target) {
+		blockChi(null, target);
+	}
+
+	public static void blockChi(@Nullable final LivingEntity source, final LivingEntity target) {
+		if (Suffocate.isChannelingSphere(target)) {
+			Suffocate.remove(target);
 		}
 
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-		if (bPlayer == null) {
+		final Bender bender = Bender.get(target);
+		if (bender == null) {
 			return;
 		}
 
-		bPlayer.blockChi();
-		player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 2, 0);
+		bender.blockChi();
+		if (source == null) {
+			PhasedSoundManager.playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 2, 0);
+		} else {
+			PhasedSoundManager.playSoundFromEntity(source, "ChiPassive", target.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 2, 0);
+		}
 
 		final long start = System.currentTimeMillis();
 		new BukkitRunnable() {
 			@Override
 			public void run() {
-				ActionBar.sendActionBar(Element.CHI.getColor() + "* Chiblocked *", player);
+				if (target instanceof Player p)
+					ActionBar.sendActionBar(Element.NON.getColor() + "* Chiblocked *", p);
 				if (System.currentTimeMillis() >= start + getDuration()) {
-					bPlayer.unblockChi();
+					bender.unblockChi();
 					this.cancel();
 				}
 			}
 		}.runTaskTimer(ProjectKorra.plugin, 0, 1);
+	}
+
+	public static Entity findTarget(final LivingEntity caster) {
+		// nearest entity within 5 blocks that is not the caster
+		return GeneralMethods.getEntitiesAroundPoint(caster.getLocation(), 5, e -> e instanceof LivingEntity && e != caster).stream()
+				.min(Comparator.comparingDouble(e -> e.getLocation().distanceSquared(caster.getLocation())))
+				.orElse(null);
 	}
 
 	public static double getChance() {

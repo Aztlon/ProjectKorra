@@ -20,6 +20,8 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.IceAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
@@ -35,8 +37,14 @@ public class IceBlast extends IceAbility {
 	private boolean progressing;
 	private byte data;
 	private long time;
+	@Attribute("SlowPotency")
+	private int slowPotency;
+	@Attribute("Slow" + Attribute.DURATION)
+	private int slowDuration;
 	@Attribute(Attribute.COOLDOWN)
 	private long cooldown;
+	@Attribute("Slow" + Attribute.COOLDOWN)
+	private long slowCooldown;
 	private long interval;
 	@Attribute(Attribute.RANGE)
 	private double range;
@@ -61,7 +69,10 @@ public class IceBlast extends IceAbility {
 		this.deflectRange = applyModifiers(getConfig().getDouble("Abilities.Water.IceBlast.DeflectRange"));
 		this.range = applyModifiers(getConfig().getDouble("Abilities.Water.IceBlast.Range"));
 		this.damage = applyModifiers(getConfig().getInt("Abilities.Water.IceBlast.Damage"));
-		this.cooldown = applyInverseModifiers(getConfig().getInt("Abilities.Water.IceBlast.Cooldown"));
+		this.slowCooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.IceBlast.SlowCooldown"));
+		this.cooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.IceBlast.Cooldown"));
+		this.slowPotency = getConfig().getInt("Abilities.Water.IceBlast.SlowPotency");
+		this.slowDuration = getConfig().getInt("Abilities.Water.IceBlast.SlowDuration");
 		this.allowSnow = getConfig().getBoolean("Abilities.Water.IceBlast.AllowSnow");
 
 		if (!this.bPlayer.canBend(this) || !this.bPlayer.canIcebend()) {
@@ -70,8 +81,11 @@ public class IceBlast extends IceAbility {
 
 		if (this.bPlayer.isAvatarState()) {
 			this.cooldown = getConfig().getLong("Abilities.Avatar.AvatarState.Water.IceBlast.Cooldown");
+			this.slowCooldown = getConfig().getLong("Abilities.Avatar.AvatarState.Water.IceBlast.SlowCooldown");
 			this.range = getConfig().getDouble("Abilities.Avatar.AvatarState.Water.IceBlast.Range");
 			this.damage = getConfig().getInt("Abilities.Avatar.AvatarState.Water.IceBlast.Damage");
+			this.slowPotency = getConfig().getInt("Abilities.Avatar.AvatarState.Water.IceBlast.SlowPotency");
+			this.slowDuration = getConfig().getInt("Abilities.Avatar.AvatarState.Water.IceBlast.SlowDuration");
 		}
 
 		block(player);
@@ -84,7 +98,7 @@ public class IceBlast extends IceAbility {
 
 		if (sourceBlock == null) {
 			return;
-		} else if (GeneralMethods.isRegionProtectedFromBuild(this, sourceBlock.getLocation())) {
+		} else if (RegionProtection.isRegionProtected(this, sourceBlock.getLocation())) {
 			return;
 		} else {
 			this.prepare(sourceBlock);
@@ -115,7 +129,7 @@ public class IceBlast extends IceAbility {
 				continue;
 			} else if (iceBlast.getPlayer().equals(player)) {
 				continue;
-			} else if (GeneralMethods.isRegionProtectedFromBuild(iceBlast, iceBlast.location)) {
+			} else if (RegionProtection.isRegionProtected(iceBlast, iceBlast.location)) {
 				continue;
 			}
 
@@ -164,23 +178,21 @@ public class IceBlast extends IceAbility {
 	}
 
 	private void affect(final LivingEntity entity) {
-		if (entity instanceof Player) {
-			if (this.bPlayer.canBeSlowed()) {
-				final PotionEffect effect = new PotionEffect(PotionEffectType.SLOW, 70, 2);
-				new TempPotionEffect(entity, effect);
-				this.bPlayer.slow(10);
-				DamageHandler.damageEntity(entity, this.damage, this);
-			}
-		} else {
-			final PotionEffect effect = new PotionEffect(PotionEffectType.SLOW, 70, 2);
-			new TempPotionEffect(entity, effect);
-			DamageHandler.damageEntity(entity, this.damage, this);
-		}
+		DamageHandler.damageEntity(entity, this.damage, this);
 		AirAbility.breakBreathbendingHold(entity);
 
 		for (int x = 0; x < 30; x++) {
 			ParticleEffect.ITEM_CRACK.display(this.location, 5, Math.random() / 4, Math.random() / 4, Math.random() / 4, new ItemStack(Material.ICE));
 		}
+
+		if (entity instanceof Player) {
+			if (!this.bPlayer.canBeSlowed())
+				return;
+
+			this.bPlayer.slow(this.slowCooldown);
+		}
+
+		new TempPotionEffect(entity, new PotionEffect(PotionEffectType.SLOWNESS, this.slowDuration, this.slowPotency));
 	}
 
 	private void throwIce() {
@@ -188,7 +200,7 @@ public class IceBlast extends IceAbility {
 			return;
 		}
 
-		final LivingEntity target = (LivingEntity) GeneralMethods.getTargetedEntity(this.player, this.range, new ArrayList<Entity>());
+		final LivingEntity target = (LivingEntity) GeneralMethods.getTargetedEntity(this.player, this.range, new ArrayList<>());
 		if (target == null) {
 			this.destination = GeneralMethods.getTargetedLocation(this.player, this.range, getTransparentMaterials());
 		} else {
@@ -216,8 +228,8 @@ public class IceBlast extends IceAbility {
 			TempBlock.get(this.sourceBlock).setType(Material.PACKED_ICE);
 			this.source = TempBlock.get(this.sourceBlock);
 		} else {
-			new TempBlock(this.sourceBlock, Material.AIR);
-			this.source = new TempBlock(this.sourceBlock, Material.PACKED_ICE);
+			new TempBlock(this.sourceBlock, Material.AIR.createBlockData(), 10_000L, this);
+			this.source = new TempBlock(this.sourceBlock, Material.PACKED_ICE, this);
 		}
 	}
 
@@ -286,7 +298,7 @@ public class IceBlast extends IceAbility {
 				return;
 			}
 
-			if (GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
+			if (RegionProtection.isRegionProtected(this, this.location)) {
 				this.remove();
 				this.returnWater();
 				return;
@@ -310,7 +322,7 @@ public class IceBlast extends IceAbility {
 				TempBlock.get(this.sourceBlock).setType(Material.PACKED_ICE);
 				this.source = TempBlock.get(this.sourceBlock);
 			} else {
-				this.source = new TempBlock(this.sourceBlock, Material.PACKED_ICE);
+				this.source = new TempBlock(this.sourceBlock, Material.PACKED_ICE, this);
 			}
 
 			for (int x = 0; x < 10; x++) {
@@ -331,7 +343,7 @@ public class IceBlast extends IceAbility {
 			ParticleEffect.ITEM_CRACK.display(this.location, 2, Math.random(), Math.random(), Math.random(), new ItemStack(Material.ICE));
 			ParticleEffect.SNOW_SHOVEL.display(this.location, 2, Math.random(), Math.random(), Math.random(), 0);
 		}
-		this.location.getWorld().playSound(this.location, Sound.BLOCK_GLASS_BREAK, 5, 1.3f);
+		PhasedSoundManager.playSound(this, this.location, Sound.BLOCK_GLASS_BREAK, 5, 1.3f);
 	}
 
 	@Override
@@ -420,6 +432,30 @@ public class IceBlast extends IceAbility {
 
 	public void setInterval(final long interval) {
 		this.interval = interval;
+	}
+
+	public int getSlowPotency() {
+		return this.slowPotency;
+	}
+
+	public void setSlowPotency(final int slowPotency) {
+		this.slowPotency = slowPotency;
+	}
+
+	public int getSlowDuration() {
+		return this.slowDuration;
+	}
+
+	public void setSlowDuration(final int slowDuration) {
+		this.slowDuration = slowDuration;
+	}
+
+	public long getSlowCooldown() {
+		return this.slowCooldown;
+	}
+
+	public void setSlowCooldown(final long slowCooldown) {
+		this.slowCooldown = slowCooldown;
 	}
 
 	public double getRange() {

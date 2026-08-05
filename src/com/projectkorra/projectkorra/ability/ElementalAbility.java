@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
-import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -18,10 +17,13 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Waterlogged;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 
 import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.region.RegionProtection;
+import com.projectkorra.projectkorra.util.TempBlock;
 
 /**
  * ElementalAbility is used to hold methods that should be accessible by every
@@ -29,17 +31,18 @@ import com.projectkorra.projectkorra.GeneralMethods;
  * keep CoreAbility from becoming too cluttered.
  */
 public abstract class ElementalAbility extends CoreAbility {
-	private static final PotionEffectType[] POSITIVE_EFFECTS = { PotionEffectType.ABSORPTION, PotionEffectType.DAMAGE_RESISTANCE, PotionEffectType.FAST_DIGGING, PotionEffectType.FIRE_RESISTANCE, PotionEffectType.HEAL, PotionEffectType.HEALTH_BOOST, PotionEffectType.INCREASE_DAMAGE, PotionEffectType.JUMP, PotionEffectType.NIGHT_VISION, PotionEffectType.REGENERATION, PotionEffectType.SATURATION, PotionEffectType.SPEED, PotionEffectType.WATER_BREATHING };
+	private static final PotionEffectType[] POSITIVE_EFFECTS = { PotionEffectType.ABSORPTION, PotionEffectType.ABSORPTION, PotionEffectType.HASTE, PotionEffectType.FIRE_RESISTANCE, PotionEffectType.INSTANT_HEALTH, PotionEffectType.HEALTH_BOOST, PotionEffectType.STRENGTH, PotionEffectType.JUMP_BOOST, PotionEffectType.NIGHT_VISION, PotionEffectType.REGENERATION, PotionEffectType.SATURATION, PotionEffectType.SPEED, PotionEffectType.WATER_BREATHING };
 	private static final PotionEffectType[] NEUTRAL_EFFECTS = { PotionEffectType.INVISIBILITY };
-	private static final PotionEffectType[] NEGATIVE_EFFECTS = { PotionEffectType.POISON, PotionEffectType.BLINDNESS, PotionEffectType.CONFUSION, PotionEffectType.HARM, PotionEffectType.HUNGER, PotionEffectType.SLOW, PotionEffectType.SLOW_DIGGING, PotionEffectType.WEAKNESS, PotionEffectType.WITHER };
+	private static final PotionEffectType[] NEGATIVE_EFFECTS = { PotionEffectType.POISON, PotionEffectType.BLINDNESS, PotionEffectType.NAUSEA, PotionEffectType.INSTANT_DAMAGE, PotionEffectType.HUNGER, PotionEffectType.SLOW_FALLING, PotionEffectType.MINING_FATIGUE, PotionEffectType.WEAKNESS, PotionEffectType.WITHER };
 	private static final Set<Material> TRANSPARENT = new HashSet<>();
 
-	private static final Set<String> EARTH_BLOCKS = new HashSet<String>();
-	private static final Set<String> ICE_BLOCKS = new HashSet<String>();
-	private static final Set<String> METAL_BLOCKS = new HashSet<String>();
-	private static final Set<String> PLANT_BLOCKS = new HashSet<String>();
-	private static final Set<String> SAND_BLOCKS = new HashSet<String>();
-	private static final Set<String> SNOW_BLOCKS = new HashSet<String>();
+	private static final Set<String> EARTH_BLOCKS = new HashSet<>();
+	private static final Set<String> ICE_BLOCKS = new HashSet<>();
+	private static final Set<String> METAL_BLOCKS = new HashSet<>();
+	private static final Set<String> PLANT_BLOCKS = new HashSet<>();
+	private static final Set<String> DECAYABLE_PLANT_BLOCKS = new HashSet<>();
+	private static final Set<String> SAND_BLOCKS = new HashSet<>();
+	private static final Set<String> SNOW_BLOCKS = new HashSet<>();
 
 	static {
 		TRANSPARENT.clear();
@@ -52,8 +55,8 @@ public abstract class ElementalAbility extends CoreAbility {
 		setupBendableMaterials();
 	}
 
-	public ElementalAbility(final Player player) {
-		super(player);
+	public ElementalAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	public boolean isTransparent(final Block block) {
@@ -70,11 +73,11 @@ public abstract class ElementalAbility extends CoreAbility {
 	}
 
 	public static List<String> getEarthbendableBlocks() {
-		return new ArrayList<String>(EARTH_BLOCKS);
+		return new ArrayList<>(EARTH_BLOCKS);
 	}
 
 	public static void addTags(Set<String> outputSet, List<String> configList) {
-		ListIterator<String> iterator = new ArrayList<String>(configList).listIterator();
+		ListIterator<String> iterator = new ArrayList<>(configList).listIterator();
 		iterator.forEachRemaining(next -> {
 			if (next.startsWith("#")) {
 				NamespacedKey key = NamespacedKey.minecraft(next.replaceFirst("#", ""));
@@ -88,7 +91,7 @@ public abstract class ElementalAbility extends CoreAbility {
 	}
 
 	public static Material[] getTransparentMaterials() {
-		return TRANSPARENT.toArray(new Material[TRANSPARENT.size()]);
+		return TRANSPARENT.toArray(new Material[0]);
 	}
 
 	public static HashSet<Material> getTransparentMaterialSet() {
@@ -130,7 +133,11 @@ public abstract class ElementalAbility extends CoreAbility {
 	}
 
 	public static boolean isIce(final Block block) {
-		return block != null && isIce(block.getType());
+		if (block == null) return false;
+		if (isIce(block.getType())) return true;
+		if (block.getType().name().endsWith("STAINED_GLASS") && TempBlock.isTempBlock(block))
+			return true;
+		return block.getType() == Material.NOTE_BLOCK && WaterAbility.BLOCK_DATA_CUSTOM_ICE.containsKey(block.getBlockData().getAsString());
 	}
 
 	public static boolean isIce(final Material material) {
@@ -203,7 +210,15 @@ public abstract class ElementalAbility extends CoreAbility {
 	}
 
 	public static boolean isPlant(final Material material) {
-		return PLANT_BLOCKS.contains(material.toString());
+		return PLANT_BLOCKS.contains(material.toString()) || isDecayablePlant(material);
+	}
+
+	public static boolean isDecayablePlant(final Block block) {
+		return block != null && isDecayablePlant(block.getType());
+	}
+
+	public static boolean isDecayablePlant(final Material material) {
+		return DECAYABLE_PLANT_BLOCKS.contains(material.toString());
 	}
 
 	public static boolean isPositiveEffect(final PotionEffectType effect) {
@@ -224,12 +239,12 @@ public abstract class ElementalAbility extends CoreAbility {
 		return SAND_BLOCKS.contains(material.toString());
 	}
 
-	public static boolean isTransparent(final Player player, final Block block) {
-		return isTransparent(player, null, block);
+	public static boolean isTransparent(final LivingEntity caster, final Block block) {
+		return isTransparent(caster, null, block);
 	}
 
-	public static boolean isTransparent(final Player player, final String abilityName, final Block block) {
-		return Arrays.asList(getTransparentMaterials()).contains(block.getType()) && !RegionProtection.isRegionProtected(player, block.getLocation(), CoreAbility.getAbility(abilityName));
+	public static boolean isTransparent(final LivingEntity caster, final String abilityName, final Block block) {
+		return Arrays.asList(getTransparentMaterials()).contains(block.getType()) && !RegionProtection.isRegionProtected(caster, block.getLocation(), CoreAbility.getAbility(abilityName));
 	}
 
 	public static boolean isWater(final Block block) {
@@ -259,6 +274,7 @@ public abstract class ElementalAbility extends CoreAbility {
 		addTags(ICE_BLOCKS, getConfig().getStringList("Properties.Water.IceBlocks"));
 		addTags(METAL_BLOCKS, getConfig().getStringList("Properties.Earth.MetalBlocks"));
 		addTags(PLANT_BLOCKS, getConfig().getStringList("Properties.Water.PlantBlocks"));
+		addTags(DECAYABLE_PLANT_BLOCKS, getConfig().getStringList("Properties.Water.DecayablePlantBlocks"));
 		addTags(SAND_BLOCKS, getConfig().getStringList("Properties.Earth.SandBlocks"));
 		addTags(SNOW_BLOCKS, getConfig().getStringList("Properties.Water.SnowBlocks"));
 	}

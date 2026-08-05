@@ -1,19 +1,10 @@
 package com.projectkorra.projectkorra;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
-import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -25,38 +16,29 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 
-import com.google.common.io.Files;
-import com.google.common.reflect.ClassPath;
-import com.projectkorra.projectkorra.airbending.util.AirbendingManager;
-import com.projectkorra.projectkorra.chiblocking.util.ChiblockingManager;
-import com.projectkorra.projectkorra.command.PKCommand;
-import com.projectkorra.projectkorra.earthbending.util.EarthbendingManager;
-import com.projectkorra.projectkorra.firebending.util.FirebendingManager;
-import com.projectkorra.projectkorra.region.RegionProtection;
-import com.projectkorra.projectkorra.util.ChatUtil;
-import com.projectkorra.projectkorra.util.RevertChecker;
-import com.projectkorra.projectkorra.util.TempFallingBlock;
-import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
-import com.projectkorra.projectkorra.waterbending.util.WaterbendingManager;
-import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
-
 import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
+import org.bukkit.block.data.type.Fire;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.FallingBlock;
@@ -69,7 +51,10 @@ import org.bukkit.inventory.MainHand;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
+import com.google.common.io.Files;
+import com.google.common.reflect.ClassPath;
 import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.ability.AddonAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
@@ -89,33 +74,61 @@ import com.projectkorra.projectkorra.airbending.AirShield;
 import com.projectkorra.projectkorra.airbending.AirSpout;
 import com.projectkorra.projectkorra.airbending.AirSuction;
 import com.projectkorra.projectkorra.airbending.AirSwipe;
+import com.projectkorra.projectkorra.airbending.util.AirbendingManager;
 import com.projectkorra.projectkorra.board.BendingBoardManager;
+import com.projectkorra.projectkorra.chiblocking.util.ChiblockingManager;
+import com.projectkorra.projectkorra.command.PKCommand;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.earthbending.EarthBlast;
 import com.projectkorra.projectkorra.earthbending.EarthTunnel;
 import com.projectkorra.projectkorra.earthbending.passive.EarthPassive;
+import com.projectkorra.projectkorra.earthbending.util.EarthbendingManager;
 import com.projectkorra.projectkorra.event.AbilityVelocityAffectEntityEvent;
+import com.projectkorra.projectkorra.event.AbilityExecutionEvidence;
 import com.projectkorra.projectkorra.event.BendingReloadEvent;
 import com.projectkorra.projectkorra.firebending.FireBlast;
 import com.projectkorra.projectkorra.firebending.FireShield;
 import com.projectkorra.projectkorra.firebending.combustion.Combustion;
+import com.projectkorra.projectkorra.firebending.util.FirebendingManager;
 import com.projectkorra.projectkorra.object.Preset;
+import com.projectkorra.projectkorra.phasing.GateStage;
+import com.projectkorra.projectkorra.phasing.PhasedBlockVisibilityManager;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.util.ChatUtil;
 import com.projectkorra.projectkorra.util.ColoredParticle;
 import com.projectkorra.projectkorra.util.MovementHandler;
 import com.projectkorra.projectkorra.util.ParticleEffect;
+import com.projectkorra.projectkorra.util.RevertChecker;
 import com.projectkorra.projectkorra.util.TempArmor;
 import com.projectkorra.projectkorra.util.TempArmorStand;
 import com.projectkorra.projectkorra.util.TempBlock;
+import com.projectkorra.projectkorra.util.TempFallingBlock;
+import com.projectkorra.projectkorra.util.logging.PkLang;
+import com.projectkorra.projectkorra.util.particles.ParticleCompatibilityService;
 import com.projectkorra.projectkorra.waterbending.WaterManipulation;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
+import com.projectkorra.projectkorra.waterbending.blood.Bloodbending;
+import com.projectkorra.projectkorra.waterbending.util.WaterbendingManager;
+
+import net.md_5.bungee.api.ChatColor;
+import net.momirealms.craftengine.bukkit.api.CraftEngineBlocks;
+import net.momirealms.craftengine.core.block.BlockDefinition;
+import net.momirealms.craftengine.core.util.Key;
 
 public class GeneralMethods {
 
 	private static ProjectKorra plugin;
+	private static final Map<String, Integer> CUSTOM_FIRE_AGES = new HashMap<>();
 
 	public GeneralMethods(final ProjectKorra plugin) {
 		GeneralMethods.plugin = plugin;
+
+		YamlConfiguration yaml = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder().getParent() + "/ItemsAdder/storage/custom_fires_ids_cache.yml"));
+		for (String key : yaml.getKeys(false)) {
+			CUSTOM_FIRE_AGES.put(key, yaml.getInt(key));
+		}
 	}
 
 	/**
@@ -252,8 +265,12 @@ public class GeneralMethods {
 		return getArmorTier(first) - getArmorTier(second);
 	}
 
-	@Deprecated
-	public static void displayColoredParticle(final Location loc, ParticleEffect type, final String hexVal, final float xOffset, final float yOffset, final float zOffset) {
+	public static void displayColoredParticle(final Location loc, ParticleEffect type, final String hexVal, final int amount, final double xOffset, final double yOffset, final double zOffset) {
+		displayColoredParticle(null, loc, type, hexVal, amount, xOffset, yOffset, zOffset);
+	}
+
+	public static void displayColoredParticle(@Nullable final Ability ability, final Location loc, ParticleEffect type, final String hexVal, final int amount, final double xOffset, final double yOffset, final double zOffset) {
+		Location clone = loc.clone();
 		int r = 0;
 		int g = 0;
 		int b = 0;
@@ -261,38 +278,47 @@ public class GeneralMethods {
 			r = Integer.valueOf(hexVal.substring(0, 2), 16);
 			g = Integer.valueOf(hexVal.substring(2, 4), 16);
 			b = Integer.valueOf(hexVal.substring(4, 6), 16);
-		} else if (hexVal.length() <= 7 && hexVal.charAt(0) == '#') {
+		} else if (hexVal.length() == 7 && hexVal.charAt(0) == '#') {
 			r = Integer.valueOf(hexVal.substring(1, 3), 16);
 			g = Integer.valueOf(hexVal.substring(3, 5), 16);
 			b = Integer.valueOf(hexVal.substring(5, 7), 16);
 		}
-		float red = r / 255.0F;
-		final float green = g / 255.0F;
-		final float blue = b / 255.0F;
-		if (red <= 0) {
-			red = 1 / 255.0F;
-		}
-		loc.setX(loc.getX() + (Math.random() * 2 - 1) * xOffset);
-		loc.setY(loc.getY() + (Math.random() * 2 - 1) * yOffset);
-		loc.setZ(loc.getZ() + (Math.random() * 2 - 1) * zOffset);
 
-		if (type != ParticleEffect.RED_DUST && type != ParticleEffect.REDSTONE && type != ParticleEffect.SPELL_MOB && type != ParticleEffect.MOB_SPELL && type != ParticleEffect.SPELL_MOB_AMBIENT && type != ParticleEffect.MOB_SPELL_AMBIENT) {
+		clone.setX(loc.getX() + (Math.random() * 2 - 1) * xOffset);
+		clone.setY(loc.getY() + (Math.random() * 2 - 1) * yOffset);
+		clone.setZ(loc.getZ() + (Math.random() * 2 - 1) * zOffset);
+
+		if (type != ParticleEffect.RED_DUST && type != ParticleEffect.REDSTONE && type != ParticleEffect.ENTITY_EFFECT && type != ParticleEffect.SPELL_MOB && type != ParticleEffect.MOB_SPELL && type != ParticleEffect.SPELL_MOB_AMBIENT && type != ParticleEffect.MOB_SPELL_AMBIENT) {
 			type = ParticleEffect.RED_DUST;
 		}
-		type.display(loc, 0, red, green, blue);
+
+		final Color color = Color.fromRGB(r, g, b);
+		for (int i = 0; i < amount; i++) {
+			if (type.getParticle() == Particle.DUST) {
+				type.display(ability, clone, 0, 0, 0, 0, 0, new Particle.DustOptions(color, 1));
+			} else { // entity effect
+				type.display(ability, clone, 1, 0, 0, 0, 0, color);
+			}
+//			type.display(clone, 0, 0, 0, 0, Color.fromRGB(r, g, b));
+//			clone.getWorld().spawnParticle(Particle.ENTITY_EFFECT, clone, 0, Color.fromRGB(r, g, b));
+//			clone.getWorld().spawnParticle(type.getParticle(), clone, 0, red, green, blue);
+		}
 	}
 
-	@Deprecated
 	public static void displayColoredParticle(final Location loc, final String hexVal) {
-		displayColoredParticle(loc, ParticleEffect.RED_DUST, hexVal, 0, 0, 0);
+		displayColoredParticle(loc, ParticleEffect.RED_DUST, hexVal, 1, 0, 0, 0);
 	}
 
 	@Deprecated
 	public static void displayColoredParticle(final Location loc, final String hexVal, final float xOffset, final float yOffset, final float zOffset) {
-		displayColoredParticle(loc, ParticleEffect.RED_DUST, hexVal, xOffset, yOffset, zOffset);
+		displayColoredParticle(loc, ParticleEffect.RED_DUST, hexVal, 1, xOffset, yOffset, zOffset);
 	}
 
 	public static void displayColoredParticle(String hexVal, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ) {
+		displayColoredParticle(null, hexVal, loc, amount, offsetX, offsetY, offsetZ);
+	}
+
+	public static void displayColoredParticle(@Nullable final Ability ability, String hexVal, final Location loc, final int amount, final double offsetX, final double offsetY, final double offsetZ) {
 		int r = 0;
 		int g = 0;
 		int b = 0;
@@ -307,7 +333,7 @@ public class GeneralMethods {
 			b = Integer.valueOf(hexVal.substring(4, 6), 16).intValue();
 		}
 
-		new ColoredParticle(Color.fromRGB(r, g, b), 1F).display(loc, amount, offsetX, offsetY, offsetZ);
+		new ColoredParticle(Color.fromRGB(r, g, b), 1F).display(ability, loc, amount, offsetX, offsetY, offsetZ);
 	}
 
 	public static void displayColoredParticle(final String hexVal, final Location loc) {
@@ -546,19 +572,39 @@ public class GeneralMethods {
 	 */
 	public static List<Block> getBlocksAroundPoint(final Location location, final double radius) {
 		final List<Block> blocks = new ArrayList<Block>();
+		if (radius < 0) {
+			return blocks;
+		}
 
-		final int xorg = location.getBlockX();
-		final int yorg = location.getBlockY();
-		final int zorg = location.getBlockZ();
+		final World world = location.getWorld();
+		final double originX = location.getX();
+		final double originY = location.getY();
+		final double originZ = location.getZ();
+		final double radiusSquared = radius * radius;
 
-		final int r = (int) radius * 4;
+		// Block#getLocation uses the block's integer-coordinate origin, so these
+		// bounds preserve the method's existing distance semantics.
+		final int minX = (int) Math.ceil(originX - radius);
+		final int maxX = (int) Math.floor(originX + radius);
+		final int minY = (int) Math.ceil(originY - radius);
+		final int maxY = (int) Math.floor(originY + radius);
+		final int minZ = (int) Math.ceil(originZ - radius);
+		final int maxZ = (int) Math.floor(originZ + radius);
 
-		for (int x = xorg - r; x <= xorg + r; x++) {
-			for (int y = yorg - r; y <= yorg + r; y++) {
-				for (int z = zorg - r; z <= zorg + r; z++) {
-					final Block block = location.getWorld().getBlockAt(x, y, z);
-					if (block.getLocation().distanceSquared(location) <= radius * radius) {
-						blocks.add(block);
+		for (int x = minX; x <= maxX; x++) {
+			final double deltaX = x - originX;
+			final double distanceX = deltaX * deltaX;
+			for (int y = minY; y <= maxY; y++) {
+				final double deltaY = y - originY;
+				final double distanceXY = distanceX + deltaY * deltaY;
+				if (distanceXY > radiusSquared) {
+					continue;
+				}
+
+				for (int z = minZ; z <= maxZ; z++) {
+					final double deltaZ = z - originZ;
+					if (distanceXY + deltaZ * deltaZ <= radiusSquared) {
+						blocks.add(world.getBlockAt(x, y, z));
 					}
 				}
 			}
@@ -614,11 +660,38 @@ public class GeneralMethods {
 	}
 
 	/**
+	 * Returns true when the entity is a display-only entity that should not be a direct combat target.
+	 */
+	private static boolean isDisplayEntity(final Entity entity) {
+		return switch (entity.getType()) {
+			case TEXT_DISPLAY, BLOCK_DISPLAY, ITEM_DISPLAY -> true;
+			default -> false;
+		};
+	}
+
+	/**
+	 * Resolves display passengers to the entity they are attached to, so abilities can affect the real target.
+	 */
+	public static Entity resolveAbilityTarget(final Entity entity) {
+		Entity resolved = entity;
+		int depth = 0;
+
+		while (resolved != null && isDisplayEntity(resolved) && resolved.getVehicle() != null && depth++ < 8) {
+			resolved = resolved.getVehicle();
+		}
+
+		return resolved;
+	}
+
+	/**
 	 * Gets the closest entity within the specified radius around a point
 	 * @param center point to check around
 	 * @param radius distance from center to check within
 	 * @return null if not found
+	 * @deprecated Ability code should use {@link #getClosestEntity(Ability, Location, double)}
+	 * so entities outside the ability's phased encounter are ignored.
 	 */
+	@Deprecated
 	public static Entity getClosestEntity(Location center, double radius) {
 		Entity found = null;
 		Double distance = null;
@@ -636,11 +709,39 @@ public class GeneralMethods {
 	}
 
 	/**
+	 * Gets the closest entity within the specified radius that the supplied ability
+	 * is allowed to target.
+	 *
+	 * @param ability source ability
+	 * @param center point to check around
+	 * @param radius distance from center to check within
+	 * @return null if no targetable entity is found
+	 */
+	public static Entity getClosestEntity(final Ability ability, final Location center, final double radius) {
+		Entity found = null;
+		Double distance = null;
+
+		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(ability, center, radius)) {
+			final double check = center.distanceSquared(entity.getLocation());
+
+			if (distance == null || check < distance) {
+				found = entity;
+				distance = check;
+			}
+		}
+
+		return found;
+	}
+
+	/**
 	 * Gets the closest LivingEntity within the specified radius around a point
 	 * @param center point to check around
 	 * @param radius distance from center to check within
 	 * @return null if not found
+	 * @deprecated Ability code should use {@link #getClosestLivingEntity(Ability, Location, double)}
+	 * so entities outside the ability's phased encounter are ignored.
 	 */
+	@Deprecated
 	public static LivingEntity getClosestLivingEntity(Location center, double radius) {
 		LivingEntity le = null;
 		Double distance = null;
@@ -655,6 +756,31 @@ public class GeneralMethods {
 		}
 
 		return le;
+	}
+
+	/**
+	 * Gets the closest living entity within the specified radius that the supplied
+	 * ability is allowed to target.
+	 *
+	 * @param ability source ability
+	 * @param center point to check around
+	 * @param radius distance from center to check within
+	 * @return null if no targetable living entity is found
+	 */
+	public static LivingEntity getClosestLivingEntity(final Ability ability, final Location center, final double radius) {
+		LivingEntity found = null;
+		Double distance = null;
+
+		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(ability, center, radius)) {
+			final double check = center.distanceSquared(entity.getLocation());
+
+			if (entity instanceof LivingEntity && (distance == null || check < distance)) {
+				found = (LivingEntity) entity;
+				distance = check;
+			}
+		}
+
+		return found;
 	}
 
 	public static String getCurrentDate() {
@@ -722,9 +848,68 @@ public class GeneralMethods {
 	 * @param radius The radius of blocks to look for entities from the location
 	 * @param acceptable A function that determines if an entity is acceptable or not to be a part of this list
 	 * @return A list of entities around a point
+	 * @deprecated Ability code should use
+	 * {@link #getEntitiesAroundPoint(Ability, Location, double, Predicate)} so
+	 * entities outside the ability's phased encounter are ignored.
 	 */
+	@Deprecated
 	public static List<Entity> getEntitiesAroundPoint(final Location location, final double radius, Predicate<Entity> acceptable) {
-		return new ArrayList<>(location.getWorld().getNearbyEntities(location, radius, radius, radius, acceptable));
+		final Ability currentAbility = PhasedIntegrationManager.getCurrentAbilityContext();
+		if (currentAbility != null) {
+			return getEntitiesAroundPoint(currentAbility, location, radius, acceptable);
+		}
+		return getEntitiesAroundPointInternal(location, radius, acceptable);
+	}
+
+	private static List<Entity> getEntitiesAroundPointInternal(final Location location, final double radius, final Predicate<Entity> acceptable) {
+		final List<Entity> entities = new ArrayList<>();
+		final HashSet<Integer> uniqueEntityIds = new HashSet<>();
+
+		for (final Entity nearby : location.getWorld().getNearbyEntities(location, radius, radius, radius)) {
+//			final Entity resolved = resolveAbilityTarget(nearby);
+			if (nearby == null || !uniqueEntityIds.add(nearby.getEntityId())) {
+				continue;
+			}
+
+			if (acceptable.test(nearby)) {
+				entities.add(nearby);
+			}
+		}
+
+		return entities;
+	}
+
+	/**
+	 * Gets the entities around a point that satisfy the supplied predicate and are
+	 * targetable by the supplied ability.
+	 *
+	 * @param ability source ability
+	 * @param location center of the search
+	 * @param radius search radius
+	 * @param acceptable additional target predicate
+	 * @return targetable entities around the point
+	 */
+	public static List<Entity> getEntitiesAroundPoint(final Ability ability, final Location location, final double radius,
+			final Predicate<Entity> acceptable) {
+		return getEntitiesAroundPointInternal(location, radius,
+				acceptable.and(entity -> canAbilityTarget(ability, entity)));
+	}
+
+	/**
+	 * Gets the entities around a point that satisfy the supplied predicate and are
+	 * targetable by a source whose ability has not been instantiated yet.
+	 *
+	 * @param source source entity
+	 * @param abilityId source ability identifier
+	 * @param location center of the search
+	 * @param radius search radius
+	 * @param acceptable additional target predicate
+	 * @return targetable entities around the point
+	 */
+	public static List<Entity> getEntitiesAroundPoint(final LivingEntity source, final String abilityId, final Location location,
+			final double radius, final Predicate<Entity> acceptable) {
+		return getEntitiesAroundPointInternal(location, radius,
+				acceptable.and(entity -> canAbilityTarget(source, abilityId, entity)));
 	}
 
 	/**
@@ -734,9 +919,88 @@ public class GeneralMethods {
 	 * @param location The base location
 	 * @param radius The radius of blocks to look for entities from the location
 	 * @return A list of entities around a point
+	 * @deprecated Ability code should use
+	 * {@link #getEntitiesAroundPoint(Ability, Location, double)} so entities
+	 * outside the ability's phased encounter are ignored.
 	 */
+	@Deprecated
 	public static List<Entity> getEntitiesAroundPoint(final Location location, final double radius) {
-		return getEntitiesAroundPoint(location, radius, entity -> !(entity.isDead() || (entity instanceof Player && ((Player) entity).getGameMode().equals(GameMode.SPECTATOR))) || entity instanceof ArmorStand && ((ArmorStand) entity).isMarker());
+		final Ability currentAbility = PhasedIntegrationManager.getCurrentAbilityContext();
+		if (currentAbility != null) {
+			return getEntitiesAroundPoint(currentAbility, location, radius);
+		}
+		return getEntitiesAroundPointInternal(location, radius, GeneralMethods::isDefaultEntityTarget);
+	}
+
+	/**
+	 * Gets the normally eligible entities around a point that the supplied ability
+	 * is allowed to target.
+	 *
+	 * @param ability source ability
+	 * @param location center of the search
+	 * @param radius search radius
+	 * @return targetable entities around the point
+	 */
+	public static List<Entity> getEntitiesAroundPoint(final Ability ability, final Location location, final double radius) {
+		return getEntitiesAroundPoint(ability, location, radius, GeneralMethods::isDefaultEntityTarget);
+	}
+
+	/**
+	 * Gets the normally eligible entities around a point that a source is allowed
+	 * to target before its ability has been instantiated.
+	 *
+	 * @param source source entity
+	 * @param abilityId source ability identifier
+	 * @param location center of the search
+	 * @param radius search radius
+	 * @return targetable entities around the point
+	 */
+	public static List<Entity> getEntitiesAroundPoint(final LivingEntity source, final String abilityId, final Location location,
+			final double radius) {
+		return getEntitiesAroundPoint(source, abilityId, location, radius, GeneralMethods::isDefaultEntityTarget);
+	}
+
+	private static boolean isDefaultEntityTarget(final Entity entity) {
+		return !entity.isDead()
+				&& (!(entity instanceof Player) || ((Player) entity).getGameMode() != GameMode.SPECTATOR)
+				&& (!(entity instanceof ArmorStand) || !((ArmorStand) entity).isMarker())
+				&& !entity.hasMetadata("temparmorstand")
+				&& !isDisplayEntity(entity);
+	}
+
+	/**
+	 * Checks whether an entity may participate in target selection for an ability.
+	 * A denied target must be treated as absent: it must not receive effects or
+	 * alter the selecting ability's lifecycle.
+	 *
+	 * @param ability source ability
+	 * @param target candidate target
+	 * @return whether the candidate may be selected
+	 */
+	public static boolean canAbilityTarget(final Ability ability, final Entity target) {
+		if (target == null) {
+			return false;
+		}
+		return PhasedIntegrationManager.shouldAllow(
+				PhasedIntegrationManager.requestFromAbility(ability, target.getUniqueId(), GateStage.TARGET_SELECT, target.getLocation(), null));
+	}
+
+	/**
+	 * Checks whether an entity may participate in target selection before the
+	 * source ability has been instantiated.
+	 *
+	 * @param source source entity
+	 * @param abilityId source ability identifier
+	 * @param target candidate target
+	 * @return whether the candidate may be selected
+	 */
+	public static boolean canAbilityTarget(final LivingEntity source, final String abilityId, final Entity target) {
+		if (target == null) {
+			return false;
+		}
+		return PhasedIntegrationManager.shouldAllow(
+				PhasedIntegrationManager.requestFromSource(source, abilityId, target.getUniqueId(), GateStage.TARGET_SELECT,
+						target.getLocation(), null));
 	}
 
 	public static long getGlobalCooldown() {
@@ -869,25 +1133,27 @@ public class GeneralMethods {
 		return location.clone().subtract(new Vector(Math.cos(angle), 0, Math.sin(angle)).normalize().multiply(distance));
 	}
 
-	public static Location getMainHandLocation(final Player player) {
-		double y = 1.2 - (player.isSneaking() ? 0.4 : 0);
-		if (player.getMainHand() == MainHand.LEFT) {
-			return GeneralMethods.getLeftSide(player.getLocation(), .55).add(0, y, 0)
-					.add(player.getLocation().getDirection().multiply(0.8));
+	public static Location getMainHandLocation(final LivingEntity caster) {
+		var opt = Optional.ofNullable(caster instanceof Player ? (Player) caster : null);
+		double y = 1.2 - (opt.map(Player::isSneaking).orElse(false) ? 0.4 : 0);
+		if (opt.map(p -> p.getMainHand() == MainHand.LEFT).orElse(false)) {
+			return GeneralMethods.getLeftSide(caster.getLocation(), .55).add(0, y, 0)
+					.add(caster.getLocation().getDirection().multiply(0.8));
 		} else {
-			return GeneralMethods.getRightSide(player.getLocation(), .55).add(0, y, 0)
-					.add(player.getLocation().getDirection().multiply(0.8));
+			return GeneralMethods.getRightSide(caster.getLocation(), .55).add(0, y, 0)
+					.add(caster.getLocation().getDirection().multiply(0.8));
 		}
 	}
 
-	public static Location getOffHandLocation(final Player player) {
-		double y = 1.2 - (player.isSneaking() ? 0.4 : 0);
-		if (player.getMainHand() == MainHand.RIGHT) {
-			return GeneralMethods.getLeftSide(player.getLocation(), .55).add(0, y, 0)
-					.add(player.getLocation().getDirection().multiply(0.8));
+	public static Location getOffHandLocation(final LivingEntity caster) {
+		var opt = Optional.ofNullable(caster instanceof Player ? (Player) caster : null);
+		double y = 1.2 - (opt.map(Player::isSneaking).orElse(false) ? 0.4 : 0);
+		if (opt.map(p -> p.getMainHand() == MainHand.RIGHT).orElse(false)) {
+			return GeneralMethods.getLeftSide(caster.getLocation(), .55).add(0, y, 0)
+					.add(caster.getLocation().getDirection().multiply(0.8));
 		} else {
-			return GeneralMethods.getRightSide(player.getLocation(), .55).add(0, y, 0)
-					.add(player.getLocation().getDirection().multiply(0.8));
+			return GeneralMethods.getRightSide(caster.getLocation(), .55).add(0, y, 0)
+					.add(caster.getLocation().getDirection().multiply(0.8));
 		}
 	}
 
@@ -924,12 +1190,11 @@ public class GeneralMethods {
 		if (!material.name().contains("_CAULDRON")) {
 			return null;
 		}
-		return material.createBlockData(d -> ((Levelled) d).setLevel((level > 3 || level > ((Levelled) d).getMaximumLevel()) ? 3 : level < 1 ? 1 : level));
+		return material.createBlockData(d -> ((Levelled) d).setLevel((level > 3 || level > ((Levelled) d).getMaximumLevel()) ? 3 : Math.max(level, 1)));
 	}
 	
 	public static void setCauldronData(final Block block, final int level) {
-		if (block.getBlockData() instanceof Levelled) {
-			Levelled levelled = (Levelled) block.getBlockData();
+		if (block.getBlockData() instanceof Levelled levelled) {
 			if (level >= 1 && level < 3) {
 				levelled.setLevel(level);
 				block.setBlockData(levelled);
@@ -940,14 +1205,29 @@ public class GeneralMethods {
 		return;
 	}
 
-	public static Entity getTargetedEntity(final Player player, final double range, final List<Entity> avoid) {
+	/**
+	 * @deprecated Ability code should use an ability-aware overload so entities
+	 * outside the ability's phased encounter are ignored.
+	 */
+	@Deprecated
+	public static Entity getTargetedEntity(final LivingEntity caster, final double range, final List<Entity> avoid) {
+		final Ability currentAbility = PhasedIntegrationManager.getCurrentAbilityContext();
+		if (currentAbility != null) {
+			return getTargetedEntity(currentAbility, caster, range, avoid);
+		}
+		return getTargetedEntity(caster, range, avoid, entity -> true);
+	}
+
+	private static Entity getTargetedEntity(final LivingEntity caster, final double range, final List<Entity> avoid,
+			final Predicate<Entity> targetable) {
 		double longestr = range + 1;
 		Entity target = null;
-		final Location origin = player.getEyeLocation();
-		final Vector direction = player.getEyeLocation().getDirection().normalize();
-		for (final Entity entity : getEntitiesAroundPoint(origin, range)) {
+		final Location origin = caster.getEyeLocation();
+		final Vector direction = caster.getEyeLocation().getDirection().normalize();
+		for (final Entity entity : getEntitiesAroundPointInternal(origin, range,
+				entity -> isDefaultEntityTarget(entity) && targetable.test(entity))) {
 			if (entity instanceof Player) {
-				if (((Player) entity).isDead() || ((Player) entity).getGameMode().equals(GameMode.SPECTATOR)) {
+				if (entity.isDead() || ((Player) entity).getGameMode().equals(GameMode.SPECTATOR)) {
 					continue;
 				}
 			}
@@ -955,7 +1235,7 @@ public class GeneralMethods {
 				continue;
 			}
 			if (entity.getWorld().equals(origin.getWorld())) {
-				if (entity.getLocation().distanceSquared(origin) < longestr * longestr && getDistanceFromLine(direction, origin, entity.getLocation()) < 2 && (entity instanceof LivingEntity) && entity.getEntityId() != player.getEntityId() && entity.getLocation().distanceSquared(origin.clone().add(direction)) < entity.getLocation().distanceSquared(origin.clone().add(direction.clone().multiply(-1)))) {
+				if (entity.getLocation().distanceSquared(origin) < longestr * longestr && getDistanceFromLine(direction, origin, entity.getLocation()) < 2 && (entity instanceof LivingEntity) && entity.getEntityId() != caster.getEntityId() && entity.getLocation().distanceSquared(origin.clone().add(direction)) < entity.getLocation().distanceSquared(origin.clone().add(direction.clone().multiply(-1)))) {
 					target = entity;
 					longestr = entity.getLocation().distance(origin);
 				}
@@ -969,22 +1249,107 @@ public class GeneralMethods {
 		return target;
 	}
 
-	public static Entity getTargetedEntity(final Player player, final double range) {
-		return getTargetedEntity(player, range, new ArrayList<Entity>());
+	/**
+	 * Gets the entity targeted by a caster while excluding entities the supplied
+	 * ability may not target.
+	 *
+	 * @param ability source ability
+	 * @param caster caster whose line of sight is used
+	 * @param range maximum target range
+	 * @param avoid entities to exclude
+	 * @return targeted entity, or null
+	 */
+	public static Entity getTargetedEntity(final Ability ability, final LivingEntity caster, final double range,
+			final List<Entity> avoid) {
+		return getTargetedEntity(caster, range, avoid, entity -> canAbilityTarget(ability, entity));
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Material... nonOpaque2) {
-		final Location origin = player.getEyeLocation();
+	/**
+	 * Gets the entity targeted by a caster while excluding entities outside the
+	 * source's phased encounter before an ability has been instantiated.
+	 *
+	 * @param caster source and line-of-sight entity
+	 * @param abilityId source ability identifier
+	 * @param range maximum target range
+	 * @param avoid entities to exclude
+	 * @return targeted entity, or null
+	 */
+	public static Entity getTargetedEntity(final LivingEntity caster, final String abilityId, final double range,
+			final List<Entity> avoid) {
+		return getTargetedEntity(caster, range, avoid, entity -> canAbilityTarget(caster, abilityId, entity));
+	}
+
+	/**
+	 * @deprecated Ability code should use an ability-aware overload so entities
+	 * outside the ability's phased encounter are ignored.
+	 */
+	@Deprecated
+	public static Entity getTargetedEntity(final LivingEntity caster, final double range) {
+		return getTargetedEntity(caster, range, new ArrayList<>());
+	}
+
+	public static Entity getTargetedEntity(final Ability ability, final LivingEntity caster, final double range) {
+		return getTargetedEntity(ability, caster, range, new ArrayList<>());
+	}
+
+	public static Entity getTargetedEntity(final LivingEntity caster, final String abilityId, final double range) {
+		return getTargetedEntity(caster, abilityId, range, new ArrayList<>());
+	}
+
+	public static @Nullable BlockDefinition customBlockFromId(final String id) {
+		return CraftEngineBlocks.byId(Key.of(id));
+	}
+
+	public static BlockData blockDataFromCustomBlock(BlockDefinition customBlock) {
+		return CraftEngineBlocks.getBukkitBlockData(customBlock.defaultState());
+	}
+
+	public static String idFromCustomBlock(BlockDefinition customBlock) {
+		return customBlock.id().toString();
+	}
+
+	public static BlockData blockDataFromId(final String id) {
+		if (id.startsWith("customfire:")) {
+			Fire fireData = (Fire) Material.FIRE.createBlockData();
+			int age = CUSTOM_FIRE_AGES.getOrDefault(id, 0);
+			fireData.setAge(age);
+			return fireData;
+		}
+
+		if (id.equals("SOUL_FIRE")) {
+			return Material.SOUL_FIRE.createBlockData();
+		}
+
+		var custom = customBlockFromId(id);
+		if (custom != null) {
+			return blockDataFromCustomBlock(custom);
+		}
+
+		Material material = Material.getMaterial(id.toUpperCase());
+		if (material != null) {
+			return material.createBlockData();
+		}
+
+		return null;
+	}
+
+	public static boolean blockMatchesId(final Block block, final String id) {
+		var custom = customBlockFromId(id);
+		if (custom != null) {
+			return custom.id().toString().equalsIgnoreCase(id);
+		}
+
+		return block.getType().name().equalsIgnoreCase(id);
+	}
+
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Predicate<Block> transparentPredicate) {
+		final Location origin = caster.getEyeLocation();
 		final Vector direction = origin.getDirection();
 
-		final HashSet<Material> trans = new HashSet<Material>();
-		trans.add(Material.AIR);
-		trans.add(Material.CAVE_AIR);
-		trans.add(Material.VOID_AIR);
-
-		if (nonOpaque2 != null) {
-			Collections.addAll(trans, nonOpaque2);
-		}
+		final HashSet<String> transparent = new HashSet<>();
+		transparent.add(Material.AIR.name());
+		transparent.add(Material.CAVE_AIR.name());
+		transparent.add(Material.VOID_AIR.name());
 
 		final Location location = origin.clone();
 		final Vector vec = direction.normalize().multiply(0.2);
@@ -999,29 +1364,37 @@ public class GeneralMethods {
 
 			final Block block = location.getBlock();
 
-			if (trans.contains(block.getType())) {
+			if (transparent.stream().anyMatch(id -> blockMatchesId(block, id)) || transparentPredicate.test(block)) {
 				continue;
-			} else if (ignoreTempBlocks && (TempBlock.isTempBlock(block) && !WaterAbility.isBendableWaterTempBlock(block) && !EarthAbility.isBendableEarthTempBlock(block))) {
-				continue;
-			} else {
-				location.subtract(vec);
-				break;
 			}
+			if (ignoreTempBlocks && (TempBlock.isTempBlock(block) && !WaterAbility.isBendableWaterTempBlock(block) && !EarthAbility.isBendableEarthTempBlock(block))) {
+				continue;
+			}
+			location.subtract(vec);
+			break;
 		}
 
 		return location;
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final boolean ignoreTempBlocks, final Material... nonOpaque2) {
-		return getTargetedLocation(player, range, ignoreTempBlocks, true, nonOpaque2);
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final String... blockTypes) {
+		return getTargetedLocation(caster, range, ignoreTempBlocks, checkDiagonals, block -> Arrays.stream(blockTypes).anyMatch(s -> blockMatchesId(block, s)));
 	}
 
-	public static Location getTargetedLocation(final Player player, final double range, final Material... nonOpaque2) {
-		return getTargetedLocation(player, range, false, nonOpaque2);
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final boolean ignoreTempBlocks, final boolean checkDiagonals, final Material... nonOpaque2) {
+		return getTargetedLocation(caster, range, ignoreTempBlocks, checkDiagonals, nonOpaque2 == null ? new String[0] : Arrays.stream(nonOpaque2).filter(Objects::nonNull).map(Material::name).toArray(String[]::new));
 	}
 
-	public static Location getTargetedLocation(final Player player, final int range) {
-		return getTargetedLocation(player, range, false);
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final boolean ignoreTempBlocks, final Material... nonOpaque2) {
+		return getTargetedLocation(caster, range, ignoreTempBlocks, true, nonOpaque2);
+	}
+
+	public static Location getTargetedLocation(final LivingEntity caster, final double range, final Material... nonOpaque2) {
+		return getTargetedLocation(caster, range, false, nonOpaque2);
+	}
+
+	public static Location getTargetedLocation(final LivingEntity caster, final int range) {
+		return getTargetedLocation(caster, range, false);
 	}
 
 	public static Block getTopBlock(final Location loc, final int range) {
@@ -1096,7 +1469,7 @@ public class GeneralMethods {
 			elements.add(Element.FIRE);
 		}
 		if (!plugin.getConfig().getBoolean("Properties.Chi.CanBendWithWeapons")) {
-			elements.add(Element.CHI);
+			elements.add(Element.NON);
 		}
 
 		return elements;
@@ -1221,7 +1594,7 @@ public class GeneralMethods {
 	}
 
 	/**
-	 * Deprecated. Use {@link RegionProtection#isRegionProtected(Player, Location, CoreAbility)} instead
+	 * Deprecated. Use {@link RegionProtection#isRegionProtected(LivingEntity, Location, String)} instead
 	 */
 	@Deprecated
 	public static boolean isRegionProtectedFromBuild(final Player player, final String ability, final Location loc) {
@@ -1229,7 +1602,7 @@ public class GeneralMethods {
 	}
 
 	/**
-	 * Deprecated. Use {@link RegionProtection#isRegionProtected(Player, Location, CoreAbility)} instead
+	 * Deprecated. Use {@link RegionProtection#isRegionProtected(CoreAbility, Location)} instead
 	 */
 	@Deprecated
 	public static boolean isRegionProtectedFromBuild(final Ability ability, final Location loc) {
@@ -1237,7 +1610,7 @@ public class GeneralMethods {
 	}
 
 	/**
-	 * Deprecated. Use {@link RegionProtection#isRegionProtected(Player, Location, CoreAbility)} instead
+	 * Deprecated. Use {@link RegionProtection#isRegionProtected(LivingEntity, Location)} instead
 	 */
 	@Deprecated
 	public static boolean isRegionProtectedFromBuild(final Player player, final Location loc) {
@@ -1276,70 +1649,58 @@ public class GeneralMethods {
 			return false;
 		}
 
-		switch (entity.getType()) {
-			case SKELETON:
-			case STRAY:
-			case WITHER_SKELETON:
-			case WITHER:
-			case ZOMBIE:
-			case HUSK:
-			case ZOMBIE_VILLAGER:
-			case ZOMBIFIED_PIGLIN:
-			case ZOGLIN:
-			case DROWNED:
-			case ZOMBIE_HORSE:
-			case SKELETON_HORSE:
-			case PHANTOM:
-				return true;
-			default:
-				return false;
-		}
+        return switch (entity.getType()) {
+            case SKELETON, STRAY, WITHER_SKELETON, WITHER, ZOMBIE, HUSK, ZOMBIE_VILLAGER, ZOMBIFIED_PIGLIN, ZOGLIN, DROWNED, ZOMBIE_HORSE, SKELETON_HORSE, PHANTOM ->
+                    true;
+            default -> false;
+        };
 	}
 
-	public static boolean isWeapon(final Material mat) {
+	private static final List<String> WEAPONS = Arrays.asList("AXE", "HOE", "SHOVEL", "SWORD");
 
-		switch(mat) {
-			case BOW:
-			case CROSSBOW:
-			case DIAMOND_AXE:
-			case DIAMOND_HOE:
-			case DIAMOND_PICKAXE:
-			case DIAMOND_SHOVEL:
-			case DIAMOND_SWORD:
-			case GOLDEN_AXE:
-			case GOLDEN_HOE:
-			case GOLDEN_PICKAXE:
-			case GOLDEN_SHOVEL:
-			case GOLDEN_SWORD:
-			case IRON_AXE:
-			case IRON_HOE:
-			case IRON_PICKAXE:
-			case IRON_SHOVEL:
-			case IRON_SWORD:
-			case NETHERITE_AXE:
-			case NETHERITE_HOE:
-			case NETHERITE_PICKAXE:
-			case NETHERITE_SHOVEL:
-			case NETHERITE_SWORD:
-			case STONE_AXE:
-			case STONE_HOE:
-			case STONE_PICKAXE:
-			case STONE_SHOVEL:
-			case STONE_SWORD:
-			case TRIDENT:
-			case WOODEN_AXE:
-			case WOODEN_HOE:
-			case WOODEN_PICKAXE:
-			case WOODEN_SHOVEL:
-			case WOODEN_SWORD:
+	public static boolean isWeapon(final Material mat) {
+		String m = mat.toString();
+		for (String s : WEAPONS)
+			if (m.contains(s))
 				return true;
-			default:
-				return false;
+		return mat == Material.TRIDENT || m.endsWith("BOW");
+	}
+
+	public static void loadBendingPlayer(final BendingPlayer pl) {
+		final Player player = Bukkit.getPlayer(pl.getUUID());
+		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
+
+		if (bPlayer == null) {
+			return;
+		}
+
+		if (PKListener.getToggledOut().contains(player.getUniqueId())) {
+			bPlayer.toggleBending();
+			player.sendMessage(ChatColor.YELLOW + "Reminder, you toggled your bending before signing off. Enable it again with /bending toggle.");
+		}
+
+		Preset.loadPresets(player);
+		Element element = null;
+		String prefix = "";
+
+		final boolean chatEnabled = ConfigManager.languageConfig.get().getBoolean("Chat.Enable");
+
+		prefix = ChatColor.WHITE + ChatColor.translateAlternateColorCodes('&', ConfigManager.languageConfig.get().getString("Chat.Prefixes.Nonbender")) + " ";
+		if (player.hasPermission("bending.avatar") || (bPlayer.hasElement(Element.AIR) && bPlayer.hasElement(Element.EARTH) && bPlayer.hasElement(Element.FIRE) && bPlayer.hasElement(Element.WATER))) {
+			prefix = Element.AVATAR.getPrefix();
+		} else if (bPlayer.getElements().size() > 0) {
+			element = bPlayer.getElements().get(0);
+			prefix = element.getPrefix();
+		}
+
+		if (chatEnabled) {
+			player.setDisplayName(player.getName());
+			player.setDisplayName(prefix + ChatColor.RESET + player.getDisplayName());
 		}
 	}
 
 	public static void reloadPlugin(final CommandSender sender) {
-		ProjectKorra.log.info("Reloading ProjectKorra and configuration");
+		PkLang.info("Reloading ProjectKorra and configuration");
 		final BendingReloadEvent event = new BendingReloadEvent(sender);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (event.isCancelled()) {
@@ -1353,6 +1714,17 @@ public class GeneralMethods {
 		ConfigManager.defaultConfig.reload();
 		ConfigManager.languageConfig.reload();
 		ConfigManager.presetConfig.reload();
+		final com.projectkorra.projectkorra.persistence.external.PlayerDataMode configuredPlayerDataMode =
+				com.projectkorra.projectkorra.persistence.external.PlayerDataMode.parse(ConfigManager.getConfig().getString("Storage.PlayerDataMode"));
+		if (configuredPlayerDataMode != com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.getMode()) {
+			PkLang.warning("Storage.PlayerDataMode changed from the active mode "
+					+ com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.getMode()
+					+ " to " + configuredPlayerDataMode + "; the change will take effect after a controlled restart");
+		}
+		PhasedIntegrationManager.reloadFromConfig();
+		PhasedBlockVisibilityManager.reloadFromConfig();
+		ParticleCompatibilityService.reload(ProjectKorra.plugin);
+		ConfigManager.loadConstants();
 		Arrays.stream(Element.getElements()).forEach(e -> {e.setColor(null); e.setSubColor(null);}); //Load colors from config again
 		Arrays.stream(Element.getSubElements()).forEach(e -> {e.setColor(null); e.setSubColor(null);}); //Same for subs
 		ElementalAbility.clearBendableMaterials(); // Clear and re-cache the material lists on reload.
@@ -1389,7 +1761,7 @@ public class GeneralMethods {
 		DBConnection.init();
 
 		if (!DBConnection.isOpen()) {
-			ProjectKorra.log.severe("Unable to enable ProjectKorra due to the database not being open");
+			PkLang.severe("Unable to enable ProjectKorra due to the database not being open");
 			stopPlugin();
 		}
 		BendingPlayer.getOfflinePlayers().clear();
@@ -1402,7 +1774,7 @@ public class GeneralMethods {
 		}
 
 		plugin.updater.checkUpdate();
-		ProjectKorra.log.info("Reload complete");
+		PkLang.info("Reload complete");
 	}
 
 	public static void reloadAddonPlugins() {
@@ -1517,6 +1889,22 @@ public class GeneralMethods {
 			f.add("ProjectKorra (Side Plugin) Information");
 			f.add("====================");
 			f.addAll(officialSidePlugins);
+		}
+
+		f.add("");
+		f.add("Player Persistence");
+		f.add("====================");
+		f.add("Mode: " + com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.getMode());
+		f.add("Provider: " + com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.getProvider()
+				.map(provider -> provider.providerName() + " " + provider.providerVersion() + " (contract " + provider.contractVersion() + ")").orElse("<none>"));
+		if (com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence.isExternalMode()) {
+			for (final Player player : Bukkit.getOnlinePlayers()) {
+				final var diagnostics = com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence
+						.getExternalPersistenceDiagnostics(player.getUniqueId());
+				f.add(player.getUniqueId() + ": state=" + diagnostics.initializationState() + ", phase=" + diagnostics.initializationPhase()
+						+ ", revision=" + diagnostics.revision() + ", pending=" + diagnostics.pendingRequests()
+						+ ", guard=" + diagnostics.projectionGuardActive() + ", lastFailure=" + diagnostics.lastFailure());
+			}
 		}
 
 		f.add("");
@@ -1837,14 +2225,28 @@ public class GeneralMethods {
 	}
 	
 	public static void setVelocity(Ability ability, Entity entity, Vector vector) {
-		final AbilityVelocityAffectEntityEvent event = new AbilityVelocityAffectEntityEvent(ability, entity, vector);
+		trySetVelocity(ability, entity, vector);
+	}
+
+	/**
+	 * Applies ability velocity and reports whether the final vector reached the entity.
+	 * Existing {@link #setVelocity(Ability, Entity, Vector)} callers retain their void contract.
+	 */
+	public static boolean trySetVelocity(Ability ability, Entity entity, Vector vector) {
+		final Ability sourceAbility = ability == null ? PhasedIntegrationManager.getCurrentAbilityContext() : ability;
+		if (!PhasedIntegrationManager.shouldAllow(
+				PhasedIntegrationManager.requestFromAbility(sourceAbility, entity.getUniqueId(), GateStage.COLLISION, entity.getLocation(), null))) {
+			return false;
+		}
+
+		final AbilityVelocityAffectEntityEvent event = new AbilityVelocityAffectEntityEvent(sourceAbility, entity, vector);
 		Bukkit.getServer().getPluginManager().callEvent(event);
-		if (event.isCancelled()) 
-			return;
-		
+		if (event.isCancelled())
+			return false;
+
 		Vector velocity = event.getVelocity();
-		if(velocity == null || Double.isNaN(velocity.length()))
-		    return;
+		if (velocity == null || Double.isNaN(velocity.length()))
+		    return false;
 		
 		if (entity instanceof TNTPrimed) {
 			if (ConfigManager.defaultConfig.get().getBoolean("Properties.BendingAffectFallingSand.TNT")) {
@@ -1855,6 +2257,8 @@ public class GeneralMethods {
 				velocity.multiply(ConfigManager.defaultConfig.get().getDouble("Properties.BendingAffectFallingSand.NormalStrengthMultiplier"));
 			}
 		}
+
+		if (entity.hasMetadata("bending-immune")) return false;
 
 		// Attempt to stop velocity from going over the packet cap.
 		if (velocity.getX() > 4) {
@@ -1875,12 +2279,18 @@ public class GeneralMethods {
 			velocity.setZ(-4);
 		}
 		event.getAffected().setVelocity(velocity);
+		final double appliedMagnitude = velocity.length();
+		if (sourceAbility != null && Double.isFinite(appliedMagnitude) && appliedMagnitude > 0D) {
+			AbilityExecutionEvidence.publishEntity(sourceAbility, AbilityExecutionEvidence.VELOCITY_APPLIED,
+					event.getAffected(), appliedMagnitude);
+		}
+		return true;
 	}
 
 	public static int getMCVersion() {
 		String version = Bukkit.getBukkitVersion().split("-", 2)[0];
 		if (!version.matches("\\d+\\.\\d+(\\.\\d+)?")) {
-			ProjectKorra.log.warning("Version not valid! Cannot parse version \"" + version + "\"");
+			PkLang.warning("Version not valid! Cannot parse version \"" + version + "\"");
 			return 1164; //1.16.4
 		}
 

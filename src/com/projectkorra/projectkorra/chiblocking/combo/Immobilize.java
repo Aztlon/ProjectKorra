@@ -8,18 +8,24 @@ import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.ability.ComboAbility;
-import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.MovementHandler;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class Immobilize extends ChiAbility implements ComboAbility {
 
 	@Attribute(Attribute.DURATION)
@@ -28,24 +34,23 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 	private long cooldown;
 	private Entity target;
 
-	public Immobilize(final Player player) {
-		super(player);
+	public Immobilize(final LivingEntity caster) {
+		super(caster);
 
 		this.cooldown = getConfig().getLong("Abilities.Chi.Immobilize.Cooldown");
 		this.duration = getConfig().getLong("Abilities.Chi.Immobilize.ParalyzeDuration");
-		this.target = GeneralMethods.getTargetedEntity(player, 5);
-		if (!this.bPlayer.canBendIgnoreBinds(this)) {
+		this.target = GeneralMethods.getTargetedEntity(caster, 5);
+		if (!this.bender.canBendIgnoreBinds(this)) {
 			return;
 		}
 		if (this.target == null) {
 			this.remove();
-			return;
 		} else {
-			if (GeneralMethods.isRegionProtectedFromBuild(this, this.target.getLocation()) || ((this.target instanceof Player) && Commands.invincible.contains(((Player) this.target).getName()))) {
+			if (RegionProtection.isRegionProtected(this, this.target.getLocation()) || ((this.target instanceof Player) && Commands.invincible.contains(this.target.getName()))) {
 				return;
 			}
-			paralyze(this.target, this.duration);
-			this.bPlayer.addCooldown(this);
+			this.paralyze(this.target, this.duration);
+			this.bender.addCooldown(this);
 		}
 	}
 
@@ -56,9 +61,9 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 	 * @param target The Entity to be paralyzed
 	 * @param duration The time in milliseconds the target will be paralyzed
 	 */
-	private static void paralyze(final Entity target, final Long duration) {
-		final MovementHandler mh = new MovementHandler((LivingEntity) target, CoreAbility.getAbility(Immobilize.class));
-		mh.stopWithDuration(duration / 1000 * 20, Element.CHI.getColor() + "* Immobilized *");
+	private void paralyze(final Entity target, final Long duration) {
+		final MovementHandler mh = new MovementHandler((LivingEntity) target, this);
+		mh.stopWithDuration(duration / 1000 * 20, Element.NON.getColor() + "* Immobilized *");
 	}
 
 	@Override
@@ -89,6 +94,7 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 		return this.target != null ? this.target.getLocation() : null;
 	}
 
+	@NotNull
 	@Override
 	public Object createNewComboInstance(final Player player) {
 		return new Immobilize(player);
@@ -97,25 +103,5 @@ public class Immobilize extends ChiAbility implements ComboAbility {
 	@Override
 	public ArrayList<AbilityInformation> getCombination() {
 		return ComboUtil.generateCombinationFromList(this, ConfigManager.defaultConfig.get().getStringList("Abilities.Chi.Immobilize.Combination"));
-	}
-
-	public long getDuration() {
-		return this.duration;
-	}
-
-	public void setDuration(final long duration) {
-		this.duration = duration;
-	}
-
-	public Entity getTarget() {
-		return this.target;
-	}
-
-	public void setTarget(final Entity target) {
-		this.target = target;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
 	}
 }

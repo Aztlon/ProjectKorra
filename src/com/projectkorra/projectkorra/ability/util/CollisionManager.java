@@ -14,6 +14,7 @@ import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.PassiveAbility;
 import com.projectkorra.projectkorra.event.AbilityCollisionEvent;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 
 /**
  * A CollisionManager is used to monitor possible collisions between all
@@ -26,7 +27,7 @@ import com.projectkorra.projectkorra.event.AbilityCollisionEvent;
  * <p>
  * For a CoreAbility to collide properly, the {@link CoreAbility#isCollidable()}
  * , {@link CoreAbility#getCollisionRadius()},
- * {@link CoreAbility#getLocations()}, and {@link CoreAbility#handleCollision()}
+ * {@link CoreAbility#getLocations()}, and {@link CoreAbility#handleCollision}
  * should be overridden if necessary.
  * <p>
  * During a Collision the {@link AbilityCollisionEvent} is called, then if not
@@ -92,7 +93,7 @@ public class CollisionManager {
 			if (instancesSecond.isEmpty()) {
 				continue;
 			}
-			final HashSet<CoreAbility> alreadyCollided = new HashSet<CoreAbility>();
+			final HashSet<CoreAbility> alreadyCollided = new HashSet<>();
 			final double certainNoCollisionDistSquared = Math.pow(this.certainNoCollisionDistance, 2);
 
 			for (final CoreAbility abilityFirst : instancesFirst) {
@@ -161,13 +162,17 @@ public class CollisionManager {
 					if (collided) {
 						final Collision forwardCollision = new Collision(abilityFirst, abilitySecond, collision.isRemovingFirst(), collision.isRemovingSecond(), locationFirst, locationSecond);
 						final Collision reverseCollision = new Collision(abilitySecond, abilityFirst, collision.isRemovingSecond(), collision.isRemovingFirst(), locationSecond, locationFirst);
+						if (!PhasedIntegrationManager.shouldAllow(
+								PhasedIntegrationManager.requestFromAbilityCollision(abilityFirst, abilitySecond, locationFirst, locationSecond))) {
+							continue;
+						}
 						final AbilityCollisionEvent event = new AbilityCollisionEvent(forwardCollision);
 						Bukkit.getServer().getPluginManager().callEvent(event);
 						if (event.isCancelled()) {
 							continue;
 						}
-						abilityFirst.handleCollision(forwardCollision);
-						abilitySecond.handleCollision(reverseCollision);
+						PhasedIntegrationManager.runWithAbilityContext(abilityFirst, () -> abilityFirst.handleCollision(forwardCollision));
+						PhasedIntegrationManager.runWithAbilityContext(abilitySecond, () -> abilitySecond.handleCollision(reverseCollision));
 						if (!this.removeMultipleInstances) {
 							alreadyCollided.add(abilityFirst);
 							alreadyCollided.add(abilitySecond);

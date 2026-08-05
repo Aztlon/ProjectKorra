@@ -1,12 +1,12 @@
 package com.projectkorra.projectkorra;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-import co.aikar.timings.lib.MCTiming;
-import co.aikar.timings.lib.TimingManager;
-
-import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Bukkit;
 import org.bukkit.Statistic;
 import org.bukkit.entity.Player;
@@ -28,12 +28,20 @@ import com.projectkorra.projectkorra.firebending.util.FirebendingManager;
 import com.projectkorra.projectkorra.hooks.PlaceholderAPIHook;
 import com.projectkorra.projectkorra.hooks.WorldGuardFlag;
 import com.projectkorra.projectkorra.object.Preset;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.phasing.PhasedBlockVisibilityManager;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
+import com.projectkorra.projectkorra.persistence.external.ExternalBendingPlayerPersistence;
+import com.projectkorra.projectkorra.persistence.external.FlushReason;
+import com.projectkorra.projectkorra.persistence.external.PlayerDataMode;
 import com.projectkorra.projectkorra.util.Metrics;
 import com.projectkorra.projectkorra.util.RevertChecker;
 import com.projectkorra.projectkorra.util.StatisticsManager;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.Updater;
+import com.projectkorra.projectkorra.util.logging.PkLang;
+import com.projectkorra.projectkorra.util.particles.ParticleCompatibilityService;
 import com.projectkorra.projectkorra.waterbending.util.WaterbendingManager;
 
 public class ProjectKorra extends JavaPlugin {
@@ -45,17 +53,22 @@ public class ProjectKorra extends JavaPlugin {
 	public static long time_step = 1;
 	public Updater updater;
 	BukkitTask revertChecker;
-	private static TimingManager timingManager;
+//	private static TimingManager timingManager;
 	private static PlaceholderAPIHook papiHook;
 
 	@Override
 	public void onEnable() {
 		plugin = this;
 		ProjectKorra.log = this.getLogger();
+		new PkLang(this);
 
-		timingManager = TimingManager.of(this);
+//		timingManager = TimingManager.of(this);
 
 		new ConfigManager();
+		ExternalBendingPlayerPersistence.bootstrap(PlayerDataMode.parse(ConfigManager.getConfig().getString("Storage.PlayerDataMode")));
+		PhasedIntegrationManager.reloadFromConfig();
+		PhasedBlockVisibilityManager.reloadFromConfig();
+		ParticleCompatibilityService.reload(this);
 		new GeneralMethods(this);
 		final boolean checkUpdateOnStartup = ConfigManager.getConfig().getBoolean("Properties.UpdateChecker");
 		this.updater = new Updater(this, "https://projectkorra.com/forum/resources/projectkorra-core.1/", checkUpdateOnStartup);
@@ -90,12 +103,16 @@ public class ProjectKorra extends JavaPlugin {
 
 		TempBlock.startReversion();
 
-		for (final Player player : Bukkit.getOnlinePlayers()) {
-			PKListener.getJumpStatistics().put(player, player.getStatistic(Statistic.JUMP));
-
-			OfflineBendingPlayer.loadAsync(player.getUniqueId(), true);
-			Manager.getManager(StatisticsManager.class).load(player.getUniqueId());
-		}
+		final Runnable loadOnlinePlayers = () -> {
+			ExternalBendingPlayerPersistence.closeRegistration();
+			for (final Player player : Bukkit.getOnlinePlayers()) {
+				PKListener.getJumpStatistics().put(player, player.getStatistic(Statistic.JUMP));
+				OfflineBendingPlayer.loadAsync(player.getUniqueId(), true);
+				Manager.getManager(StatisticsManager.class).load(player.getUniqueId());
+			}
+		};
+		if (ExternalBendingPlayerPersistence.isExternalMode()) Bukkit.getScheduler().runTask(this, loadOnlinePlayers);
+		else loadOnlinePlayers.run();
 
 		final Metrics metrics = new Metrics(this);
 		metrics.addCustomChart(new Metrics.AdvancedPie("Elements") {
@@ -134,15 +151,28 @@ public class ProjectKorra extends JavaPlugin {
 
 	@Override
 	public void onDisable() {
+		ParticleCompatibilityService.shutdown();
+		PhasedBlockVisibilityManager.shutdown();
 		this.revertChecker.cancel();
 		GeneralMethods.stopBending();
+		final List<CompletableFuture<Void>> externalFlushes = new ArrayList<>();
 		for (final Player player : this.getServer().getOnlinePlayers()) {
 			if (isStatisticsEnabled()) {
 				Manager.getManager(StatisticsManager.class).save(player.getUniqueId(), false);
 			}
 			final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-			if (bPlayer != null && isDatabaseCooldownsEnabled()) {
+			if (bPlayer != null && ExternalBendingPlayerPersistence.isExternalMode()) {
+				externalFlushes.add(ExternalPersistenceCoordinator.flush(bPlayer, FlushReason.PLUGIN_SHUTDOWN).toCompletableFuture());
+			} else if (bPlayer != null && isDatabaseCooldownsEnabled()) {
 				bPlayer.saveCooldowns(false);
+			}
+		}
+		if (!externalFlushes.isEmpty()) {
+			try {
+				CompletableFuture.allOf(externalFlushes.toArray(CompletableFuture[]::new))
+						.get(Math.max(1L, ConfigManager.getConfig().getLong("Storage.External.FlushTimeoutMillis", 5000L)), TimeUnit.MILLISECONDS);
+			} catch (final Exception error) {
+				this.getLogger().warning("External bending-player flush did not complete during shutdown: " + error.getMessage());
 			}
 		}
 		Manager.shutdown();
@@ -186,7 +216,7 @@ public class ProjectKorra extends JavaPlugin {
 		return ConfigManager.getConfig().getBoolean("Properties.DatabaseCooldowns");
 	}
 
-	public static MCTiming timing(final String name) {
-		return timingManager.of(name);
-	}
+//	public static MCTiming timing(final String name) {
+//		return timingManager.of(name);
+//	}
 }

@@ -27,6 +27,7 @@ import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempArmor;
 import com.projectkorra.projectkorra.util.TempBlock;
@@ -79,7 +80,7 @@ public class EarthArmor extends EarthAbility {
 		if (COLORS.isEmpty()) defineColors();
 
 		this.headBlock = this.getTargetEarthBlock((int) this.selectRange);
-		if (!GeneralMethods.isRegionProtectedFromBuild(this, this.headBlock.getLocation()) && this.getEarthbendableBlocksLength(this.headBlock, new Vector(0, -1, 0), 2) >= 2) {
+		if (!RegionProtection.isRegionProtected(this, this.headBlock.getLocation()) && this.getEarthbendableBlocksLength(this.headBlock, new Vector(0, -1, 0), 2) >= 2) {
 			this.legsBlock = this.headBlock.getRelative(BlockFace.DOWN);
 			this.headMaterial = this.headBlock.getType();
 			this.legsMaterial = this.legsBlock.getType();
@@ -205,7 +206,7 @@ public class EarthArmor extends EarthAbility {
 		if (this.isTransparent(newLegsBlock) && !newLegsBlock.isLiquid()) {
 			GeneralMethods.breakBlock(newLegsBlock);
 		} else if (!this.isEarthbendable(newLegsBlock) && !newLegsBlock.isLiquid() && !ElementalAbility.isAir(newLegsBlock.getType())) {
-			newLegsBlock.getLocation().getWorld().playSound(newLegsBlock.getLocation(), Sound.BLOCK_GRASS_BREAK, 1, 1);
+			PhasedSoundManager.playSound(this, newLegsBlock.getLocation(), Sound.BLOCK_GRASS_BREAK, 1, 1);
 			ParticleEffect.BLOCK_CRACK.display(newHeadBlock.getLocation(), 8, 0.5, 0.5, 0.5, newLegsBlock.getBlockData());
 			this.remove();
 			return false;
@@ -217,14 +218,14 @@ public class EarthArmor extends EarthAbility {
 		}
 
 		if (!newHeadBlock.equals(this.headBlock)) {
-			new TempBlock(newHeadBlock, this.headMaterial);
+			new TempBlock(newHeadBlock, this.headMaterial, this);
 			if (TempBlock.isTempBlock(this.headBlock)) {
 				TempBlock.revertBlock(this.headBlock, Material.AIR);
 			}
 		}
 
 		if (!newLegsBlock.equals(this.legsBlock)) {
-			new TempBlock(newLegsBlock, this.legsMaterial);
+			new TempBlock(newLegsBlock, this.legsMaterial, this);
 			if (TempBlock.isTempBlock(this.legsBlock)) {
 				TempBlock.revertBlock(this.legsBlock, Material.AIR);
 			}
@@ -242,9 +243,7 @@ public class EarthArmor extends EarthAbility {
 		}
 
 		if (System.currentTimeMillis() - this.getStartTime() > this.maxDuration) {
-			this.player.getLocation().getWorld().playSound(this.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
-			this.player.getLocation().getWorld().playSound(this.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
-			this.player.getLocation().getWorld().playSound(this.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
+			this.playArmorBreakSound();
 
 			ParticleEffect.BLOCK_CRACK.display(this.player.getEyeLocation(), 8, 0.1, 0.1, 0.1, this.headMaterial.createBlockData());
 			ParticleEffect.BLOCK_CRACK.display(this.player.getLocation(), 8, 0.1F, 0.1F, 0.1F, this.legsMaterial.createBlockData());
@@ -313,9 +312,7 @@ public class EarthArmor extends EarthAbility {
 				if (abil.formed && abil.goldHearts < 0.9F) {
 					abil.bPlayer.addCooldown(abil);
 
-					abil.player.getLocation().getWorld().playSound(abil.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
-					abil.player.getLocation().getWorld().playSound(abil.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
-					abil.player.getLocation().getWorld().playSound(abil.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
+					abil.playArmorBreakSound();
 
 					ParticleEffect.BLOCK_CRACK.display(abil.player.getEyeLocation(), 8, 0.1, 0.1, 0.1, abil.headMaterial.createBlockData());
 					ParticleEffect.BLOCK_CRACK.display(abil.player.getLocation(), 8, 0.1F, 0.1F, 0.1F, abil.legsMaterial.createBlockData());
@@ -477,15 +474,19 @@ public class EarthArmor extends EarthAbility {
 			return;
 		}
 
-		this.player.getLocation().getWorld().playSound(this.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
-		this.player.getLocation().getWorld().playSound(this.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
-		this.player.getLocation().getWorld().playSound(this.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
+		this.playArmorBreakSound();
 
 		ParticleEffect.BLOCK_CRACK.display(this.player.getEyeLocation(), 8, 0.1, 0.1, 0.1, this.headMaterial.createBlockData());
 		ParticleEffect.BLOCK_CRACK.display(this.player.getLocation(), 8, 0.1F, 0.1F, 0.1F, this.legsMaterial.createBlockData());
 
 		this.bPlayer.addCooldown(this);
 		this.remove();
+	}
+
+	private void playArmorBreakSound() {
+		PhasedSoundManager.playSound(this, this.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
+		PhasedSoundManager.playSound(this, this.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
+		PhasedSoundManager.playSound(this, this.player.getLocation(), Sound.BLOCK_STONE_BREAK, 2, 1);
 	}
 
 	private boolean canBend() {

@@ -2,18 +2,19 @@ package com.projectkorra.projectkorra.util;
 
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import org.bukkit.block.Block;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 public class BlockCacheElement {
 
-	private Player player;
+	private LivingEntity caster;
 	private Block block;
 	private CoreAbility ability;
 	private boolean allowed;
 	private long time;
 
-	public BlockCacheElement(final Player player, final Block block, final CoreAbility ability, final boolean allowed, final long time) {
-		this.player = player;
+	public BlockCacheElement(final LivingEntity caster, final Block block, final CoreAbility ability, final boolean allowed, final long time) {
+		this.caster = caster;
 		this.block = block;
 		this.ability = ability;
 		this.allowed = allowed;
@@ -28,8 +29,8 @@ public class BlockCacheElement {
 		return this.block;
 	}
 
-	public Player getPlayer() {
-		return this.player;
+	public LivingEntity getCaster() {
+		return this.caster;
 	}
 
 	public long getTime() {
@@ -52,8 +53,8 @@ public class BlockCacheElement {
 		this.block = block;
 	}
 
-	public void setPlayer(final Player player) {
-		this.player = player;
+	public void setCaster(final Player caster) {
+		this.caster = caster;
 	}
 
 	public void setTime(final long time) {

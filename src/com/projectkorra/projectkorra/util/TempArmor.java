@@ -280,6 +280,16 @@ public class TempArmor {
 	}
 
 	/**
+	 * Whether the player is about to be armored by a TempArmor
+	 *
+	 * @param entity The entity
+	 * @return If the entity is being armored
+	 */
+	public static boolean willHaveTempArmor(final LivingEntity entity) {
+		return INSTANCES.containsKey(entity) && INSTANCES.get(entity).isEmpty();
+	}
+
+	/**
 	 * Whether the player is currently wearing temporary armor
 	 *
 	 * @param entity The entity

@@ -17,6 +17,7 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.storage.DBConnection;
 import com.projectkorra.projectkorra.storage.MySQL;
 import com.projectkorra.projectkorra.storage.SQLite;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 public class StatisticsManager extends Manager implements Runnable {
 
@@ -58,7 +59,7 @@ public class StatisticsManager extends Manager implements Runnable {
 	public void setupStatistics() {
 		// Create pk_statKeys table.
 		if (!DBConnection.sql.tableExists("pk_statKeys")) {
-			ProjectKorra.log.info("Creating pk_statKeys table");
+			PkLang.info("Creating pk_statKeys table");
 			String query = "";
 			if (DBConnection.sql instanceof MySQL) {
 				query = "CREATE TABLE `pk_statKeys` (`id` INTEGER PRIMARY KEY AUTO_INCREMENT, `statName` VARCHAR(64));";
@@ -69,7 +70,7 @@ public class StatisticsManager extends Manager implements Runnable {
 		}
 		// Create pk_stats table.
 		if (!DBConnection.sql.tableExists("pk_stats")) {
-			ProjectKorra.log.info("Creating pk_stats table");
+			PkLang.info("Creating pk_stats table");
 			String query = "";
 			if (DBConnection.sql instanceof MySQL) {
 				query = "CREATE TABLE `pk_stats` (`statId` INTEGER, `uuid` VARCHAR(36), `statValue` BIGINT, PRIMARY KEY (statId, uuid));";

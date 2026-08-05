@@ -1,23 +1,28 @@
 package com.projectkorra.projectkorra.board;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import com.projectkorra.projectkorra.BendingPlayer;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.ComboAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.util.MultiAbilityManager;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
-import com.projectkorra.projectkorra.storage.DBConnection;
+import com.projectkorra.projectkorra.storage.internal.InternalPlayerDataStore;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.BoardPreference;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
 
 import com.projectkorra.projectkorra.util.ChatUtil;
 import org.bukkit.Bukkit;
@@ -27,7 +32,7 @@ import org.bukkit.entity.Player;
 import net.md_5.bungee.api.ChatColor;
 
 /**
- * Manages every individual {@link BendingBoard}
+ * Manages every individual {@link AbilityBoard}
  */
 public final class BendingBoardManager {
 	
@@ -36,7 +41,10 @@ public final class BendingBoardManager {
 	private static final Set<String> disabledWorlds = new HashSet<>();
 	private static final Map<String, ChatColor> trackedCooldowns = new ConcurrentHashMap<>();
 	private static final Set<UUID> disabledPlayers = Collections.synchronizedSet(new HashSet<>());
-	private static final Map<Player, BendingBoard> scoreboardPlayers = new ConcurrentHashMap<>();
+	private static final Map<Player, BoardHolder> scoreboardPlayers = new ConcurrentHashMap<>();
+	private static AbilityBoardResolver boardResolver = new ConfiguredAbilityBoardResolver();
+	private static BiFunction<BendingPlayer, BoardType, AbilityBoard> boardFactory = BendingBoardManager::newBoard;
+	private static Function<Player, BendingPlayer> bendingPlayerResolver = BendingPlayer::getBendingPlayer;
 
 	private static boolean enabled;
 
@@ -47,7 +55,7 @@ public final class BendingBoardManager {
 	}
 
 	public static void reload() {
-		scoreboardPlayers.values().forEach(BendingBoard::destroy);
+		scoreboardPlayers.values().forEach(holder -> holder.board().destroy());
 		scoreboardPlayers.clear();
 		initialize();
 	}
@@ -57,6 +65,7 @@ public final class BendingBoardManager {
 		
 		disabledWorlds.clear();
 		disabledWorlds.addAll(ConfigManager.getConfig().getStringList("Properties.DisabledWorlds"));
+		trackedCooldowns.clear();
 		
 		if (ConfigManager.languageConfig.get().contains("Board.Extras")) {
 			ConfigurationSection section = ConfigManager.languageConfig.get().getConfigurationSection("Board.Extras");
@@ -84,6 +93,18 @@ public final class BendingBoardManager {
 		getBoard(player).ifPresent((b) -> b.setVisible(!disabledWorlds.contains(player.getWorld().getName())));
 	}
 
+	public static void setBoardResolver(final AbilityBoardResolver resolver) {
+		boardResolver = resolver == null ? new ConfiguredAbilityBoardResolver() : resolver;
+	}
+
+	public static boolean shouldUseRpgBoard(final Player player) {
+		return boardResolver != null && boardResolver.shouldUseRpgBoard(player);
+	}
+
+	public static List<String> resolveObjectiveLines(final Player player, final int maxLines) {
+		return boardResolver == null ? Collections.emptyList() : boardResolver.resolveObjectiveLines(player, maxLines);
+	}
+
 	/**
 	 * Toggles the bendingboard for the given player if the board is enabled and they are in a bending enabled world
 	 * @param player Player with the bendingboard
@@ -94,15 +115,31 @@ public final class BendingBoardManager {
 			ChatUtil.sendBrandingMessage(player, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Board.Disabled"));
 			return;
 		}
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			final BendingPlayer bendingPlayer = BendingPlayer.getBendingPlayer(player);
+			if (bendingPlayer == null) return;
+			final BoardPreference requested = disabledPlayers.contains(player.getUniqueId()) ? BoardPreference.ENABLED : BoardPreference.DISABLED;
+			ExternalPersistenceCoordinator.mutate(bendingPlayer, new BendingPlayerMutationOperation.SetBoardPreference(requested),
+					MutationSource.projectKorra("board-toggle")).thenAccept(result -> {
+				if (!result.accepted()) {
+					ChatUtil.sendBrandingMessage(player, ChatColor.RED + "The external player-data provider rejected the board preference change.");
+					return;
+				}
+				if (requested == BoardPreference.DISABLED) ChatUtil.sendBrandingMessage(player, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Board.ToggledOff"));
+				else ChatUtil.sendBrandingMessage(player, ChatColor.GREEN + ConfigManager.languageConfig.get().getString("Commands.Board.ToggledOn"));
+			});
+			return;
+		}
 
 		if (scoreboardPlayers.containsKey(player)) {
-			scoreboardPlayers.get(player).hide();
+			scoreboardPlayers.get(player).board().hide();
+			scoreboardPlayers.get(player).board().destroy();
 			disabledPlayers.add(player.getUniqueId());
 			scoreboardPlayers.remove(player);
 			ChatUtil.sendBrandingMessage(player, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.Board.ToggledOff"));
 		} else {
 			disabledPlayers.remove(player.getUniqueId());
-			getBoard(player).ifPresent(BendingBoard::show);
+			getBoard(player).ifPresent(AbilityBoard::show);
 			ChatUtil.sendBrandingMessage(player, ChatColor.GREEN + ConfigManager.languageConfig.get().getString("Commands.Board.ToggledOn"));
 		}
 	}
@@ -113,7 +150,7 @@ public final class BendingBoardManager {
 	 * @param player the player to get the bendingboard of
 	 * @return empty if the board is disabled
 	 */
-	public static Optional<BendingBoard> getBoard(Player player) {
+	public static Optional<AbilityBoard> getBoard(Player player) {
 		if (!enabled || disabledPlayers.contains(player.getUniqueId()) || !player.hasPermission("bending.command.board")) {
 			return Optional.empty();
 		}
@@ -122,16 +159,8 @@ public final class BendingBoardManager {
 			return Optional.empty();
 		}
 
-		if (!scoreboardPlayers.containsKey(player)) {
-			BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-			if (bPlayer == null) {
-				return Optional.empty();
-			}
-			
-			scoreboardPlayers.put(player, new BendingBoard(bPlayer));
-		}
-
-		return Optional.of(scoreboardPlayers.get(player));
+		final BoardHolder holder = ensureBoard(player);
+		return holder == null ? Optional.empty() : Optional.of(holder.board());
 	}
 
 	/**
@@ -139,7 +168,7 @@ public final class BendingBoardManager {
 	 * @param player Player with the bendingboard, silently ignored if board is disabled
 	 */
 	public static void updateAllSlots(Player player) {
-		getBoard(player).ifPresent(BendingBoard::updateAll);
+		getBoard(player).ifPresent(AbilityBoard::updateAll);
 	}
 
 	/**
@@ -160,23 +189,23 @@ public final class BendingBoardManager {
 	public static void updateBoard(Player player, String name, boolean forceCooldown, int slot) {
 		getBoard(player).ifPresent((board) -> {
 			if (MultiAbilityManager.hasMultiAbilityBound(player)) {
-				scoreboardPlayers.get(player).updateAll();
+				board.updateAll();
 			}
 			
 			if (name == null || name.isEmpty()) {
-				scoreboardPlayers.get(player).clearSlot(slot);
+				board.clearSlot(slot);
 				return;
 			}
 			
 			CoreAbility coreAbility = CoreAbility.getAbility(name);
 			if (coreAbility instanceof ComboAbility) {
-				scoreboardPlayers.get(player).updateMisc(name, coreAbility.getElement().getColor(), forceCooldown);
+				board.updateMisc(name, coreAbility.getElement().getColor(), forceCooldown);
 			} else if (coreAbility == null && trackedCooldowns.containsKey(name)) {
-				scoreboardPlayers.get(player).updateMisc(name, trackedCooldowns.get(name), forceCooldown);
+				board.updateMisc(name, trackedCooldowns.get(name), forceCooldown);
 			} else if (coreAbility != null && slot > 0) {
-				scoreboardPlayers.get(player).setSlot(slot, name, forceCooldown);
+				board.setSlot(slot, name, forceCooldown);
 			} else {
-				scoreboardPlayers.get(player).setAbilityCooldown(name, forceCooldown);
+				board.setAbilityCooldown(name, forceCooldown);
 			}
 		});
 	}
@@ -188,6 +217,64 @@ public final class BendingBoardManager {
 	 */
 	public static void changeActiveSlot(Player player, int newSlot) {
 		getBoard(player).ifPresent((board) -> board.setActiveSlot(newSlot));
+	}
+
+	private static BoardHolder ensureBoard(final Player player) {
+		final BendingPlayer bendingPlayer = bendingPlayerResolver.apply(player);
+		if (bendingPlayer == null) {
+			return null;
+		}
+
+		final BoardType desiredType = resolveBoardType(player);
+		BoardHolder holder = scoreboardPlayers.get(player);
+		final boolean wasVisible = holder != null && holder.board().isVisible();
+
+		if (holder == null || holder.type() != desiredType) {
+			if (holder != null) {
+				holder.board().destroy();
+			}
+
+			final AbilityBoard board = createBoard(bendingPlayer, desiredType);
+			board.updateAll();
+			if (wasVisible) {
+				board.show();
+			}
+
+			holder = new BoardHolder(desiredType, board);
+			scoreboardPlayers.put(player, holder);
+		}
+
+		return holder;
+	}
+
+	private static AbilityBoard createBoard(final BendingPlayer bendingPlayer, final BoardType type) {
+		return boardFactory.apply(bendingPlayer, type);
+	}
+
+	private static AbilityBoard newBoard(final BendingPlayer bendingPlayer, final BoardType type) {
+		if (type == BoardType.RPG) {
+			return new RpgAbilityBoard(bendingPlayer);
+		}
+
+		return new PkAbilityBoard(bendingPlayer);
+	}
+
+	private static BoardType resolveBoardType(final Player player) {
+		if (shouldUseRpgBoard(player) && hasObjectiveLines(player)) {
+			return BoardType.RPG;
+		}
+
+		return BoardType.PK;
+	}
+
+	private static boolean hasObjectiveLines(final Player player) {
+		for (final String line : resolveObjectiveLines(player, 4)) {
+			if (line != null && !ChatColor.stripColor(line).trim().isEmpty()) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 	
 
@@ -205,11 +292,14 @@ public final class BendingBoardManager {
 	 * Load into memory the list of players who have toggled the bending board off.
 	 */
 	public static void loadDisabledPlayers() {
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			disabledPlayers.clear();
+			return;
+		}
 		Bukkit.getScheduler().runTaskAsynchronously(ProjectKorra.plugin, () -> {
 			Set<UUID> disabled = new HashSet<>();
 			try {
-				final ResultSet rs = DBConnection.sql.readQuery("SELECT uuid FROM pk_board WHERE enabled = 0");
-				while (rs.next()) disabled.add(UUID.fromString(rs.getString("uuid")));
+				disabled = InternalPlayerDataStore.loadDisabledBoards();
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
@@ -224,24 +314,34 @@ public final class BendingBoardManager {
 	 * @param player
 	 */
 	public static void clean(final Player player) {
-		scoreboardPlayers.remove(player);
+		final BoardHolder holder = scoreboardPlayers.remove(player);
+		if (holder != null) {
+			holder.board().destroy();
+		}
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			disabledPlayers.remove(player.getUniqueId());
+			return;
+		}
 		final UUID uuid = player.getUniqueId();
-		final String updateQuery = "UPDATE pk_board SET enabled = " + (disabledPlayers.contains(uuid) ? 0 : 1) + " WHERE uuid = ?";
-		Bukkit.getScheduler().runTaskAsynchronously(ProjectKorra.plugin, () -> {
-			try {
-				PreparedStatement ps = DBConnection.sql.getConnection().prepareStatement("SELECT enabled FROM pk_board WHERE uuid = ? LIMIT 1");
-				ps.setString(1, uuid.toString());
-				PreparedStatement ps2;
-				if (!ps.executeQuery().next()) { // if the entry doesn't exist in the DB, create it.
-					ps2 = DBConnection.sql.getConnection().prepareStatement("INSERT INTO pk_board (uuid, enabled) VALUES (?, 1)");
-				} else { // if the entry exists in the DB, update it
-					ps2 = DBConnection.sql.getConnection().prepareStatement(updateQuery);
-				}
-				ps2.setString(1, uuid.toString());
-				ps2.execute();
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
-		});
+		InternalPlayerDataStore.saveBoardPreference(uuid, !disabledPlayers.contains(uuid));
+	}
+
+	/** Applies provider-owned board state without causing an outbound persistence callback. */
+	public static void applyExternalPreference(final Player player, final BoardPreference preference) {
+		if (player == null || preference == null) return;
+		if (preference == BoardPreference.DISABLED) {
+			disabledPlayers.add(player.getUniqueId());
+			final BoardHolder holder = scoreboardPlayers.remove(player);
+			if (holder != null) holder.board().destroy();
+		} else {
+			// UNSPECIFIED uses ProjectKorra's normal per-player default: visible.
+			disabledPlayers.remove(player.getUniqueId());
+			getBoard(player).ifPresent(AbilityBoard::show);
+		}
+	}
+
+	/** Returns the currently projected runtime preference for rollback/diagnostics. */
+	public static BoardPreference getExternalRuntimePreference(final UUID uuid) {
+		return disabledPlayers.contains(uuid) ? BoardPreference.DISABLED : BoardPreference.ENABLED;
 	}
 }

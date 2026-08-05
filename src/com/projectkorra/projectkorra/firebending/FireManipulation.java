@@ -7,6 +7,7 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Location;
+import org.bukkit.block.data.Lightable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -18,7 +19,7 @@ import com.projectkorra.projectkorra.util.DamageHandler;
 
 public class FireManipulation extends FireAbility {
 
-	public static enum FireManipulationType {
+	public enum FireManipulationType {
 		SHIFT, CLICK;
 	}
 
@@ -112,7 +113,7 @@ public class FireManipulation extends FireAbility {
 					this.points.remove(point);
 					return;
 				}
-				playFirebendingParticles(point, 12, 0.25, 0.25, 0.25);
+				playFirebendingParticles(point, this.shieldParticles, 0.25, 0.25, 0.25);
 				for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(point, 1.2D)) {
 					if (entity instanceof LivingEntity && entity.getUniqueId() != this.player.getUniqueId()) {
 						DamageHandler.damageEntity(entity, this.shieldDamage, this);
@@ -159,14 +160,14 @@ public class FireManipulation extends FireAbility {
 					return;
 				}
 			}
-			this.shotPoint.add(direction.multiply(this.streamSpeed));
+
+			Location test = this.shotPoint.clone().add(direction.multiply(this.streamSpeed));
+			if ((!GeneralMethods.isSolid(test.getBlock()) || test.getBlock().getBlockData() instanceof Lightable) && !test.getBlock().isLiquid()) {
+				this.shotPoint = test;
+			}
+
 			if (this.shotPoint.distance(this.origin) > this.streamRange) {
 				this.bPlayer.addCooldown(this, this.streamCooldown);
-				this.remove();
-				return;
-			}
-			if (GeneralMethods.isSolid(this.shotPoint.getBlock())) {
-				this.bPlayer.addCooldown(this);
 				this.remove();
 				return;
 			}
@@ -177,6 +178,12 @@ public class FireManipulation extends FireAbility {
 					DamageHandler.damageEntity(entity, this.streamDamage, this);
 				}
 			}
+
+			if (this.shotPoint.getBlock().getBlockData() instanceof Lightable lightable) {
+				lightable.setLit(true);
+				this.shotPoint.getBlock().setBlockData(lightable);
+			}
+
 			if (new Random().nextInt(5) == 0) {
 				playFirebendingSound(this.shotPoint);
 			}

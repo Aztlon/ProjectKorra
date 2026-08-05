@@ -10,6 +10,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
@@ -17,9 +18,15 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class TorrentWave extends WaterAbility {
 
 	private long time;
@@ -40,14 +47,14 @@ public class TorrentWave extends WaterAbility {
 	private ArrayList<Entity> affectedEntities;
 	private Map<Integer, ConcurrentHashMap<Integer, Double>> heights;
 
-	public TorrentWave(final Player player, final double radius) {
-		this(player, player.getEyeLocation(), radius);
+	public TorrentWave(final LivingEntity caster, final double radius) {
+		this(caster, caster.getEyeLocation(), radius);
 	}
 
-	public TorrentWave(final Player player, final Location location, final double radius) {
-		super(player);
+	public TorrentWave(final LivingEntity caster, final Location location, final double radius) {
+		super(caster);
 
-		if (this.bPlayer.isOnCooldown("TorrentWave")) {
+		if (this.bender.isOnCooldown("TorrentWave")) {
 			return;
 		}
 
@@ -69,7 +76,7 @@ public class TorrentWave extends WaterAbility {
 
 		this.initializeHeightsMap();
 		this.start();
-		this.bPlayer.addCooldown("TorrentWave", this.cooldown);
+		this.bender.addCooldown("TorrentWave", this.cooldown);
 	}
 
 	private void initializeHeightsMap() {
@@ -88,7 +95,7 @@ public class TorrentWave extends WaterAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
 			return;
 
@@ -115,13 +122,10 @@ public class TorrentWave extends WaterAbility {
 		this.blocks.clear();
 		this.affectedEntities.clear();
 
-		final ArrayList<Entity> indexList = new ArrayList<Entity>();
-		indexList.addAll(GeneralMethods.getEntitiesAroundPoint(this.origin, this.radius + 2));
-		final ArrayList<Block> torrentBlocks = new ArrayList<Block>();
+		final ArrayList<Entity> indexList = new ArrayList<>(GeneralMethods.getEntitiesAroundPoint(this.origin, this.radius + 2));
+		final ArrayList<Block> torrentBlocks = new ArrayList<>();
 
-		if (indexList.contains(this.player)) {
-			indexList.remove(this.player);
-		}
+		indexList.remove(this.caster);
 
 		for (final int id : this.heights.keySet()) {
 			final ConcurrentHashMap<Integer, Double> angles = this.heights.get(id);
@@ -139,8 +143,8 @@ public class TorrentWave extends WaterAbility {
 					continue;
 				}
 
-				if (isTransparent(this.player, block)) {
-					final TempBlock tempBlock = new TempBlock(block, Material.WATER);
+				if (isTransparent(this.caster, block)) {
+					final TempBlock tempBlock = new TempBlock(block, Material.WATER, this);
 					this.blocks.add(tempBlock);
 					torrentBlocks.add(block);
 				} else {
@@ -151,7 +155,7 @@ public class TorrentWave extends WaterAbility {
 				for (final Entity entity : indexList) {
 					if (!this.affectedEntities.contains(entity)) {
 						if (entity.getLocation().distanceSquared(location) <= 4) {
-							if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+							if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 								continue;
 							}
 							this.affectedEntities.add(entity);
@@ -192,12 +196,14 @@ public class TorrentWave extends WaterAbility {
 	}
 
 	private void returnWater() {
+		if (bPlayer == null) return;
+
 		final Location location = new Location(this.origin.getWorld(), this.origin.getX() + this.radius, this.origin.getY(), this.origin.getZ());
-		if (!location.getWorld().equals(this.player.getWorld())) {
+		if (!location.getWorld().equals(this.caster.getWorld())) {
 			return;
 		}
 		final double radiusOffsetSquared = (this.maxRadius + 5) * (this.maxRadius + 5);
-		if (location.distanceSquared(this.player.getLocation()) > radiusOffsetSquared) {
+		if (location.distanceSquared(this.caster.getLocation()) > radiusOffsetSquared) {
 			return;
 		}
 		new WaterReturn(this.player, location.getBlock());
@@ -205,7 +211,7 @@ public class TorrentWave extends WaterAbility {
 
 	@Override
 	public String getName() {
-		return "Torrent";
+		return "TorrentWave";
 	}
 
 	@Override
@@ -229,92 +235,17 @@ public class TorrentWave extends WaterAbility {
 	}
 
 	@Override
+	public boolean isHiddenAbility() {
+		return true;
+	}
+
+	@Override
 	public List<Location> getLocations() {
 		final ArrayList<Location> locations = new ArrayList<>();
 		for (final TempBlock tblock : this.blocks) {
 			locations.add(tblock.getLocation());
 		}
 		return locations;
-	}
-
-	public long getTime() {
-		return this.time;
-	}
-
-	public void setTime(final long time) {
-		this.time = time;
-	}
-
-	public long getInterval() {
-		return this.interval;
-	}
-
-	public void setInterval(final long interval) {
-		this.interval = interval;
-	}
-
-	public double getRadius() {
-		return this.radius;
-	}
-
-	public void setRadius(final double radius) {
-		this.radius = radius;
-	}
-
-	public double getMaxRadius() {
-		return this.maxRadius;
-	}
-
-	public void setMaxRadius(final double maxRadius) {
-		this.maxRadius = maxRadius;
-	}
-
-	public double getKnockback() {
-		return this.knockback;
-	}
-
-	public void setKnockback(final double knockback) {
-		this.knockback = knockback;
-	}
-
-	public double getMaxHeight() {
-		return this.maxHeight;
-	}
-
-	public void setMaxHeight(final double maxHeight) {
-		this.maxHeight = maxHeight;
-	}
-
-	public double getGrowSpeed() {
-		return this.growSpeed;
-	}
-
-	public void setGrowSpeed(final double growSpeed) {
-		this.growSpeed = growSpeed;
-	}
-
-	public Location getOrigin() {
-		return this.origin;
-	}
-
-	public void setOrigin(final Location origin) {
-		this.origin = origin;
-	}
-
-	public ArrayList<TempBlock> getBlocks() {
-		return this.blocks;
-	}
-
-	public ArrayList<Entity> getAffectedEntities() {
-		return this.affectedEntities;
-	}
-
-	public Map<Integer, ConcurrentHashMap<Integer, Double>> getHeights() {
-		return this.heights;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
 	}
 
 }

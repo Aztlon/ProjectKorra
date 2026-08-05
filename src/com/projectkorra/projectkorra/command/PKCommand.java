@@ -8,15 +8,21 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
-import com.projectkorra.projectkorra.util.ChatUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import com.projectkorra.projectkorra.Bender;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.persistence.external.BendingPlayerMutationOperation;
+import com.projectkorra.projectkorra.persistence.external.MutationResult;
+import com.projectkorra.projectkorra.persistence.external.MutationSource;
+import com.projectkorra.projectkorra.util.ChatUtil;
 
 /**
  * Abstract representation of a command executor. Implements {@link SubCommand}.
@@ -25,6 +31,26 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
  *
  */
 public abstract class PKCommand implements SubCommand {
+	private static final AdministrativeMutationCapability ADMINISTRATIVE_MUTATION_CAPABILITY = new AdministrativeMutationCapability();
+
+	/** Unforgeable API token used only by command-package mutation helpers. */
+	public static final class AdministrativeMutationCapability {
+		private AdministrativeMutationCapability() {}
+	}
+
+	public static boolean isAdministrativeMutationCapability(final AdministrativeMutationCapability capability) {
+		return capability == ADMINISTRATIVE_MUTATION_CAPABILITY;
+	}
+
+	/**
+	 * Called only after the concrete command has completed its normal permission checks.
+	 * Package visibility prevents addon-defined PKCommand subclasses from using this path.
+	 */
+	static CompletionStage<MutationResult> requestAdministrativeMutation(final Bender target,
+			final BendingPlayerMutationOperation operation, final MutationSource source) {
+		return ExternalPersistenceCoordinator.mutateFromAuthorizedCommand(target, operation, source,
+				ADMINISTRATIVE_MUTATION_CAPABILITY);
+	}
 
 	protected String noPermissionMessage, mustBePlayerMessage;
 
@@ -48,7 +74,7 @@ public abstract class PKCommand implements SubCommand {
 	/**
 	 * List of all command executors which extends PKCommand
 	 */
-	public static Map<String, PKCommand> instances = new HashMap<String, PKCommand>();
+	public static Map<String, PKCommand> instances = new HashMap<>();
 
 	public PKCommand(final String name, final String properUse, final String description, final String[] aliases) {
 		this.name = name;
@@ -210,7 +236,6 @@ public abstract class PKCommand implements SubCommand {
 	/**
 	 * Returns a boolean if the string provided is numerical.
 	 *
-	 * @param id
 	 * @return boolean
 	 */
 	protected boolean isNumeric(final String id) {
@@ -229,7 +254,7 @@ public abstract class PKCommand implements SubCommand {
 	 * @return
 	 */
 	protected List<String> getPage(final List<String> entries, final String title, int page, final boolean sort) {
-		final List<String> strings = new ArrayList<String>();
+		final List<String> strings = new ArrayList<>();
 		if (sort) {
 			Collections.sort(entries);
 		}
@@ -238,7 +263,7 @@ public abstract class PKCommand implements SubCommand {
 			page = 1;
 		}
 		if ((page * 8) - 8 >= entries.size()) {
-			page = Math.round(entries.size() / 8) + 1;
+			page = Math.round((float) entries.size() / 8) + 1;
 			if (page < 1) {
 				page = 1;
 			}
@@ -260,7 +285,7 @@ public abstract class PKCommand implements SubCommand {
 
 	/** Gets a list of valid arguments that can be used in tabbing. */
 	protected List<String> getTabCompletion(final CommandSender sender, final List<String> args) {
-		return new ArrayList<String>();
+		return new ArrayList<>();
 	}
 
 	/**

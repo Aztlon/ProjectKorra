@@ -80,10 +80,7 @@ public class PassiveManager {
 			return false;
 		} else if (!bPlayer.isPassiveToggled(element)) {
 			return false;
-		} else if (!bPlayer.isToggledPassives()) {
-			return false;
-		}
-		return true;
+		} else return bPlayer.isToggledPassives();
 	}
 
 	public static Set<String> getPassivesForElement(final Element element) {

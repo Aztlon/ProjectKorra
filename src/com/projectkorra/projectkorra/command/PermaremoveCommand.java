@@ -14,6 +14,7 @@ import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.event.PlayerChangeElementEvent;
 import com.projectkorra.projectkorra.event.PlayerChangeElementEvent.Result;
+import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
 
 /**
  * Executor for /bending permaremove. Extends {@link PKCommand}.
@@ -39,6 +40,10 @@ public class PermaremoveCommand extends PKCommand {
 	@Override
 	public void execute(final CommandSender sender, final List<String> args) {
 		if (!this.hasPermission(sender) || !this.correctLength(sender, args.size(), 0, 1)) {
+			return;
+		}
+		if (ExternalPersistenceCoordinator.isExternalMode()) {
+			ChatUtil.sendBrandingMessage(sender, ChatColor.RED + ConfigManager.languageConfig.get().getString("Commands.PermaRemove.ExternalDisabled"));
 			return;
 		}
 		if (args.size() == 1) {

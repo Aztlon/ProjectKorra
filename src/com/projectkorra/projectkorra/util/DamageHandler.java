@@ -3,8 +3,10 @@ package com.projectkorra.projectkorra.util;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.ProjectKorra;
 import org.bukkit.Bukkit;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.damage.DamageSource;
+import org.bukkit.damage.DamageType;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -16,10 +18,11 @@ import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.event.AbilityDamageEntityEvent;
+import com.projectkorra.projectkorra.event.AbilityExecutionEvidence;
 import com.projectkorra.projectkorra.event.EntityBendingDeathEvent;
-
-import fr.neatmonster.nocheatplus.checks.CheckType;
-import fr.neatmonster.nocheatplus.hooks.NCPExemptionManager;
+import com.projectkorra.projectkorra.phasing.GateStage;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,10 +39,6 @@ public class DamageHandler {
 		return entity.getNoDamageTicks() > entity.getMaximumNoDamageTicks() / 2.0f && damage <= entity.getLastDamage();
 	}
 
-
-
-
-
 	/**
 	 *
 	 * @param entity The entity that is being damaged.
@@ -48,7 +47,6 @@ public class DamageHandler {
 	public static boolean ignoreArmor(Entity entity) {
 		return ARMOR_PERCENTAGE_BY_ENTITY_ID.containsKey(entity.getEntityId());
 	}
-
 
 	public static double getIgnoreArmorPercentage(final Ability ability) {
 		FileConfiguration config = ProjectKorra.plugin.getConfig();
@@ -98,7 +96,7 @@ public class DamageHandler {
 
 	/**
 	 * Basically, what is happening here is: We execute Entity#damage on the entity
-	 * (in {@link #damageEntity(Entity, Player, double, Ability, boolean)}) and that produces an {@link EntityDamageEvent} amongst other events.
+	 * (in {@link #damageEntity(Entity, LivingEntity, double, Ability, boolean)}) and that produces an {@link EntityDamageEvent} amongst other events.
 	 * We catch that {@link EntityDamageEvent} in {@link com.projectkorra.projectkorra.PKListener}, and if an instance of damage is up for "armor ignoring" (checked with {@link #ignoreArmor(Entity)}),
 	 * then we call back to this function, where it tinkers with the damage modifiers, so we can achieve the armor ignoring effect.
 	 * <p>
@@ -119,10 +117,18 @@ public class DamageHandler {
 
 		if (ignorePercentage == 0) return;
 
-		if (ignorePercentage == 1) {
-			event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, 0);
+		if (event.getEntity() instanceof ArmorStand) return; // ArmorStands produce errors when we modify the armor damage, so ignore them.
+
+		if (ignorePercentage >= 1) {
+			if (event.isApplicable(EntityDamageEvent.DamageModifier.ARMOR))
+				event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, 0); // Bypass armor points
+			if (event.isApplicable(EntityDamageEvent.DamageModifier.MAGIC))
+				event.setDamage(EntityDamageEvent.DamageModifier.MAGIC, 0); // Bypass protection enchantments
 		} else {
-			event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, event.getDamage(EntityDamageEvent.DamageModifier.ARMOR) * (1d - ignorePercentage));
+			if (event.isApplicable(EntityDamageEvent.DamageModifier.ARMOR))
+				event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, event.getDamage(EntityDamageEvent.DamageModifier.ARMOR) * (1d - ignorePercentage));
+			if (event.isApplicable(EntityDamageEvent.DamageModifier.MAGIC))
+				event.setDamage(EntityDamageEvent.DamageModifier.MAGIC, event.getDamage(EntityDamageEvent.DamageModifier.MAGIC) * (1d - ignorePercentage));
 		}
 	}
 
@@ -142,10 +148,17 @@ public class DamageHandler {
 	 * @param entity The entity that is receiving the damage
 	 * @param damage The amount of damage to deal
 	 */
-	public static void damageEntity(final Entity entity, Player source, double damage, final Ability ability, boolean ignoreArmor, boolean doSourcelessDamage) {
+	public static void damageEntity(final Entity entity, LivingEntity source, double damage, final Ability ability, boolean ignoreArmor, boolean doSourcelessDamage) {
 		if (ability == null) {
 			return;
 		}
+
+		if (!PhasedIntegrationManager.shouldAllow(
+				PhasedIntegrationManager.requestFromAbility(ability, entity.getUniqueId(), GateStage.DAMAGE, entity.getLocation(), null))) {
+			return;
+		}
+
+		if (entity.hasMetadata("bending-immune")) return;
 		
 		if (entity instanceof LivingEntity) {
 			if (checkTicks((LivingEntity) entity, damage)) {
@@ -156,9 +169,9 @@ public class DamageHandler {
 				ignoreArmor = true;
 			}
 		}
-		
+
 		if (source == null) {
-			source = ability.getPlayer();
+			source = ability.getCaster();
 		}
 
 		double percentage = getIgnoreArmorPercentage(ability);
@@ -170,27 +183,12 @@ public class DamageHandler {
 		}
 		
 		Bukkit.getServer().getPluginManager().callEvent(damageEvent);
-		
-		if (entity instanceof LivingEntity && !damageEvent.isCancelled()) {
-			LivingEntity lent = (LivingEntity) entity;
-			damage = Math.max(0, damageEvent.getDamage());
-			
-			if (Bukkit.getPluginManager().isPluginEnabled("NoCheatPlus") && source != null) {
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_REACH);
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_DIRECTION);
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_NOSWING);
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_SPEED);
-				NCPExemptionManager.exemptPermanently(source, CheckType.COMBINED_IMPROBABLE);
-				NCPExemptionManager.exemptPermanently(source, CheckType.FIGHT_SELFHIT);
-			}
 
-			if (lent.getHealth() - damage <= 0 && !entity.isDead()) {
-				final EntityBendingDeathEvent event = new EntityBendingDeathEvent(entity, damage, ability);
-				Bukkit.getServer().getPluginManager().callEvent(event);
-			}
+		if (entity instanceof LivingEntity lent && !damageEvent.isCancelled()) {
+			damage = Math.max(0, damageEvent.getDamage());
 
 			// Preparing the event call back
-			if (damage > 0) {
+			if (damage > 0 && entity instanceof Player) {
 				if (damageEvent.doesIgnoreArmor()) {
 					ignoreArmorDamage(lent);
 				} else {
@@ -202,10 +200,16 @@ public class DamageHandler {
 				}
 			}
 
-			final EntityDamageByEntityEvent finalEvent = new EntityDamageByEntityEvent(source, entity, DamageCause.CUSTOM, damage);
-			final double prevHealth = lent.getHealth();
-			BEING_DAMAGED.add(lent); //Stops StackOverflows
+			final EntityDamageByEntityEvent finalEvent = new EntityDamageByEntityEvent(source, entity, DamageCause.CUSTOM, DamageSource.builder(DamageType.GENERIC).build(), damage);
+			Bukkit.getServer().getPluginManager().callEvent(finalEvent);
+			if (finalEvent.isCancelled()) {
+				return;
+			}
 
+			final double prevHealth = lent.getHealth();
+			final double prevAbsorption = lent.getAbsorptionAmount();
+
+			BEING_DAMAGED.add(lent); //Stops StackOverflows
 			if (doSourcelessDamage) {
 				lent.damage(damage);
 			} else {
@@ -214,40 +218,49 @@ public class DamageHandler {
 			BEING_DAMAGED.remove(lent);
 
 			final double nextHealth = lent.getHealth();
+			final double nextAbsorption = lent.getAbsorptionAmount();
 			entity.setLastDamageCause(finalEvent);
 
-			if (Bukkit.getPluginManager().isPluginEnabled("NoCheatPlus") && source != null) {
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_REACH);
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_DIRECTION);
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_NOSWING);
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_SPEED);
-				NCPExemptionManager.unexempt(source, CheckType.COMBINED_IMPROBABLE);
-				NCPExemptionManager.unexempt(source, CheckType.FIGHT_SELFHIT);
+			final double appliedDamage = Math.max(0D,
+					(prevHealth + prevAbsorption) - (nextHealth + nextAbsorption));
+			if (Double.isFinite(appliedDamage) && appliedDamage > 0D) {
+				AbilityExecutionEvidence.publishEntity(ability, AbilityExecutionEvidence.ENTITY_DAMAGE, entity,
+						appliedDamage);
 			}
 
 			if (prevHealth != nextHealth) {
-				if (entity instanceof Player) {
-					StatisticsMethods.addStatisticAbility(source.getUniqueId(), CoreAbility.getAbility(ability.getName()), Statistic.PLAYER_DAMAGE, (long) damage);
+				if (prevHealth - damage <= 0) {
+					final EntityBendingDeathEvent event = new EntityBendingDeathEvent(entity, damage, ability);
+					Bukkit.getServer().getPluginManager().callEvent(event);
 				}
-				StatisticsMethods.addStatisticAbility(source.getUniqueId(), CoreAbility.getAbility(ability.getName()), Statistic.TOTAL_DAMAGE, (long) damage);
+
+				CoreAbility coreAbility = CoreAbility.getAbility(ability.getName());
+				if (coreAbility == null) {
+					PkLang.warning("Tried to add damage to entity " + entity.getName() + " for ability " + ability.getName() + " but the ability was not found.");
+					return;
+				}
+				if (entity instanceof Player) {
+					StatisticsMethods.addStatisticAbility(source.getUniqueId(), coreAbility, Statistic.PLAYER_DAMAGE, (long) damage);
+				}
+				StatisticsMethods.addStatisticAbility(source.getUniqueId(), coreAbility, Statistic.TOTAL_DAMAGE, (long) damage);
 			}
 		}
 
 	}
 	
-	public static void damageEntity(final Entity entity, final Player source, final double damage, final Ability ability, final boolean ignoreArmor) {
-		damageEntity(entity, source, damage, ability, ignoreArmor);
+	public static void damageEntity(final Entity entity, final LivingEntity source, final double damage, final Ability ability, final boolean ignoreArmor) {
+		damageEntity(entity, source, damage, ability, ignoreArmor, false);
 	}
 	
 	public static void damageEntity(final Entity entity, final double damage, final Ability ability, final boolean ignoreArmor) {
-		damageEntity(entity, ability.getPlayer(), damage, ability, ignoreArmor, false);
+		damageEntity(entity, ability.getCaster(), damage, ability, ignoreArmor, false);
 	}
 
-	public static void damageEntity(final Entity entity, final Player source, final double damage, final Ability ability) {
+	public static void damageEntity(final Entity entity, final LivingEntity source, final double damage, final Ability ability) {
 		damageEntity(entity, source, damage, ability, false, false);
 	}
 
 	public static void damageEntity(final Entity entity, final double damage, final Ability ability) {
-		damageEntity(entity, ability.getPlayer(), damage, ability);
+		damageEntity(entity, ability.getCaster(), damage, ability);
 	}
 }

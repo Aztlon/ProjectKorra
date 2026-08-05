@@ -29,7 +29,13 @@ import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArmsWhip.Whip;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class WaterArms extends WaterAbility {
 
 	/**
@@ -163,10 +169,10 @@ public class WaterArms extends WaterAbility {
 	private boolean prepare() {
 		final Block sourceBlock = getWaterSourceBlock(this.player, this.sourceGrabRange, this.canUsePlantSource);
 		if (sourceBlock != null) {
-
-			if (isPlant(sourceBlock) || isSnow(sourceBlock)) {
+			if (isDecayablePlant(sourceBlock)) {
+				new PlantRegrowth(this.player, sourceBlock, 3);
+			} else if (isPlant(sourceBlock) || isSnow(sourceBlock)) {
 				new PlantRegrowth(this.player, sourceBlock);
-				sourceBlock.setType(Material.AIR);
 				this.fullSource = false;
 			} else if (isCauldron(sourceBlock)) {
 				GeneralMethods.setCauldronData(sourceBlock, ((Levelled) sourceBlock.getBlockData()).getLevel() - 1);
@@ -175,7 +181,9 @@ public class WaterArms extends WaterAbility {
 			ParticleEffect.SMOKE_LARGE.display(sourceBlock.getLocation().clone().add(0.5, 0.5, 0.5), 4, 0, 0, 0);
 			return true;
 		} else if (WaterReturn.hasWaterBottle(this.player)) {
-			WaterReturn.emptyWaterBottle(this.player);
+			if (!CarriedWaterManager.consumeForAbility(this, this.getCarriedWaterCost(), this.getName() + ".Consume")) {
+				return false;
+			}
 			this.fullSource = false;
 			return true;
 		}
@@ -254,7 +262,7 @@ public class WaterArms extends WaterAbility {
 
 			newBlocks.add(r3.getBlock());
 			if (j >= 1 && this.selectedSlot == this.freezeSlot && this.bPlayer.canIcebend()) {
-				this.addBlock(r3.getBlock(), Material.ICE.createBlockData(), 100);
+				this.addBlock(r3.getBlock(), iceMaterial(this.player), 100);
 			} else {
 				this.addBlock(r3.getBlock(), Material.WATER.createBlockData(), 100);
 			}
@@ -309,7 +317,7 @@ public class WaterArms extends WaterAbility {
 
 			newBlocks.add(l3.getBlock());
 			if (j >= 1 && this.selectedSlot == this.freezeSlot && this.bPlayer.canIcebend()) {
-				this.addBlock(l3.getBlock(), Material.ICE.createBlockData(), 100);
+				this.addBlock(l3.getBlock(), iceMaterial(this.player), 100);
 			} else {
 				this.addBlock(l3.getBlock(), Material.WATER.createBlockData(), 100);
 			}
@@ -334,7 +342,7 @@ public class WaterArms extends WaterAbility {
 				}
 			}
 		} else {
-			new TempBlock(b, data, revertTime);
+			new TempBlock(b, data, revertTime, this);
 		}
 	}
 
@@ -428,7 +436,12 @@ public class WaterArms extends WaterAbility {
 		if (this.player.isOnline()) {
 			this.bPlayer.addCooldown("WaterArms", this.cooldown);
 		}
-		new WaterReturn(this.player, this.player.getLocation().getBlock());
+		final int returnAmount = this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this));
+		final Player consumer = CarriedWaterManager.getConsumerForAbility(this);
+		final String cause = this.getName() + ".Return";
+		if (CarriedWaterManager.returnForAbility(this, returnAmount, cause) && consumer != null) {
+			new WaterReturn(consumer, consumer.getLocation().getBlock(), 0, cause + ".Cosmetic");
+		}
 	}
 
 	public void prepareCancel() {

@@ -10,6 +10,7 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.PassiveAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
 import com.projectkorra.projectkorra.util.ClickType;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 public class ComboUtil {
 
@@ -28,28 +29,28 @@ public class ComboUtil {
         for (String line : configList) {
             String[] split = line.split(":");
             if (split.length != 2) {
-                ProjectKorra.log.warning("Invalid combination for ability \"" + comboName + "\": Contains no colon and ClickType found!");
+                PkLang.warning("Invalid combination for ability \"" + comboName + "\": Contains no colon and ClickType found!");
                 continue;
             }
             String ability = split[0].trim();
             String click = split[1].trim();
             CoreAbility coreAbility = CoreAbility.getAbility(ability);
             if (coreAbility == null) {
-                ProjectKorra.log.warning("Invalid combination for ability \"" + comboName + "\": Ability \"" + ability + "\" not found!");
+                PkLang.warning("Invalid combination for ability \"" + comboName + "\": Ability \"" + ability + "\" not found!");
                 continue;
             }
             if (coreAbility instanceof ComboAbility) {
-                ProjectKorra.log.warning("Invalid combination for ability \"" + comboName + "\": Ability \"" + ability + "\" is a combo and can't be used in another combination!");
+                PkLang.warning("Invalid combination for ability \"" + comboName + "\": Ability \"" + ability + "\" is a combo and can't be used in another combination!");
                 continue;
             }
             if (coreAbility instanceof PassiveAbility) {
-                ProjectKorra.log.warning("Invalid combination for ability \"" + comboName + "\": Ability \"" + ability + "\" is a passive and can't be used in a combination!");
+                PkLang.warning("Invalid combination for ability \"" + comboName + "\": Ability \"" + ability + "\" is a passive and can't be used in a combination!");
                 continue;
             }
 
             ClickType clickType = getClickType(click);
             if (clickType == null) {
-                ProjectKorra.log.warning("Invalid combination for ability \"" + comboName + "\": ClickType \"" + ability + "\" not found! Using LEFT_CLICK instead!");
+                PkLang.warning("Invalid combination for ability \"" + comboName + "\": ClickType \"" + ability + "\" not found! Using LEFT_CLICK instead!");
                 clickType = ClickType.LEFT_CLICK;
             }
 
@@ -57,7 +58,7 @@ public class ComboUtil {
             if (clickType == ClickType.SHIFT_DOWN || clickType == ClickType.SHIFT_UP) {
                 Optional<Boolean> newBool = Optional.of(clickType == ClickType.SHIFT_DOWN);
                 if (newBool.equals(sneak)) {
-                    ProjectKorra.log.severe("Invalid combination for ability \"" + comboName + "\": You have a sneak order that is impossible to pull off!");
+                    PkLang.severe("Invalid combination for ability \"" + comboName + "\": You have a sneak order that is impossible to pull off!");
                 }
                 sneak = newBool;
             }
@@ -66,9 +67,9 @@ public class ComboUtil {
         }
 
         if (comboList.size() == 1) {
-            ProjectKorra.log.warning("Warning: Combination for ability \"" + comboName + "\" only contains one ability! Are you sure about this?");
+            PkLang.warning("Warning: Combination for ability \"" + comboName + "\" only contains one ability! Are you sure about this?");
         } else if (comboList.size() == 0) {
-            ProjectKorra.log.severe("No combination for combo ability \"" + comboName + "\" found!");
+            PkLang.severe("No combination for combo ability \"" + comboName + "\" found!");
             return null;
         }
 

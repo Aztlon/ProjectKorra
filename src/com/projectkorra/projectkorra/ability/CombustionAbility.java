@@ -1,14 +1,25 @@
 package com.projectkorra.projectkorra.ability;
 
-import com.projectkorra.projectkorra.GeneralMethods;
-import org.bukkit.entity.Player;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+import org.bukkit.block.Block;
+import org.bukkit.entity.LivingEntity;
+
+import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.Element;
 
 public abstract class CombustionAbility extends FireAbility implements SubAbility {
 
-	public CombustionAbility(final Player player) {
-		super(player);
+	private static final Map<Block, Integer> hitBlocks = new HashMap<>();
+	private static final Map<Block, Long> timedHits = new HashMap<>();
+	private static final int obsidianBreakHits = getConfig().getInt("Properties.Fire.Combustion.ObsidianBreakHits");
+	private static final long forgetTime = getConfig().getInt("Properties.Fire.Combustion.HitForgetTime");
+
+	public CombustionAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	@Override
@@ -42,4 +53,27 @@ public abstract class CombustionAbility extends FireAbility implements SubAbilit
 		return (long) GeneralMethods.applyInverseModifiers(value, getDayFactor(1.0));
 	}
 
+	public List<Block> applyNewBlocks(List<Block> newList) {
+		ArrayList<Block> blocksBroken = new ArrayList<>();
+		newList.forEach(b -> {
+			if (hitBlocks.containsKey(b)) {
+				if (timedHits.containsKey(b)) {
+					if (timedHits.get(b) + forgetTime < System.currentTimeMillis()){
+						hitBlocks.remove(b);
+						timedHits.remove(b);
+					}
+				}
+				int newStage = hitBlocks.get(b)+1;
+				hitBlocks.replace(b, newStage);
+				if (newStage >= obsidianBreakHits) {
+					hitBlocks.remove(b);
+					blocksBroken.add(b);
+				}
+			} else {
+				hitBlocks.put(b, 1);
+				timedHits.put(b, System.currentTimeMillis());
+			}
+		});
+		return blocksBroken;
+	}
 }

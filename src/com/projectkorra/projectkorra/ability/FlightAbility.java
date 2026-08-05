@@ -1,13 +1,14 @@
 package com.projectkorra.projectkorra.ability;
 
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.Element;
 
 public abstract class FlightAbility extends AirAbility implements SubAbility {
 
-	public FlightAbility(final Player player) {
-		super(player);
+	public FlightAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	@Override

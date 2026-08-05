@@ -2,15 +2,18 @@ package com.projectkorra.projectkorra.ability;
 
 import org.bukkit.Location;
 import org.bukkit.Sound;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.ProjectKorra;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 public abstract class AvatarAbility extends ElementalAbility {
 
-	public AvatarAbility(final Player player) {
-		super(player);
+	public AvatarAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	@Override
@@ -38,9 +41,9 @@ public abstract class AvatarAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Abilities.Avatar.AvatarState.Sound.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Abilities.Avatar.AvatarState.Sound.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Abilities.Avatar.AvatarState.Sound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}

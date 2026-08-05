@@ -15,12 +15,13 @@ import org.bukkit.scheduler.BukkitRunnable;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.AirAbility;
+import com.projectkorra.projectkorra.ability.SuffocationAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
 /**
- * Suffocate
- *
  * Suffocate is an air ability that causes entities to be surrounded by a sphere
  * air that causes constant damage after a configurable delay. Suffocate also
  * causes Blinding and Slowing affects to entities depending on how the ability
@@ -28,7 +29,7 @@ import com.projectkorra.projectkorra.util.DamageHandler;
  * entities within a large radius. If the user is damaged while performing this
  * ability then the ability is removed.
  */
-public class Suffocate extends AirAbility {
+public class Suffocate extends SuffocationAbility {
 
 	public static enum SpiralType {
 		HORIZONTAL1, HORIZONTAL2, VERTICAL1, VERTICAL2, DIAGONAL1, DIAGONAL2
@@ -46,6 +47,7 @@ public class Suffocate extends AirAbility {
 	private double range;
 	@Attribute(Attribute.RADIUS)
 	private double radius;
+	private double detectionRadius;
 	@Attribute(Attribute.DAMAGE)
 	private double damage;
 	private double damageDelay;
@@ -54,6 +56,8 @@ public class Suffocate extends AirAbility {
 	private double slowRepeat;
 	private double slowDelay;
 	private double constantAimRadius;
+	private double damageThreshold;
+	private double initialHealth;
 	private double blind;
 	private double blindDelay;
 	private double blindRepeat;
@@ -67,7 +71,7 @@ public class Suffocate extends AirAbility {
 		this.ability = this;
 		if (this.bPlayer.isOnCooldown(this)) {
 			return;
-		} else if (hasAbility(player, Suffocate.class)) {
+		} else if (hasAbility(player, Suffocate.class) || hasAbility(player, AirSpout.class)) {
 			return;
 		}
 
@@ -80,7 +84,9 @@ public class Suffocate extends AirAbility {
 		this.cooldown = getConfig().getLong("Abilities.Air.Suffocate.Cooldown");
 		this.range = getConfig().getDouble("Abilities.Air.Suffocate.Range");
 		this.radius = getConfig().getDouble("Abilities.Air.Suffocate.AnimationRadius");
+		this.detectionRadius = getConfig().getDouble("Abilities.Air.Suffocate.DetectionRadius");
 		this.constantAimRadius = getConfig().getDouble("Abilities.Air.Suffocate.RequireConstantAimRadius");
+		this.damageThreshold = getConfig().getDouble("Abilities.Air.Suffocate.DamageThreshold");
 		this.damage = getConfig().getDouble("Abilities.Air.Suffocate.Damage");
 		this.damageDelay = getConfig().getDouble("Abilities.Air.Suffocate.DamageInitialDelay");
 		this.damageRepeat = getConfig().getDouble("Abilities.Air.Suffocate.DamageInterval");
@@ -113,22 +119,20 @@ public class Suffocate extends AirAbility {
 				}
 			}
 		} else {
-			List<Entity> entities = new ArrayList<Entity>();
+			List<Entity> entities = new ArrayList<>();
 			for (int i = 0; i < 6; i++) {
 				final Location location = GeneralMethods.getTargetedLocation(player, i, getTransparentMaterials());
-				entities = GeneralMethods.getEntitiesAroundPoint(location, .5);
-				if (entities.contains(player)) {
-					entities.remove(player);
-				}
-				if (entities != null && !entities.isEmpty() && !entities.contains(player)) {
+				entities = GeneralMethods.getEntitiesAroundPoint(location, detectionRadius);
+				entities.remove(player);
+				if (!entities.isEmpty() && !entities.contains(player)) {
 					break;
 				}
 			}
-			if (entities == null || entities.isEmpty()) {
+			if (entities.isEmpty()) {
 				return;
 			}
 			final Entity target = entities.get(0);
-			if (target != null && target instanceof LivingEntity) {
+			if (target instanceof LivingEntity) {
 				this.targets.add((LivingEntity) target);
 			}
 		}
@@ -143,6 +147,8 @@ public class Suffocate extends AirAbility {
 			}
 		}
 
+		initialHealth = this.player.getHealth();
+
 		this.start();
 	}
 
@@ -150,7 +156,7 @@ public class Suffocate extends AirAbility {
 	public void progress() {
 		for (int i = 0; i < this.targets.size(); i++) {
 			final LivingEntity target = this.targets.get(i);
-			if (target.isDead() || !target.getWorld().equals(this.player.getWorld()) || target.getLocation().distanceSquared(this.player.getEyeLocation()) > this.range * this.range || GeneralMethods.isRegionProtectedFromBuild(this, target.getLocation()) || target instanceof ArmorStand) {
+			if (target.isDead() || !target.getWorld().equals(this.player.getWorld()) || target.getLocation().distanceSquared(this.player.getEyeLocation()) > this.range * this.range || RegionProtection.isRegionProtected(this, target.getLocation()) || target instanceof ArmorStand) {
 				this.breakSuffocateLocal(target);
 				i--;
 			} else if (target instanceof Player) {
@@ -187,6 +193,11 @@ public class Suffocate extends AirAbility {
 			}
 		}
 
+		if (this.player.getHealth() < this.initialHealth - this.damageThreshold) {
+			this.remove();
+			return;
+		}
+
 		if (System.currentTimeMillis() - this.getStartTime() < this.chargeTime) {
 			return;
 		} else if (!this.started) {
@@ -201,13 +212,15 @@ public class Suffocate extends AirAbility {
 				final BukkitRunnable br2 = new BukkitRunnable() {
 					@Override
 					public void run() {
-						target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, (int) (Suffocate.this.slowRepeat * 20), (int) Suffocate.this.slow));
+						PhasedEntityEffectManager.addPotionEffect(Suffocate.this.ability, target,
+								new PotionEffect(PotionEffectType.SLOWNESS, (int) (Suffocate.this.slowRepeat * 20), (int) Suffocate.this.slow));
 					}
 				};
 				final BukkitRunnable br3 = new BukkitRunnable() {
 					@Override
 					public void run() {
-						target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, (int) (Suffocate.this.blindRepeat * 20), (int) Suffocate.this.blind));
+						PhasedEntityEffectManager.addPotionEffect(Suffocate.this.ability, target,
+								new PotionEffect(PotionEffectType.BLINDNESS, (int) (Suffocate.this.blindRepeat * 20), (int) Suffocate.this.blind));
 					}
 				};
 
@@ -249,17 +262,17 @@ public class Suffocate extends AirAbility {
 		return false;
 	}
 
-	/** Determines if a player is Suffocating entities **/
-	public static boolean isChannelingSphere(final Player player) {
-		return hasAbility(player, Suffocate.class);
+	/** Determines if a caster is Suffocating entities **/
+	public static boolean isChannelingSphere(final LivingEntity caster) {
+		return hasAbility(caster, Suffocate.class);
 	}
 
 	/**
-	 * Removes an instance of Suffocate if player is the one suffocating
+	 * Removes an instance of Suffocate if caster is the one suffocating
 	 * entities
 	 **/
-	public static void remove(final Player player) {
-		final Suffocate suff = getAbility(player, Suffocate.class);
+	public static void remove(final LivingEntity caster) {
+		final Suffocate suff = getAbility(caster, Suffocate.class);
 		if (suff != null) {
 			suff.remove();
 		}
@@ -445,7 +458,7 @@ public class Suffocate extends AirAbility {
 				this.loc.setZ(tempLoc.getZ() + this.radius * Math.cos(Math.toRadians((double) this.i / (double) this.totalSteps * 360)));
 			}
 
-			getAirbendingParticles().display(this.loc, 0, 0, 0, 0, 1);
+			playAirbendingParticles(this.loc, 1, 0, 0, 0);
 			if (this.i == this.totalSteps + 1) {
 				this.cancel();
 			}

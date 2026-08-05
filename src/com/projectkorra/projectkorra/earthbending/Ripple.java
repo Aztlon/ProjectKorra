@@ -19,11 +19,17 @@ import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class Ripple extends EarthAbility {
 
-	private static final Map<Integer[], Block> BLOCKS = new ConcurrentHashMap<Integer[], Block>();
+	private static final Map<Integer[], Block> BLOCKS = new ConcurrentHashMap<>();
 
 	private int step;
 	private int maxStep;
@@ -40,20 +46,15 @@ public class Ripple extends EarthAbility {
 	private Block block2;
 	private Block block3;
 	private Block block4;
-	private ArrayList<Location> locations = new ArrayList<Location>();
-	private ArrayList<Entity> entities = new ArrayList<Entity>();
+	private ArrayList<Location> locations = new ArrayList<>();
+	private ArrayList<Entity> entities = new ArrayList<>();
 
-	public Ripple(final Player player, final Vector direction) {
-		super(player);
-		this.initialize(player, this.getInitialLocation(player, direction), direction);
+	public Ripple(final LivingEntity caster, final Vector direction) {
+		super(caster);
+		this.initialize(this.getInitialLocation(caster, direction), direction);
 	}
 
-	public Ripple(final Player player, final Location origin, final Vector direction) {
-		super(player);
-		this.initialize(player, origin, direction);
-	}
-
-	private void initialize(final Player player, final Location origin, final Vector direction) {
+	private void initialize(final Location origin, final Vector direction) {
 		if (origin == null) {
 			return;
 		}
@@ -67,7 +68,7 @@ public class Ripple extends EarthAbility {
 		this.locations = new ArrayList<>();
 		this.entities = new ArrayList<>();
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.range = getConfig().getDouble("Abilities.Avatar.AvatarState.Earth.Shockwave.Range");
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Earth.Shockwave.Damage");
 			this.knockback = getConfig().getDouble("Abilities.Avatar.AvatarState.Earth.Shockwave.Knockback");
@@ -81,8 +82,8 @@ public class Ripple extends EarthAbility {
 		}
 	}
 
-	private Location getInitialLocation(final Player player, Vector direction) {
-		Location location = player.getLocation().clone().add(0, -1, 0);
+	private Location getInitialLocation(final LivingEntity caster, Vector direction) {
+		Location location = caster.getLocation().clone().add(0, -1, 0);
 		direction = direction.normalize();
 		final Block block1 = location.getBlock();
 
@@ -263,7 +264,7 @@ public class Ripple extends EarthAbility {
 		}
 		if (this.moveEarth(block, new Vector(0, 1, 0), length, false)) {
 			for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(block.getLocation().clone().add(0, 1, 0), 2)) {
-				if (entity.getEntityId() != this.player.getEntityId() && !this.entities.contains(entity)) {
+				if (entity.getEntityId() != this.caster.getEntityId() && !this.entities.contains(entity)) {
 					if (!(entity instanceof FallingBlock)) {
 						this.entities.add(entity);
 					}
@@ -275,7 +276,7 @@ public class Ripple extends EarthAbility {
 	}
 
 	private void affect(final Entity entity) {
-		if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+		if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(entity.getName()))) {
 			return;
 		}
 		if (entity instanceof LivingEntity) {
@@ -284,7 +285,7 @@ public class Ripple extends EarthAbility {
 
 		final Vector vector = this.direction.clone();
 		vector.setY(.5);
-		final double knock = this.bPlayer.isAvatarState() ? AvatarState.getValue(this.knockback) : this.knockback;
+		final double knock = this.bender.isAvatarState() ? AvatarState.getValue(this.knockback) : this.knockback;
 		GeneralMethods.setVelocity(this, entity, vector.clone().normalize().multiply(knock));
 		AirAbility.breakBreathbendingHold(entity);
 	}
@@ -300,10 +301,7 @@ public class Ripple extends EarthAbility {
 		final int x = block.getX();
 		final int z = block.getZ();
 		final Integer[] pair = new Integer[] { x, z };
-		if (BLOCKS.containsKey(pair)) {
-			return true;
-		}
-		return false;
+		return BLOCKS.containsKey(pair);
 	}
 
 	public static void progressAllCleanup() {
@@ -316,7 +314,12 @@ public class Ripple extends EarthAbility {
 
 	@Override
 	public String getName() {
-		return "Shockwave";
+		return "ShockwaveRipple";
+	}
+
+	@Override
+	public boolean isHiddenAbility() {
+		return true;
 	}
 
 	@Override
@@ -342,102 +345,6 @@ public class Ripple extends EarthAbility {
 	@Override
 	public ArrayList<Location> getLocations() {
 		return this.locations;
-	}
-
-	public int getStep() {
-		return this.step;
-	}
-
-	public void setStep(final int step) {
-		this.step = step;
-	}
-
-	public int getMaxStep() {
-		return this.maxStep;
-	}
-
-	public void setMaxStep(final int maxStep) {
-		this.maxStep = maxStep;
-	}
-
-	public double getRange() {
-		return this.range;
-	}
-
-	public void setRange(final double range) {
-		this.range = range;
-	}
-
-	public double getDamage() {
-		return this.damage;
-	}
-
-	public void setDamage(final double damage) {
-		this.damage = damage;
-	}
-
-	public double getKnockback() {
-		return this.knockback;
-	}
-
-	public void setKnockback(final double knockback) {
-		this.knockback = knockback;
-	}
-
-	public Vector getDirection() {
-		return this.direction;
-	}
-
-	public void setDirection(final Vector direction) {
-		this.direction = direction;
-	}
-
-	public Location getOrigin() {
-		return this.origin;
-	}
-
-	public void setOrigin(final Location origin) {
-		this.origin = origin;
-	}
-
-	public Block getBlock1() {
-		return this.block1;
-	}
-
-	public void setBlock1(final Block block1) {
-		this.block1 = block1;
-	}
-
-	public Block getBlock2() {
-		return this.block2;
-	}
-
-	public void setBlock2(final Block block2) {
-		this.block2 = block2;
-	}
-
-	public Block getBlock3() {
-		return this.block3;
-	}
-
-	public void setBlock3(final Block block3) {
-		this.block3 = block3;
-	}
-
-	public Block getBlock4() {
-		return this.block4;
-	}
-
-	public void setBlock4(final Block block4) {
-		this.block4 = block4;
-	}
-
-	public ArrayList<Entity> getEntities() {
-		return this.entities;
-	}
-
-	public void setLocation(final Location location) {
-		this.location = location;
 	}
 
 }

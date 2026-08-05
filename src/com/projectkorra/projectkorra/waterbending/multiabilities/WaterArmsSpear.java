@@ -19,6 +19,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms.Arm;
@@ -58,6 +59,7 @@ public class WaterArmsSpear extends WaterAbility {
 	private final List<Location> spearLocations;
 	private List<TempBlock> waterBlocks = new ArrayList<>();
 	private List<TempBlock> iceBlocks = new ArrayList<>();
+	private boolean bendableIce;
 
 	public WaterArmsSpear(final Player player, final boolean freeze) {
 		super(player);
@@ -77,6 +79,7 @@ public class WaterArmsSpear extends WaterAbility {
 		this.spearDurationFullMoon = getConfig().getLong("Abilities.Water.WaterArms.Spear.NightAugments.Duration.FullMoon");
 		this.usageCooldown = applyInverseModifiers(getConfig().getLong("Abilities.Water.WaterArms.Arms.Cooldowns.UsageCooldown.Spear"));
 		this.spearDamage = applyModifiers(getConfig().getDouble("Abilities.Water.WaterArms.Spear.Damage"));
+		this.bendableIce = getConfig().getBoolean("Abilities.Water.WaterArms.Spear.BendableIce");
 		this.spearLocations = new ArrayList<>();
 
 		this.getNightAugments();
@@ -180,7 +183,7 @@ public class WaterArmsSpear extends WaterAbility {
 				return;
 			}
 
-			waterBlocks.add(new TempBlock(this.location.getBlock(), Material.WATER));
+			waterBlocks.add(new TempBlock(this.location.getBlock(), Material.WATER, this));
 			getIceBlocks().put(this.location.getBlock(), System.currentTimeMillis() + 600L);
 			final Vector direction = GeneralMethods.getDirection(this.initLocation, GeneralMethods.getTargetedLocation(this.player, this.spearRange, getTransparentMaterials())).normalize();
 
@@ -204,7 +207,7 @@ public class WaterArmsSpear extends WaterAbility {
 						getIceBlocks().remove(block);
 					}
 
-					iceBlocks.add(new TempBlock(block, Material.ICE));
+					iceBlocks.add(new TempBlock(block, iceMaterial(this.player), this).setBendableSource(bendableIce));
 
 					getIceBlocks().put(block, System.currentTimeMillis() + this.spearDuration + (long) (Math.random() * 500));
 				}
@@ -213,7 +216,7 @@ public class WaterArmsSpear extends WaterAbility {
 	}
 
 	public static boolean canThaw(final Block block) {
-		return getIceBlocks().containsKey(block) && block.getType() == Material.ICE;
+		return getIceBlocks().containsKey(block) && isIce(block);
 	}
 
 	public static void thaw(final Block block) {
@@ -236,7 +239,7 @@ public class WaterArmsSpear extends WaterAbility {
 		}
 		final List<Entity> trapped = GeneralMethods.getEntitiesAroundPoint(this.location, this.spearSphereRadius);
 		ICE_SETTING: for (final Block block : GeneralMethods.getBlocksAroundPoint(this.location, this.spearSphereRadius)) {
-			if (isTransparent(this.player, block) && block.getType() != Material.ICE && !WaterArms.isUnbreakable(block)) {
+			if (isTransparent(this.player, block) && !isIce(block) && !WaterArms.isUnbreakable(block)) {
 				for (final Entity entity : trapped) {
 					if (entity instanceof Player) {
 						if (Commands.invincible.contains(((Player) entity).getName())) {
@@ -251,7 +254,7 @@ public class WaterArmsSpear extends WaterAbility {
 					}
 				}
 				playIcebendingSound(block.getLocation());
-				new TempBlock(block, Material.ICE);
+				new TempBlock(block, iceMaterial(this.player), this).setBendableSource(bendableIce);
 				getIceBlocks().put(block, System.currentTimeMillis() + this.spearDuration + (long) (Math.random() * 500));
 			}
 		}
@@ -260,7 +263,7 @@ public class WaterArmsSpear extends WaterAbility {
 	private boolean canPlaceBlock(final Block block) {
 		if (!isTransparent(this.player, block) && !((isWater(block) || this.isIcebendable(block)) && (TempBlock.isTempBlock(block) && !getIceBlocks().containsKey(block)))) {
 			return false;
-		} else if (GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation()) || GeneralMethods.isSolid(block)) {
+		} else if (RegionProtection.isRegionProtected(this, block.getLocation()) || GeneralMethods.isSolid(block)) {
 			return false;
 		} else if (WaterArms.isUnbreakable(block) && !isWater(block)) {
 			return false;

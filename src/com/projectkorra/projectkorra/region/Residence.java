@@ -8,6 +8,8 @@ import com.bekvon.bukkit.residence.protection.ResidencePermissions;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.util.logging.PkLang;
+
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -23,7 +25,7 @@ class Residence extends RegionProtectionBase {
         FlagPermissions.addFlag(this.flag);
 
         if (Flags.getFlag(this.flag.toLowerCase()) == null) { //If they don't just use an existing flag, like "build"
-            ProjectKorra.log.info("Registered custom flag for Residence");
+            PkLang.info("Registered custom flag for Residence");
         }
     }
 

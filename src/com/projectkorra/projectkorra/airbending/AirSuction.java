@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Effect;
 import org.bukkit.Location;
@@ -25,6 +26,8 @@ import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.object.HorizontalVelocityTracker;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.waterbending.WaterSpout;
 
 public class AirSuction extends AirAbility {
@@ -51,8 +54,10 @@ public class AirSuction extends AirAbility {
 	private Vector direction;
 	private boolean canAffectSelf;
 
-	public AirSuction(final Player player) {
+	public AirSuction(final Player player, final Location origin) {
 		super(player);
+
+		if (origin == null && AbstractSkill.isLocked("AirSuctionSource", player)) return;
 
 		if (this.bPlayer.isOnCooldown(this)) {
 			return;
@@ -83,7 +88,7 @@ public class AirSuction extends AirAbility {
 		this.pushFactorForOthers = getConfig().getDouble("Abilities.Air.AirSuction.Push.Others");
 		this.cooldown = getConfig().getLong("Abilities.Air.AirSuction.Cooldown");
 		this.random = new Random();
-		this.origin = this.getTargetLocation();
+		this.origin = origin != null ? origin : this.getTargetLocation();
 		this.canAffectSelf = true;
 
 		if (RegionProtection.isRegionProtected(player, this.origin, this.getName())) {
@@ -162,7 +167,7 @@ public class AirSuction extends AirAbility {
 		}
 
 		final String sound = "block_wooden_" + (tDoor ? "trap" : "") + "door_" + (!open ? "open" : "close");
-		block.getWorld().playSound(block.getLocation(), sound, 0.5f, 0);
+		PhasedSoundManager.playSound(this, block.getLocation(), sound, 0.5f, 0);
 		this.affectedDoors.add(block);
 	}
 
@@ -199,7 +204,7 @@ public class AirSuction extends AirAbility {
 			}
 
 			for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, this.radius)) {
-				if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+				if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 					continue;
 				}
 				if ((entity.getEntityId() == this.player.getEntityId()) && !this.canAffectSelf) {
@@ -237,10 +242,10 @@ public class AirSuction extends AirAbility {
 				new HorizontalVelocityTracker(entity, this.player, 200l, this);
 				entity.setFallDistance(0);
 
-				if (entity.getFireTicks() > 0) {
+				final boolean wasOnFire = entity.getFireTicks() > 0;
+				if (PhasedEntityEffectManager.setFireTicks(this, entity, 0) && wasOnFire) {
 					entity.getWorld().playEffect(entity.getLocation(), Effect.EXTINGUISH, 0);
 				}
-				entity.setFireTicks(0);
 				breakBreathbendingHold(entity);
 			}
 
@@ -282,14 +287,13 @@ public class AirSuction extends AirAbility {
 	public static void shoot(final Player player) {
 		AirSuction suc = null;
 
-		if (CoreAbility.hasAbility(player, AirSuction.class)) {
+		if (CoreAbility.hasAbility(player, AirSuction.class)) { // if they have a source
 			suc = CoreAbility.getAbility(player, AirSuction.class);
 			if (suc.isProgressing()) {
 				return;
 			}
-		} else {
-			suc = new AirSuction(player);
-			suc.setOrigin(player.getEyeLocation().clone());
+		} else { // if they don't have a source
+			suc = new AirSuction(player, player.getEyeLocation().clone());
 			suc.setCanEffectSelf(false);
 		}
 

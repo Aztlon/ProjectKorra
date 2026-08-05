@@ -17,6 +17,8 @@ import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.LavaAbility;
 import com.projectkorra.projectkorra.avatar.AvatarState;
 import com.projectkorra.projectkorra.firebending.FireBlast;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.BlockSource.BlockSourceType;
 import com.projectkorra.projectkorra.util.ClickType;
@@ -165,7 +167,7 @@ public class LavaSurgeWave extends LavaAbility {
 			final Block blockl = this.location.getBlock();
 			final ArrayList<Block> blocks = new ArrayList<Block>();
 
-			if (!GeneralMethods.isRegionProtectedFromBuild(this, this.location) && (ElementalAbility.isAir(blockl.getType()) || blockl.getType() == Material.FIRE || ElementalAbility.isPlant(blockl) || isLava(blockl))) {
+			if (!RegionProtection.isRegionProtected(this, this.location) && (ElementalAbility.isAir(blockl.getType()) || blockl.getType() == Material.FIRE || ElementalAbility.isPlant(blockl) || isLava(blockl))) {
 				for (double i = 0; i <= this.radius; i += 0.5) {
 					for (double angle = 0; angle < 360; angle += 10) {
 						final Vector vec = GeneralMethods.getOrthogonalVector(this.targetDirection, angle, i);
@@ -210,10 +212,10 @@ public class LavaSurgeWave extends LavaAbility {
 					GeneralMethods.setVelocity(this, entity, entity.getVelocity().clone().add(dir.clone().multiply(this.horizontalPush)));
 					entity.setFallDistance(0);
 
-					if (entity.getFireTicks() > 0) {
+					final boolean wasOnFire = entity.getFireTicks() > 0;
+					if (PhasedEntityEffectManager.setFireTicks(this, entity, 0) && wasOnFire) {
 						entity.getWorld().playEffect(entity.getLocation(), Effect.EXTINGUISH, 0);
 					}
-					entity.setFireTicks(0);
 				}
 			}
 
@@ -250,10 +252,10 @@ public class LavaSurgeWave extends LavaAbility {
 	}
 
 	private void addLava(final Block block) {
-		if (GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+		if (RegionProtection.isRegionProtected(this, block.getLocation())) {
 			return;
 		} else if (!TempBlock.isTempBlock(block)) {
-			new TempBlock(block, Material.LAVA);
+			new TempBlock(block, Material.LAVA, this);
 			this.waveBlocks.put(block, block);
 		}
 	}

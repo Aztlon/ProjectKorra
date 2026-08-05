@@ -22,6 +22,7 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.util.TempBlock;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.MainHand;
 
 public class Illumination extends FireAbility {
 
@@ -110,11 +111,11 @@ public class Illumination extends FireAbility {
 				return;
 			}
 
-			Location hand = GeneralMethods.getMainHandLocation(player);
-			if (main.getType() != Material.AIR) hand = GeneralMethods.getOffHandLocation(player);
+			Location hand = getMainHandLocation(player);
+			if (main.getType() != Material.AIR) hand = getOffHandLocation(player);
 
 			//Only display every 5 ticks
-			if (getRunningTicks() % 3 == 0) playFirebendingParticles(hand, 1, 0, 0, 0);
+			if (getRunningTicks() % 3 == 0) playFirebendingParticles(hand, 1, 0, 0, 0, 0);
 		}
 
 		this.set();
@@ -211,6 +212,24 @@ public class Illumination extends FireAbility {
 		BLOCKS.put(this.block, this.player);
 	}
 
+	public static Location getMainHandLocation(final Player player) {
+		double y = 0.65 - (player.isSneaking() ? 0.15 : 0);
+		if (player.getMainHand() == MainHand.LEFT) {
+			return GeneralMethods.getLeftSide(player.getLocation(), .35).add(0, y, 0);
+		} else {
+			return GeneralMethods.getRightSide(player.getLocation(), .35).add(0, y, 0);
+		}
+	}
+
+	public static Location getOffHandLocation(final Player player) {
+		double y = 0.65 - (player.isSneaking() ? 0.15 : 0);
+		if (player.getMainHand() == MainHand.RIGHT) {
+			return GeneralMethods.getLeftSide(player.getLocation(), .35).add(0, y, 0);
+		} else {
+			return GeneralMethods.getRightSide(player.getLocation(), .35).add(0, y, 0);
+		}
+	}
+
 	@Override
 	public String getName() {
 		return "Illumination";
@@ -286,6 +305,7 @@ public class Illumination extends FireAbility {
 		if (CoreAbility.hasAbility(player, Illumination.class)) return;
 		BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 		Illumination dummy = (Illumination) CoreAbility.getAbility(Illumination.class);
+		if (bPlayer == null || dummy == null) return;
 		if (!dummy.isEnabled() || !bPlayer.isIlluminating() || !bPlayer.canUsePassive(dummy) || !bPlayer.canBendPassive(dummy)) return;
 		if (!slotsFree(player)) return;
 

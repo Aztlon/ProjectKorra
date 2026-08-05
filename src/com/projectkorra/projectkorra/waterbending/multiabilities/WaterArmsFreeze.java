@@ -1,5 +1,9 @@
 package com.projectkorra.projectkorra.waterbending.multiabilities;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -15,11 +19,14 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.IceAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.util.TempPotionEffect;
 import com.projectkorra.projectkorra.waterbending.multiabilities.WaterArms.Arm;
+
+import net.momirealms.craftengine.bukkit.api.CraftEngineBlocks;
 
 public class WaterArmsFreeze extends IceAbility {
 
@@ -80,7 +87,12 @@ public class WaterArmsFreeze extends IceAbility {
 
 			final Vector dir = this.player.getLocation().getDirection();
 			this.location = this.waterArms.getActiveArmEnd().add(dir.normalize().multiply(1));
-			this.direction = GeneralMethods.getDirection(this.location, GeneralMethods.getTargetedLocation(this.player, this.iceRange, Material.WATER, Material.ICE, Material.PACKED_ICE)).normalize();
+			List<String> nonOpaque = Arrays.stream(Material.values()).map(Material::name).filter(name -> name.endsWith("STAINED_GLASS")).collect(Collectors.toList());
+			nonOpaque.add(Material.WATER.name());
+			nonOpaque.add(Material.ICE.name());
+			nonOpaque.add(Material.PACKED_ICE.name());
+			CraftEngineBlocks.loadedBlocks().keySet().stream().filter(k -> k.namespace().equals("customice")).forEach(k -> nonOpaque.add(k.toString()));
+			this.direction = GeneralMethods.getDirection(this.location, GeneralMethods.getTargetedLocation(this.player, this.iceRange, false, true, nonOpaque.toArray(new String[0]))).normalize();
 		} else {
 			return;
 		}
@@ -119,7 +131,7 @@ public class WaterArmsFreeze extends IceAbility {
 	private boolean canPlaceBlock(final Block block) {
 		if (!isTransparent(this.player, block) && !((isWater(block)) && TempBlock.isTempBlock(block))) {
 			return false;
-		} else if (GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+		} else if (RegionProtection.isRegionProtected(this, block.getLocation())) {
 			return false;
 		}
 		return true;
@@ -127,15 +139,15 @@ public class WaterArmsFreeze extends IceAbility {
 
 	private void progressIce() {
 		ParticleEffect.SNOW_SHOVEL.display(this.location, 5, Math.random(), Math.random(), Math.random(), 0.05);
-		new TempBlock(this.location.getBlock(), Material.ICE).setRevertTime(10);
+		new TempBlock(this.location.getBlock(), iceMaterial(this.player), this).setRevertTime(10);
 
 		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, 2.5)) {
 			if (entity instanceof LivingEntity && entity.getEntityId() != this.player.getEntityId() && !(entity instanceof ArmorStand)) {
-				if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
+				if (RegionProtection.isRegionProtected(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 					continue;
 				}
 				DamageHandler.damageEntity(entity, this.iceDamage, this);
-				final PotionEffect effect = new PotionEffect(PotionEffectType.SLOW, 40, 2);
+				final PotionEffect effect = new PotionEffect(PotionEffectType.SLOWNESS, 40, 2);
 				new TempPotionEffect((LivingEntity) entity, effect);
 				this.remove();
 				return;

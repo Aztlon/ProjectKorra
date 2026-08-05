@@ -8,7 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Slime;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -19,6 +19,11 @@ import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class AirScooter extends AirAbility {
 
 	@Attribute(Attribute.SPEED)
@@ -32,24 +37,29 @@ public class AirScooter extends AirAbility {
 	private long duration;
 	@Attribute(Attribute.HEIGHT)
 	private double maxHeightFromGround;
+	@Attribute("DamageThreshold")
+	private double damageTreshold;
 	private Block floorblock;
 	private Random random;
 	private ArrayList<Double> angles;
 	private Slime slime;
 	private Boolean useslime;
-
+	private double health;
 	private double phi = 0;
+	private boolean cancelOnSwapSlot;
+	private boolean cancelOnClick;
+	private boolean cancelOnSneak;
 
-	public AirScooter(final Player player) {
-		super(player);
+	public AirScooter(final LivingEntity caster) {
+		super(caster);
 
-		if (check(player)) {
+		if (check(caster)) {
 			return;
-		} else if (!player.isSprinting() || GeneralMethods.isSolid(player.getEyeLocation().getBlock()) || ElementalAbility.isWater(player.getEyeLocation().getBlock())) {
+		} else if ((bPlayer != null && !player.isSprinting()) || GeneralMethods.isSolid(caster.getEyeLocation().getBlock()) || isWater(caster.getEyeLocation().getBlock())) {
 			return;
-		} else if (GeneralMethods.isSolid(player.getLocation().add(0, -.5, 0).getBlock())) {
+		} else if (GeneralMethods.isSolid(caster.getLocation().add(0, -.5, 0).getBlock())) {
 			return;
-		} else if (this.bPlayer.isOnCooldown(this)) {
+		} else if (this.bender.isOnCooldown(this)) {
 			return;
 		}
 
@@ -60,50 +70,63 @@ public class AirScooter extends AirAbility {
 		this.duration = getConfig().getLong("Abilities.Air.AirScooter.Duration");
 		this.maxHeightFromGround = getConfig().getDouble("Abilities.Air.AirScooter.MaxHeightFromGround");
 		this.useslime = getConfig().getBoolean("Abilities.Air.AirScooter.ShowSitting");
+		this.damageTreshold = getConfig().getDouble("Abilities.Air.AirScooter.DamageThreshold");
+		this.cancelOnSwapSlot = getConfig().getBoolean("Abilities.Air.AirScooter.Cancel.OnSwapSlot");
+		this.cancelOnClick = getConfig().getBoolean("Abilities.Air.AirScooter.Cancel.OnClick");
+		this.cancelOnSneak = getConfig().getBoolean("Abilities.Air.AirScooter.Cancel.OnSneak");
 		this.random = new Random();
 		this.angles = new ArrayList<>();
-
-		this.flightHandler.createInstance(player, this.getName());
-		player.setAllowFlight(true);
-		player.setFlying(true);
-
-		player.setSprinting(false);
-		player.setSneaking(false);
+		this.health = caster.getHealth();
 
 		for (int i = 0; i < 5; i++) {
 			this.angles.add((double) (60 * i));
 		}
-		if (player.getWorld().getDifficulty() == Difficulty.PEACEFUL) {
+		if (caster.getWorld().getDifficulty() == Difficulty.PEACEFUL) {
 			this.useslime = false;
 		}
 		if (this.useslime) {
-			this.slime = (Slime) player.getWorld().spawnEntity(player.getLocation(), EntityType.SLIME);
-			if (this.slime != null) {
-				this.slime.setSize(1);
-				this.slime.setSilent(true);
-				this.slime.setInvulnerable(true);
-				this.slime.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 1, true, false));
-				this.slime.addPassenger(player);
-			} else {
-				this.useslime = false;
-			}
+			this.slime = (Slime) caster.getWorld().spawnEntity(caster.getLocation(), EntityType.SLIME);
+			this.slime.setSize(1);
+			this.slime.setSilent(true);
+			this.slime.setInvulnerable(true);
+			this.slime.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 1, true, false));
+			this.slime.addPassenger(caster);
 		}
 
+		this.getFloor();
+		if (floorblock == null) return;
+
 		this.start();
+		if (!isRemoved() && bPlayer != null) {
+			this.flightHandler.createInstance(player, this.getName());
+			player.setAllowFlight(true);
+			player.setFlying(true);
+
+			player.setSprinting(false);
+			player.setSneaking(false);
+		}
 	}
 
 	/**
-	 * Checks if player has an instance already and removes if they do.
+	 * Checks if caster has an instance already and removes if they do
 	 *
-	 * @param player The player to check
-	 * @return false If player doesn't have an instance
+	 * @param caster The caster to check
+	 * @return true if an instance was removed
 	 */
-	public static boolean check(final Player player) {
-		if (hasAbility(player, AirScooter.class)) {
-			getAbility(player, AirScooter.class).remove();
+	public static boolean check(final LivingEntity caster) {
+		AirScooter scooter = getAbility(caster, AirScooter.class);
+		if (scooter != null) {
+			scooter.remove();
 			return true;
 		}
 		return false;
+	}
+
+	public static void tryRemoveOnClick(final LivingEntity caster) {
+		AirScooter scooter = getAbility(caster, AirScooter.class);
+		if (scooter != null && scooter.cancelOnClick) {
+			scooter.remove();
+		}
 	}
 
 	/*
@@ -113,7 +136,7 @@ public class AirScooter extends AirAbility {
 	private void getFloor() {
 		this.floorblock = null;
 		for (int i = 0; i <= this.maxHeightFromGround; i++) {
-			final Block block = this.player.getEyeLocation().getBlock().getRelative(BlockFace.DOWN, i);
+			final Block block = this.caster.getEyeLocation().getBlock().getRelative(BlockFace.DOWN, i);
 			if (GeneralMethods.isSolid(block) || ElementalAbility.isWater(block)) {
 				this.floorblock = block;
 				return;
@@ -123,11 +146,15 @@ public class AirScooter extends AirAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
 			return;
 		} else if (this.duration > 0 && System.currentTimeMillis() > this.getStartTime() + this.duration) {
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
+			this.remove();
+			return;
+		} else if (this.health - this.caster.getHealth() >= this.damageTreshold) {
+			this.bender.addCooldown(this);
 			this.remove();
 			return;
 		}
@@ -138,43 +165,42 @@ public class AirScooter extends AirAbility {
 			return;
 		}
 
-		if (this.player.isSneaking()) {
-			this.bPlayer.addCooldown(this);
+		if (bender.isSneaking() && this.cancelOnSneak) {
+			this.bender.addCooldown(this);
 			this.remove();
 			return;
 		}
 
-		if (this.useslime && (this.slime == null || !this.slime.getPassengers().contains(this.player))) {
-			this.bPlayer.addCooldown(this);
+		if (this.useslime && (this.slime == null || !this.slime.getPassengers().contains(this.caster))) {
+			this.bender.addCooldown(this);
 			this.remove();
 			return;
 		}
 
-		Vector velocity = this.player.getEyeLocation().getDirection().clone().normalize();
-		velocity = velocity.clone().normalize().multiply(this.speed);
+		Vector velocity = this.caster.getEyeLocation().getDirection().setY(0).normalize().multiply(this.speed);
 		/*
 		 * checks the players speed and ends the move if they are going too slow
 		 */
 		if (System.currentTimeMillis() > this.getStartTime() + this.interval) {
-			if (this.useslime) {
-				if (this.slime.getVelocity().length() < this.speed * 0.3) {
-					this.remove();
-					return;
-				}
-			} else {
-				if (this.player.getVelocity().length() < this.speed * 0.3) {
-					this.remove();
-					return;
-				}
-			}
+//			if (this.useslime) {
+//				if (this.slime.getVelocity().length() < this.speed * 0.3) {
+//					this.remove();
+//					return;
+//				}
+//			} else {
+//				if (this.caster.getVelocity().length() < this.speed * 0.3) {
+//					this.remove();
+//					return;
+//				}
+//			}
 			this.spinScooter();
 		}
 		/*
 		 * Checks for how far the ground is away from the player it elevates or
 		 * lowers the player based on their distance from the ground.
 		 */
-		final double distance = this.player.getLocation().getY() - this.floorblock.getY();
-		Math.abs(distance - 2.4);
+		final double distance = this.caster.getLocation().getY() - this.floorblock.getY();
+		Math.abs(distance - 2.4); // TODO ?
 		if (distance > 2.75) {
 			velocity.setY(-.25);
 		} else if (distance < 2) {
@@ -191,23 +217,24 @@ public class AirScooter extends AirAbility {
 			velocity.add(new Vector(0, 0.7, 0));
 		}
 
-		final Location loc = this.player.getLocation();
-		if (!ElementalAbility.isWater(this.player.getLocation().add(0, 2, 0).getBlock())) {
+		final Location loc = this.caster.getLocation();
+		if (!ElementalAbility.isWater(this.caster.getLocation().add(0, 2, 0).getBlock())) {
 			loc.setY(this.floorblock.getY() + 1.5);
 		} else {
 			return;
 		}
 
-		this.player.setSprinting(false);
-		this.player.removePotionEffect(PotionEffectType.SPEED);
+		if (bPlayer != null)
+			this.player.setSprinting(false);
+		this.caster.removePotionEffect(PotionEffectType.SPEED);
 		if (this.useslime) {
 			GeneralMethods.setVelocity(this, this.slime, velocity);
 		} else {
-			GeneralMethods.setVelocity(this, this.player, velocity);
+			GeneralMethods.setVelocity(this, this.caster, velocity);
 		}
 
 		if (this.random.nextInt(4) == 0) {
-			playAirbendingSound(this.player.getLocation());
+			playAirbendingSound(this.caster.getLocation());
 		}
 	}
 
@@ -220,8 +247,9 @@ public class AirScooter extends AirAbility {
 		if (this.slime != null) {
 			this.slime.remove();
 		}
-		this.flightHandler.removeInstance(this.player, this.getName());
-		this.bPlayer.addCooldown(this);
+		if (bPlayer != null)
+			this.flightHandler.removeInstance(this.player, this.getName());
+		this.bender.addCooldown(this);
 	}
 
 	/*
@@ -229,8 +257,8 @@ public class AirScooter extends AirAbility {
 	 * sphere has. theta = how dense the rings are. r = Radius of the sphere
 	 */
 	private void spinScooter() {
-		final Location origin = this.player.getLocation();
-		final Location origin2 = this.player.getLocation();
+		final Location origin = this.caster.getLocation();
+		final Location origin2 = this.caster.getLocation();
 		this.phi += Math.PI / 10 * 4;
 		for (double theta = 0; theta <= 2 * Math.PI; theta += Math.PI / 10) {
 			final double r = 0.6;
@@ -259,7 +287,7 @@ public class AirScooter extends AirAbility {
 
 	@Override
 	public Location getLocation() {
-		return this.player != null ? this.player.getLocation() : null;
+		return this.caster != null ? this.caster.getLocation() : null;
 	}
 
 	@Override
@@ -280,49 +308,5 @@ public class AirScooter extends AirAbility {
 	@Override
 	public double getCollisionRadius() {
 		return this.getRadius();
-	}
-
-	public double getSpeed() {
-		return this.speed;
-	}
-
-	public void setSpeed(final double speed) {
-		this.speed = speed;
-	}
-
-	public double getInterval() {
-		return this.interval;
-	}
-
-	public void setInterval(final double interval) {
-		this.interval = interval;
-	}
-
-	public double getRadius() {
-		return this.radius;
-	}
-
-	public void setRadius(final double radius) {
-		this.radius = radius;
-	}
-
-	public double getMaxHeightFromGround() {
-		return this.maxHeightFromGround;
-	}
-
-	public void setMaxHeightFromGround(final double maxHeightFromGround) {
-		this.maxHeightFromGround = maxHeightFromGround;
-	}
-
-	public Block getFloorblock() {
-		return this.floorblock;
-	}
-
-	public void setFloorblock(final Block floorblock) {
-		this.floorblock = floorblock;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
 	}
 }

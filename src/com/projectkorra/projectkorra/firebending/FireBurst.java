@@ -22,10 +22,14 @@ public class FireBurst extends FireAbility {
 	private boolean charged;
 	@Attribute(Attribute.DAMAGE)
 	private double damage;
+	@Attribute(Attribute.DAMAGE)
+	private double coneDamage;
 	@Attribute(Attribute.CHARGE_DURATION)
 	private long chargeTime;
 	@Attribute(Attribute.RANGE)
 	private double range;
+	@Attribute(Attribute.RANGE)
+	private double coneRange;
 	@Attribute(Attribute.COOLDOWN)
 	private long cooldown;
 	private double angleTheta;
@@ -38,9 +42,11 @@ public class FireBurst extends FireAbility {
 
 		this.charged = false;
 		this.damage = applyModifiersDamage(getConfig().getDouble("Abilities.Fire.FireBurst.Damage"));
-		this.chargeTime = (long) applyInverseModifiers(getConfig().getLong("Abilities.Fire.FireBurst.ChargeTime"));
+		this.coneDamage = applyModifiersDamage(getConfig().getDouble("Abilities.Fire.FireBurst.ConeDamage"));
+		this.chargeTime = applyModifiersChargeTime(getConfig().getLong("Abilities.Fire.FireBurst.ChargeTime"));
 		this.range = applyModifiersRange(getConfig().getDouble("Abilities.Fire.FireBurst.Range"));
-		this.cooldown = getConfig().getLong("Abilities.Fire.FireBurst.Cooldown");
+		this.coneRange = applyModifiersRange(getConfig().getDouble("Abilities.Fire.FireBurst.ConeRange"));
+		this.cooldown = applyModifiersCooldown(getConfig().getLong("Abilities.Fire.FireBurst.Cooldown"));
 		this.angleTheta = getConfig().getDouble("Abilities.Fire.FireBurst.AngleTheta");
 		this.anglePhi = getConfig().getDouble("Abilities.Fire.FireBurst.AnglePhi");
 		this.particlesPercentage = getConfig().getDouble("Abilities.Fire.FireBurst.ParticlesPercentage");
@@ -59,8 +65,9 @@ public class FireBurst extends FireAbility {
 		chargeTimeMod = (long) (bPlayer.canUseSubElement(SubElement.BLUE_FIRE) ? (chargeTime / BlueFireAbility.getCooldownFactor() - chargeTime) + chargeTimeMod : chargeTimeMod);
 
 		if (this.bPlayer.isAvatarState()) {
-			this.chargeTime = getConfig().getLong("Abilities.Avatar.AvatarState.Fire.FireBurst.Damage");
+			this.chargeTime = getConfig().getLong("Abilities.Avatar.AvatarState.Fire.FireBurst.ChargeTime");
 			this.damage = getConfig().getInt("Abilities.Avatar.AvatarState.Fire.FireBurst.Damage");
+			this.coneDamage = getConfig().getInt("Abilities.Avatar.AvatarState.Fire.FireBurst.ConeDamage");
 			this.cooldown = getConfig().getLong("Abilities.Avatar.AvatarState.Fire.FireBurst.Cooldown");
 		}
 
@@ -98,15 +105,15 @@ public class FireBurst extends FireAbility {
 					final Vector direction = new Vector(x, z, y);
 
 					if (direction.angle(vector) <= angle) {
-						final FireBlast fblast = new FireBlast(location, direction.normalize(), this.player, this.damage, safeBlocks);
-						fblast.setRange(this.range);
+						final FireBlast fblast = new FireBlast(location, direction.normalize(), this.player, this.coneDamage, safeBlocks);
+						fblast.setRange(this.coneRange);
 						fblast.setFireBurst(true);
 					}
 				}
 			}
 			this.bPlayer.addCooldown(this);
+			this.remove();
 		}
-		this.remove();
 	}
 
 	/**

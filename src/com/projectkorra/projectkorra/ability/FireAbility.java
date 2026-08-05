@@ -16,13 +16,10 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.Waterlogged;
 import org.bukkit.block.data.type.Fire;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.util.BoundingBox;
-import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
@@ -30,16 +27,20 @@ import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.Element.SubElement;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
+import com.projectkorra.projectkorra.util.logging.PkLang;
+
+import me.clip.placeholderapi.PlaceholderAPI;
 
 public abstract class FireAbility extends ElementalAbility {
 
-	private static final Map<Block, Player> SOURCE_PLAYERS = new ConcurrentHashMap<>();
+	private static final Map<Block, LivingEntity> SOURCE_CASTERS = new ConcurrentHashMap<>();
 	private static final Set<BlockFace> IGNITE_FACES = new HashSet<>(Arrays.asList(BlockFace.EAST, BlockFace.WEST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.UP));
 
-	public FireAbility(final Player player) {
-		super(player);
+	public FireAbility(final LivingEntity caster) {
+		super(caster);
 	}
 
 	@Override
@@ -65,13 +66,25 @@ public abstract class FireAbility extends ElementalAbility {
 		}
 	}
 	/**
-	 * 
+	 *
 	 * @return Material based on whether the player is a Blue Firebender, SOUL_FIRE if true, FIRE if false.
 	 */
 	public Material getFireType() {
-		return getBendingPlayer().canUseSubElement(SubElement.BLUE_FIRE) ? Material.SOUL_FIRE : Material.FIRE;
+		return bender.canUseSubElement(SubElement.BLUE_FIRE) ? Material.SOUL_FIRE : Material.FIRE;
 	}
-	
+
+	/**
+	 * Gets the fire particles the player is permitted to use
+	 * @return ParticleEffect of the fire the player can use
+	 */
+	public ParticleEffect getFirebendingParticles() {
+		if (this.bender.canUseSubElement(SubElement.BLUE_FIRE)) {
+			return ParticleEffect.SOUL_FIRE_FLAME;
+		} else {
+			return ParticleEffect.FLAME;
+		}
+	}
+
 	/**
 	 * Returns if fire is allowed to completely replace blocks or if it should
 	 * place a temp fire block.
@@ -89,14 +102,14 @@ public abstract class FireAbility extends ElementalAbility {
 	}
 
 	public void createTempFire(final Location loc, final long time) {
-		if(isIgnitable(loc.getBlock())) {
-			new TempBlock(loc.getBlock(), createFireState(loc.getBlock(), getFireType() == Material.SOUL_FIRE), time);
-			SOURCE_PLAYERS.put(loc.getBlock(), this.getPlayer());
+		if (isIgnitable(loc.getBlock())) {
+			new TempBlock(loc.getBlock(), createFireState(loc.getBlock(), blockType(caster)), time, this);
+			SOURCE_CASTERS.put(loc.getBlock(), this.caster);
 		}
 	}
 
 	public double getDayFactor(final double value) {
-		return (this.player != null ? value * getDayFactor(player.getWorld()) : value);
+		return (this.caster != null ? value * getDayFactor(caster.getWorld()) : value);
 	}
 
 	public static double getDayFactor() {
@@ -146,17 +159,34 @@ public abstract class FireAbility extends ElementalAbility {
 		return material.isFlammable() || material.isBurnable();
 	}
 
+	public static BlockData createFireState(Block position) {
+		return createFireState(position, FireParticle.FLAME.blockId);
+	}
+
 	/**
 	 * Create a fire block with the correct blockstate at the given position
 	 * @param position The position to test
-	 * @param blue If its soul fire or not
+	 * @param fireBlockType The fire type to use, a Material or ItemsAdder ID
 	 * @return The fire blockstate
 	 */
-	public static BlockData createFireState(Block position, boolean blue) {
-		Fire fire = (Fire) Material.FIRE.createBlockData();
-		
+	public static BlockData createFireState(Block position, String fireBlockType) {
+		BlockData data = GeneralMethods.blockDataFromId(fireBlockType);
 		if (isIgnitable(position) && position.getRelative(BlockFace.DOWN).getType().isSolid())
-			return (blue) ? Material.SOUL_FIRE.createBlockData() : fire; //Default fire for when there is a solid block bellow
+			return data;
+
+		if (fireBlockType.equals("SOUL_FIRE")) {
+			if (isIgnitable(position.getRelative(BlockFace.UP))) {
+				return data;
+			} else {
+				fireBlockType = "fire";
+				data = GeneralMethods.blockDataFromId(fireBlockType);
+			}
+		}
+
+		if (!(data instanceof Fire fire)) {
+			PkLang.warning("FireAbility#createFireState: BlockData of type " + fireBlockType + " is not a Fire block");
+			return data;
+		}
 
 		for (BlockFace face : IGNITE_FACES) {
 			fire.setFace(face, false);
@@ -179,7 +209,7 @@ public abstract class FireAbility extends ElementalAbility {
 	 */
 	@Deprecated
 	public static boolean isWithinFireShield(final Location loc) {
-		final List<String> list = new ArrayList<String>();
+		final List<String> list = new ArrayList<>();
 		list.add("FireShield");
 		return GeneralMethods.blockAbilities(null, list, loc, 0);
 	}
@@ -193,22 +223,53 @@ public abstract class FireAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Properties.Fire.CombustionSound.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Properties.Fire.CombustionSound.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Properties.Fire.CombustionSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(loc, sound, volume, pitch);
 			}
 		}
 	}
 
+	public void playFirebendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset, final double extra) {
+		String particle = particleType(this.caster);
+		FireParticle fireParticle = FireParticle.byName(particle);
+		fireParticle.getEffect().display(loc, amount, xOffset, yOffset, zOffset, extra);
+//		if (this.getBendingPlayer().canUseSubElement(SubElement.BLUE_FIRE)) {
+//			ParticleEffect.SOUL_FIRE_FLAME.display(loc, amount, xOffset, yOffset, zOffset, extra);
+//		} else {
+//			ParticleEffect.FLAME.display(loc, amount, xOffset, yOffset, zOffset, extra);
+//		}
+	}
+
 	public void playFirebendingParticles(final Location loc, final int amount, final double xOffset, final double yOffset, final double zOffset) {
-		if (this.getBendingPlayer().canUseSubElement(SubElement.BLUE_FIRE)) {
-			ParticleEffect.SOUL_FIRE_FLAME.display(loc, amount, xOffset, yOffset, zOffset);
-		} else {
-			ParticleEffect.FLAME.display(loc, amount, xOffset, yOffset, zOffset);
+		playFirebendingParticles(loc, amount, xOffset, yOffset, zOffset, 0.025);
+	}
+
+	public static String particleType(final LivingEntity caster) {
+		String particle = "flame";
+		if (caster instanceof Player player && player.isOnline()) {
+			String placeholder = PlaceholderAPI.setPlaceholders(player, "%avatarverse_fireparticle%");
+			if (!placeholder.isEmpty())
+				particle = placeholder;
 		}
+		return particle;
+	}
+
+	public static String blockType(final LivingEntity caster) {
+		String block = "fire";
+		if (caster instanceof Player player && player.isOnline()) {
+			String placeholder = PlaceholderAPI.setPlaceholders(player, "%avatarverse_fireblock%");
+			if (!placeholder.isEmpty())
+				block = placeholder;
+		}
+		return block;
 	}
 
 	public static void playFirebendingSound(final Location loc) {
+		playFirebendingSound(null, loc);
+	}
+
+	public static void playFirebendingSound(final Ability ability, final Location loc) {
 		if (getConfig().getBoolean("Properties.Fire.PlaySound")) {
 			final float volume = (float) getConfig().getDouble("Properties.Fire.FireSound.Volume");
 			final float pitch = (float) getConfig().getDouble("Properties.Fire.FireSound.Pitch");
@@ -217,9 +278,9 @@ public abstract class FireAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Properties.Fire.FireSound.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Properties.Fire.FireSound.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Properties.Fire.FireSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(ability, loc, sound, volume, pitch);
 			}
 		}
 	}
@@ -229,10 +290,16 @@ public abstract class FireAbility extends ElementalAbility {
 	}
 
 	public static void playLightningbendingParticle(final Location loc, final double xOffset, final double yOffset, final double zOffset) {
-		GeneralMethods.displayColoredParticle("#01E1FF", loc, 1, xOffset, yOffset, zOffset);
+		ParticleEffect.END_ROD.display(loc, 1, xOffset, yOffset, zOffset, 0);
+		ParticleEffect.CRIT_MAGIC.display(loc, 1, xOffset, yOffset, zOffset, 0);
+		ParticleEffect.ELECTRIC_SPARK.display(loc, 1, xOffset, yOffset, zOffset, 0);
 	}
 
 	public static void playLightningbendingSound(final Location loc) {
+		playLightningbendingSound(null, loc);
+	}
+
+	public static void playLightningbendingSound(final Ability ability, final Location loc) {
 		if (getConfig().getBoolean("Properties.Fire.PlaySound")) {
 			final float volume = (float) getConfig().getDouble("Properties.Fire.LightningSound.Volume");
 			final float pitch = (float) getConfig().getDouble("Properties.Fire.LightningSound.Pitch");
@@ -241,14 +308,18 @@ public abstract class FireAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Properties.Fire.LightningSound.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Properties.Fire.LightningSound.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Properties.Fire.LightningSound.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(ability, loc, sound, volume, pitch);
 			}
 		}
 	}
 
 	public static void playLightningbendingChargingSound(final Location loc) {
+		playLightningbendingChargingSound(null, loc);
+	}
+
+	public static void playLightningbendingChargingSound(final Ability ability, final Location loc) {
 		if (getConfig().getBoolean("Properties.Fire.PlaySound")) {
 			final float volume = (float) getConfig().getDouble("Properties.Fire.LightningCharge.Volume");
 			final float pitch = (float) getConfig().getDouble("Properties.Fire.LightningCharge.Pitch");
@@ -257,14 +328,18 @@ public abstract class FireAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Properties.Fire.LightningCharge.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Properties.Fire.LightningCharge.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Properties.Fire.LightningCharge.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(ability, loc, sound, volume, pitch);
 			}
 		}
 	}
-	
+
 	public static void playLightningbendingHitSound(final Location loc) {
+		playLightningbendingHitSound(null, loc);
+	}
+
+	public static void playLightningbendingHitSound(final Ability ability, final Location loc) {
 		if (getConfig().getBoolean("Properties.Fire.PlaySound")) {
 			final float volume = (float) getConfig().getDouble("Properties.Fire.LightningHit.Volume");
 			final float pitch = (float) getConfig().getDouble("Properties.Fire.LightningHit.Pitch");
@@ -273,9 +348,9 @@ public abstract class FireAbility extends ElementalAbility {
 			try {
 				sound = Sound.valueOf(getConfig().getString("Properties.Fire.LightningHit.Sound"));
 			} catch (final IllegalArgumentException exception) {
-				ProjectKorra.log.warning("Your current value for 'Properties.Fire.LightningHit.Sound' is not valid.");
+				PkLang.warning("Your current value for 'Properties.Fire.LightningHit.Sound' is not valid.");
 			} finally {
-				loc.getWorld().playSound(loc, sound, volume, pitch);
+				PhasedSoundManager.playSound(ability, loc, sound, volume, pitch);
 			}
 		}
 	}
@@ -305,7 +380,16 @@ public abstract class FireAbility extends ElementalAbility {
 	 * @return The modified value
 	 */
 	public double applyModifiersDamage(double value) {
-		return GeneralMethods.applyModifiers(value, getDayFactor(1.0), bPlayer.hasElement(Element.BLUE_FIRE) ? getConfig().getDouble("Properties.Fire.BlueFire.DamageFactor", 1.1) : 1);
+		double fireModifier = 1;
+		CoreAbility abil = getAbility("WhiteFlames");
+		if (WhiteFireAbility.getBurntOutPlayers().containsKey(caster)) {
+			fireModifier = WhiteFireAbility.getDamageFactor(player, true);
+		} else if (abil != null && getAbility(caster, abil.getClass()) != null) {
+			fireModifier = WhiteFireAbility.getDamageFactor(player, false);
+		} else if (bender.hasElement(Element.BLUE_FIRE)) {
+			getConfig().getDouble("Properties.Fire.BlueFire.DamageFactor", 1.1);
+		}
+		return GeneralMethods.applyModifiers(value, getDayFactor(1.0), fireModifier);
 	}
 
 	/**
@@ -314,7 +398,16 @@ public abstract class FireAbility extends ElementalAbility {
 	 * @return The modified value
 	 */
 	public double applyModifiersRange(double value) {
-		return GeneralMethods.applyModifiers(value, getDayFactor(1.0), bPlayer.hasElement(Element.BLUE_FIRE) ? getConfig().getDouble("Properties.Fire.BlueFire.RangeFactor", 1.2) : 1);
+		double fireModifier = 1;
+		CoreAbility abil = getAbility("WhiteFlames");
+		if (abil != null && getAbility(caster, abil.getClass()) != null) {
+			fireModifier = WhiteFireAbility.getRangeFactor(player, false);
+		} else if (WhiteFireAbility.getBurntOutPlayers().containsKey(caster)) {
+			fireModifier = WhiteFireAbility.getRangeFactor(player, true);
+		}  else if (bender.hasElement(Element.BLUE_FIRE)) {
+			getConfig().getDouble("Properties.Fire.BlueFire.RangeFactor", 1.2);
+		}
+		return GeneralMethods.applyModifiers(value, getDayFactor(1.0), fireModifier);
 	}
 
 	/**
@@ -323,15 +416,87 @@ public abstract class FireAbility extends ElementalAbility {
 	 * @return The modified value
 	 */
 	public long applyModifiersCooldown(long value) {
-		return (long) GeneralMethods.applyInverseModifiers(value, getDayFactor(1.0), bPlayer.hasElement(Element.BLUE_FIRE) ? 1 / getConfig().getDouble("Properties.Fire.BlueFire.CooldownFactor", 0.9) : 1);
+		double fireModifier = 1;
+		CoreAbility abil = getAbility("WhiteFlames");
+		if (abil != null && getAbility(caster, abil.getClass()) != null) {
+			fireModifier = WhiteFireAbility.getCooldownFactor(player, false);
+		} else if (WhiteFireAbility.getBurntOutPlayers().containsKey(caster)) {
+			fireModifier = WhiteFireAbility.getCooldownFactor(player, true);
+		}  else if (bender.hasElement(Element.BLUE_FIRE)) {
+			getConfig().getDouble("Properties.Fire.BlueFire.CooldownFactor", 0.9);
+		}
+		return (long) GeneralMethods.applyInverseModifiers(value, getDayFactor(1.0), 1 / fireModifier);
+	}
+
+	public long applyModifiersChargeTime(long value) {
+		double fireModifier = 1;
+		CoreAbility abil = getAbility("WhiteFlames");
+		if (abil != null && getAbility(caster, abil.getClass()) != null) {
+			fireModifier = WhiteFireAbility.getChargeFactor(player, false);
+		} else if (WhiteFireAbility.getBurntOutPlayers().containsKey(caster)) {
+			fireModifier = WhiteFireAbility.getChargeFactor(player, true);
+		}
+		return (long) GeneralMethods.applyInverseModifiers(value, getDayFactor(1.0), 1 / fireModifier);
 	}
 
 	public static void stopBending() {
-		SOURCE_PLAYERS.clear();
+		SOURCE_CASTERS.clear();
 	}
 
-	public static Map<Block, Player> getSourcePlayers() {
-		return SOURCE_PLAYERS;
+	public static Map<Block, LivingEntity> getSourceCasters() {
+		return SOURCE_CASTERS;
+	}
+
+	public enum FireParticle {
+		FLAME(ParticleEffect.FLAME, "FIRE", Material.CANDLE, net.md_5.bungee.api.ChatColor.GOLD),
+		BLUE(ParticleEffect.SOUL_FIRE_FLAME, "SOUL_FIRE", Material.BLUE_CANDLE, net.md_5.bungee.api.ChatColor.DARK_AQUA),
+		WHITE(ParticleEffect.BUBBLE_POP, "customfire:white_fire", Material.WHITE_CANDLE, net.md_5.bungee.api.ChatColor.WHITE),
+		PURPLE(ParticleEffect.DRAGON_BREATH, "customfire:purple_fire", Material.PURPLE_CANDLE, net.md_5.bungee.api.ChatColor.DARK_PURPLE),
+		GREEN(ParticleEffect.SCRAPE, "customfire:green_fire", Material.GREEN_CANDLE, net.md_5.bungee.api.ChatColor.GREEN),
+		MAGENTA(ParticleEffect.WAX_OFF, "customfire:magenta_fire", Material.MAGENTA_CANDLE, net.md_5.bungee.api.ChatColor.LIGHT_PURPLE),
+		RED(ParticleEffect.WAX_ON, "customfire:red_fire", Material.RED_CANDLE, net.md_5.bungee.api.ChatColor.RED),
+		BLACK(ParticleEffect.HAPPY_VILLAGER, "customfire:black_fire", Material.BLACK_CANDLE, net.md_5.bungee.api.ChatColor.DARK_GRAY);
+
+		public static FireParticle byName(String name) {
+			return switch (name.toLowerCase()) {
+				case "blue" -> BLUE;
+				case "white" -> WHITE;
+				case "purple" -> PURPLE;
+				case "green" -> GREEN;
+				case "magenta" -> MAGENTA;
+				case "red" -> RED;
+				case "black" -> BLACK;
+				default -> FLAME;
+			};
+		}
+
+		final ParticleEffect effect;
+		final String blockId;
+		final Material icon;
+		final net.md_5.bungee.api.ChatColor color;
+
+		FireParticle(ParticleEffect effect, String blockId, Material icon, net.md_5.bungee.api.ChatColor color) {
+			this.effect = effect;
+			this.blockId = blockId;
+			this.icon = icon;
+			this.color = color;
+		}
+
+		public ParticleEffect getEffect() {
+			return effect;
+		}
+
+		public String getBlockId() {
+			return blockId;
+		}
+
+		public Material getIcon() {
+			return icon;
+		}
+
+		public net.md_5.bungee.api.ChatColor getColor() {
+			return color;
+		}
 	}
 
 }

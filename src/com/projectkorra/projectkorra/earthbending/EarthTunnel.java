@@ -14,6 +14,7 @@ import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.TempBlock;
 
 public class EarthTunnel extends EarthAbility {
@@ -70,7 +71,7 @@ public class EarthTunnel extends EarthAbility {
 		if (!this.bPlayer.canBend(this) || (!EarthAbility.isEarthbendable(player, this.block) && !ElementalAbility.isTransparent(player, "EarthTunnel", this.block))) {
 			return;
 		}
-		if (GeneralMethods.isRegionProtectedFromBuild(this, this.block.getLocation())) {
+		if (RegionProtection.isRegionProtected(this, this.block.getLocation())) {
 			return;
 		}
 		if (this.bPlayer.isAvatarState()) {
@@ -126,7 +127,7 @@ public class EarthTunnel extends EarthAbility {
 						this.block = this.location.clone().add(this.direction.clone().normalize().multiply(this.depth)).add(vec).getBlock();
 					}
 
-					if (GeneralMethods.isRegionProtectedFromBuild(this, this.block.getLocation())) {
+					if (RegionProtection.isRegionProtected(this, this.block.getLocation())) {
 						this.bPlayer.addCooldown(this);
 						this.remove();
 						return;
@@ -136,14 +137,14 @@ public class EarthTunnel extends EarthAbility {
 						if (getMovedEarth().containsKey(this.block)) {
 							this.block.setType(Material.AIR);
 						} else {
-							new TempBlock(this.block, Material.AIR).setRevertTime(revertTime);
+							new TempBlock(this.block, Material.AIR, this).setRevertTime(revertTime);
 							if (isPlant(this.block.getRelative(BlockFace.UP)) || isSnow(this.block.getRelative(BlockFace.UP))) {
 								final Block above = this.block.getRelative(BlockFace.UP);
 								final Block above2 = above.getRelative(BlockFace.UP);
 								if (isPlant(above) || isSnow(above)) {
-									new TempBlock(above, Material.AIR).setRevertTime(revertTime);
+									new TempBlock(above, Material.AIR, this).setRevertTime(revertTime);
 									if (isPlant(above2) && above2.getType().equals(Material.TALL_GRASS)) {
-										new TempBlock(above2, Material.AIR).setRevertTime(revertTime);
+										new TempBlock(above2, Material.AIR, this).setRevertTime(revertTime);
 									}
 								}
 							}

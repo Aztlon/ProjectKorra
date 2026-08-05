@@ -1,16 +1,11 @@
 package com.projectkorra.projectkorra.waterbending.healing;
 
-import java.util.HashMap;
-
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
@@ -21,8 +16,10 @@ import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.HealingAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.chiblocking.Smokescreen;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 public class HealingWaters extends HealingAbility {
 
@@ -123,8 +120,14 @@ public class HealingWaters extends HealingAbility {
 		// If ability is is charged, set charged = true. If not, play charging particles.
 		if (System.currentTimeMillis() >= this.getStartTime() + this.chargeTime) {
 			if (!this.charged) {
+				if (this.bottle) {
+					if (!CarriedWaterManager.consumeForAbility(this, this.getCarriedWaterCost(), this.getName() + ".Consume")) {
+						this.bPlayer.addCooldown(this);
+						this.remove();
+						return;
+					}
+				}
 				this.charged = true;
-				WaterReturn.emptyWaterBottle(this.player);
 			}
 		} else {
 			GeneralMethods.displayColoredParticle(this.hex, this.origin);
@@ -183,7 +186,7 @@ public class HealingWaters extends HealingAbility {
 	}
 
 	private void giveHP(final Player player) {
-		if (!player.isDead() && player.getHealth() < player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue()) {
+		if (!player.isDead() && player.getHealth() < player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()) {
 			this.applyHealing(player);
 		} else {
 			this.healing = false;
@@ -200,7 +203,7 @@ public class HealingWaters extends HealingAbility {
 	}
 
 	private void giveHP(final LivingEntity livingEntity) {
-		if (!livingEntity.isDead() && livingEntity.getHealth() < livingEntity.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue()) {
+		if (!livingEntity.isDead() && livingEntity.getHealth() < livingEntity.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()) {
 			this.applyHealing(livingEntity);
 		} else {
 			this.healing = false;
@@ -208,7 +211,7 @@ public class HealingWaters extends HealingAbility {
 
 		for (final PotionEffect effect : livingEntity.getActivePotionEffects()) {
 			if (ElementalAbility.isNegativeEffect(effect.getType())) {
-				livingEntity.removePotionEffect(effect.getType());
+				PhasedEntityEffectManager.removePotionEffect(this, livingEntity, effect.getType());
 			}
 		}
 	}
@@ -223,8 +226,11 @@ public class HealingWaters extends HealingAbility {
 	}
 
 	private void applyHealing(final LivingEntity livingEntity) {
-		if (livingEntity.getHealth() < livingEntity.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue()) {
-			livingEntity.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 30, this.potionPotency));
+		if (livingEntity.getHealth() < livingEntity.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()) {
+			if (!PhasedEntityEffectManager.addPotionEffect(this, livingEntity, new PotionEffect(PotionEffectType.REGENERATION, 30, this.potionPotency))) {
+				this.healing = false;
+				return;
+			}
 			AirAbility.breakBreathbendingHold(livingEntity);
 			this.healing = true;
 			this.healingSelf = false;
@@ -303,31 +309,12 @@ public class HealingWaters extends HealingAbility {
 		GeneralMethods.displayColoredParticle(this.hex, this.location);
 	}
 
-	private void fillBottle() {
-		final PlayerInventory inventory = this.player.getInventory();
-		if (inventory.contains(Material.GLASS_BOTTLE)) {
-			final int index = inventory.first(Material.GLASS_BOTTLE);
-			final ItemStack item = inventory.getItem(index);
-
-			final ItemStack water = WaterReturn.waterBottleItem();
-
-			if (item.getAmount() == 1) {
-				inventory.setItem(index, water);
-			} else {
-				item.setAmount(item.getAmount() - 1);
-				inventory.setItem(index, item);
-				final HashMap<Integer, ItemStack> leftover = inventory.addItem(water);
-				for (final int left : leftover.keySet()) {
-					this.player.getWorld().dropItemNaturally(this.player.getLocation(), leftover.get(left));
-				}
-			}
-		}
-	}
-
 	@Override
 	public void remove() {
 		if (this.bottle && this.charged) {
-			this.fillBottle();
+			CarriedWaterManager.returnForAbility(this,
+					this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)),
+					this.getName() + ".Return");
 		}
 		super.remove();
 	}

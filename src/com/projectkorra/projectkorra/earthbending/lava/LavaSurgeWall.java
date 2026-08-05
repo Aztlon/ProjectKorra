@@ -234,7 +234,7 @@ public class LavaSurgeWall extends LavaAbility {
 	}
 
 	private void addWallBlock(final Block block) {
-		new TempBlock(block, Material.LAVA);
+		new TempBlock(block, Material.LAVA, this);
 	}
 
 	private void breakBlock() {
@@ -274,7 +274,7 @@ public class LavaSurgeWall extends LavaAbility {
 			return;
 		}
 		if (!TempBlock.isTempBlock(block)) {
-			new TempBlock(block, Material.LAVA);
+			new TempBlock(block, Material.LAVA, this);
 			AFFECTED_BLOCKS.put(block, block);
 		}
 	}
@@ -290,7 +290,7 @@ public class LavaSurgeWall extends LavaAbility {
 		if (!hasAbility(player, LavaSurgeWall.class)) {
 			new LavaSurgeWave(player);
 			return;
-		} else if (isLavabendable(player, player.getTargetBlock((HashSet<Material>) null, SURGE_WAVE_RANGE))) {
+		} else if (isLavabendable(player.getTargetBlock((HashSet<Material>) null, SURGE_WAVE_RANGE))) {
 			new LavaSurgeWave(player);
 			return;
 		}

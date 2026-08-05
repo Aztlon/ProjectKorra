@@ -1,7 +1,5 @@
 package com.projectkorra.projectkorra.earthbending.passive;
 
-import java.util.HashSet;
-
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -10,9 +8,11 @@ import org.bukkit.block.data.type.Door;
 import org.bukkit.block.data.type.TrapDoor;
 import org.bukkit.entity.Player;
 
-import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.MetalAbility;
 import com.projectkorra.projectkorra.ability.PassiveAbility;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
+import com.projectkorra.projectkorra.region.RegionProtection;
 
 public class FerroControl extends MetalAbility implements PassiveAbility {
 
@@ -32,10 +32,10 @@ public class FerroControl extends MetalAbility implements PassiveAbility {
 		}
 
 		boolean used = false, tDoor = false, open = false;
-		this.block = this.player.getTargetBlock((HashSet<Material>) null, 5);
+		this.block = this.player.getTargetBlock(null, 5);
 
 		if (this.block != null) {
-			if (this.block.getType() == Material.IRON_DOOR && !GeneralMethods.isRegionProtectedFromBuild(this.player, this.block.getLocation())) {
+			if (this.block.getType() == Material.IRON_DOOR && !RegionProtection.isRegionProtected(this.player, this.block.getLocation())) {
 				final Door door = (Door) this.block.getBlockData();
 
 				door.setOpen(!door.isOpen());
@@ -43,7 +43,7 @@ public class FerroControl extends MetalAbility implements PassiveAbility {
 
 				open = door.isOpen();
 				used = true;
-			} else if (this.block.getType() == Material.IRON_TRAPDOOR && !GeneralMethods.isRegionProtectedFromBuild(this.player, this.block.getLocation())) {
+			} else if (this.block.getType() == Material.IRON_TRAPDOOR && !RegionProtection.isRegionProtected(this.player, this.block.getLocation())) {
 				final TrapDoor trap = (TrapDoor) this.block.getBlockData();
 
 				trap.setOpen(!trap.isOpen());
@@ -58,7 +58,7 @@ public class FerroControl extends MetalAbility implements PassiveAbility {
 
 		if (used) {
 			final String sound = "BLOCK_IRON_" + (tDoor ? "TRAP" : "") + "DOOR_" + (open ? "OPEN" : "CLOSE");
-			this.block.getWorld().playSound(this.block.getLocation(), Sound.valueOf(sound), 0.5f, 0);
+			PhasedSoundManager.playSound(this, this.block.getLocation(), Sound.valueOf(sound), 0.5f, 0);
 			this.bPlayer.addCooldown(this, 200);
 		}
 		this.remove();

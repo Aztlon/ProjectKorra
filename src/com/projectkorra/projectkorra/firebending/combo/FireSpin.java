@@ -3,8 +3,6 @@ package com.projectkorra.projectkorra.firebending.combo;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.projectkorra.projectkorra.ability.util.ComboUtil;
-import com.projectkorra.projectkorra.configuration.ConfigManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -12,6 +10,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
@@ -19,9 +18,16 @@ import com.projectkorra.projectkorra.ability.ComboAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
+import com.projectkorra.projectkorra.ability.util.ComboUtil;
 import com.projectkorra.projectkorra.attribute.Attribute;
-import com.projectkorra.projectkorra.util.ClickType;
+import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class FireSpin extends FireAbility implements ComboAbility {
 
 	@Attribute(Attribute.COOLDOWN)
@@ -38,14 +44,14 @@ public class FireSpin extends FireAbility implements ComboAbility {
 	private ArrayList<LivingEntity> affectedEntities;
 	private ArrayList<BukkitRunnable> tasks;
 
-	public FireSpin(final Player player) {
-		super(player);
+	public FireSpin(final LivingEntity caster) {
+		super(caster);
 
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			return;
 		}
 
-		if (player.getLocation().getBlock().getType() == Material.WATER) {
+		if (caster.getLocation().getBlock().getType() == Material.WATER) {
 			return;
 		}
 
@@ -58,7 +64,7 @@ public class FireSpin extends FireAbility implements ComboAbility {
 		this.knockback = applyModifiers(getConfig().getDouble("Abilities.Fire.FireSpin.Knockback"));
 		this.speed = getConfig().getDouble("Abilities.Fire.FireSpin.Speed");
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.cooldown = 0;
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireSpin.Damage");
 			this.range = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireSpin.Range");
@@ -80,26 +86,26 @@ public class FireSpin extends FireAbility implements ComboAbility {
 			}
 		}
 
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
 			return;
 		}
 
 		if (this.destination == null) {
-			if (this.bPlayer.isOnCooldown("FireSpin") && !this.bPlayer.isAvatarState()) {
+			if (this.bender.isOnCooldown("FireSpin") && !this.bender.isAvatarState()) {
 				this.remove();
 				return;
 			}
-			this.bPlayer.addCooldown("FireSpin", this.cooldown);
-			this.destination = this.player.getEyeLocation().add(this.range, 0, this.range);
-			this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 0.5f, 0.5f);
+			this.bender.addCooldown("FireSpin", this.cooldown);
+			this.destination = this.caster.getEyeLocation().add(this.range, 0, this.range);
+			PhasedSoundManager.playSound(this, this.caster.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 0.5f, 0.5f);
 
 			for (int i = 0; i <= 360; i += 5) {
-				Vector vec = GeneralMethods.getDirection(this.player.getLocation(), this.destination.clone());
+				Vector vec = GeneralMethods.getDirection(this.caster.getLocation(), this.destination.clone());
 				vec = GeneralMethods.rotateXZ(vec, i - 180);
 				vec.setY(0);
 
-				final FireComboStream fs = new FireComboStream(this.player, this, vec, this.player.getLocation().clone().add(0, 1, 0), this.range, this.speed);
+				final FireComboStream fs = new FireComboStream(this.caster, this, vec, this.caster.getLocation().clone().add(0, 1, 0), this.range, this.speed);
 				fs.setSpread(0.0F);
 				fs.setDensity(1);
 				fs.setUseNewParticles(true);
@@ -113,9 +119,8 @@ public class FireSpin extends FireAbility implements ComboAbility {
 			}
 		}
 
-		if (this.tasks.size() == 0) {
+		if (this.tasks.isEmpty()) {
 			this.remove();
-			return;
 		}
 	}
 
@@ -135,8 +140,7 @@ public class FireSpin extends FireAbility implements ComboAbility {
 			// Remove all of the streams that are by this specific ourLocation.
 			// Don't just do a single stream at a time or this algorithm becomes O(n^2) with Collision's detection algorithm.
 			for (final BukkitRunnable task : this.getTasks()) {
-				if (task instanceof FireComboStream) {
-					final FireComboStream stream = (FireComboStream) task;
+				if (task instanceof FireComboStream stream) {
 					if (stream.getLocation().distanceSquared(collision.getLocationSecond()) > collisionDistanceSquared) {
 						newTasks.add(stream);
 					} else {
@@ -162,6 +166,7 @@ public class FireSpin extends FireAbility implements ComboAbility {
 		return locations;
 	}
 
+	@NotNull
 	@Override
 	public Object createNewComboInstance(final Player player) {
 		return new FireSpin(player);
@@ -189,23 +194,11 @@ public class FireSpin extends FireAbility implements ComboAbility {
 
 	@Override
 	public Location getLocation() {
-		return this.player.getLocation();
+		return this.caster.getLocation();
 	}
 
 	@Override
 	public boolean isHarmlessAbility() {
 		return false;
-	}
-
-	public ArrayList<LivingEntity> getAffectedEntities() {
-		return this.affectedEntities;
-	}
-
-	public ArrayList<BukkitRunnable> getTasks() {
-		return this.tasks;
-	}
-
-	public void setTasks(final ArrayList<BukkitRunnable> tasks) {
-		this.tasks = tasks;
 	}
 }

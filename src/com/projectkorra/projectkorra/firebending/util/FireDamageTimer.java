@@ -10,16 +10,17 @@ import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.ability.CoreAbility;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
 import com.projectkorra.projectkorra.firebending.HeatControl;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
 public class FireDamageTimer {
 
 	private static final int MAX_TICKS = 90;
-	private static Ability ability = null;
 	private static final double DAMAGE = 1;
 	private static final long BUFFER = 30;
-	private static final Map<Entity, Player> INSTANCES = new ConcurrentHashMap<>();
+	private static final Map<Entity, LivingEntity> INSTANCES = new ConcurrentHashMap<>();
+	private static final Map<Entity, Ability> ABILITIES = new ConcurrentHashMap<>();
 	private static final Map<Entity, Long> TIMES = new ConcurrentHashMap<>();
 
 	/**
@@ -29,21 +30,25 @@ public class FireDamageTimer {
 	 * @param source player who used the fire move.
 	 */
 	@Deprecated
-	public FireDamageTimer(final Entity entity, final Player source) {
+	public FireDamageTimer(final Entity entity, final LivingEntity source) {
 		this(entity, source, null, false);
 	}
 	
-	public FireDamageTimer(final Entity entity, final Player source, Ability abil) {
+	public FireDamageTimer(final Entity entity, final LivingEntity source, Ability abil) {
 		this(entity, source, abil, false);
 	}
 
-	public FireDamageTimer(final Entity entity, final Player source, Ability abil, final boolean affectSelf) {
+	public FireDamageTimer(final Entity entity, final LivingEntity source, Ability abil, final boolean affectSelf) {
 		if (entity.getEntityId() == source.getEntityId() && !affectSelf) {
 			return;
 		}
 
 		INSTANCES.put(entity, source);
-		ability = abil;
+		if (abil == null) {
+			ABILITIES.remove(entity);
+		} else {
+			ABILITIES.put(entity, abil);
+		}
 	}
 
 	public static boolean isEnflamed(final Entity entity) {
@@ -69,17 +74,15 @@ public class FireDamageTimer {
 				}
 			}
 			final LivingEntity Lentity = (LivingEntity) entity;
-			final Player source = INSTANCES.get(entity);
+			final LivingEntity source = INSTANCES.get(entity);
+			final Ability ability = ABILITIES.get(entity);
+			final Ability damageAbility = ability == null ? CoreAbility.getAbilitiesByElement(Element.FIRE).get(0) : ability;
 			
 			// damages the entity.
-			if (ability == null) {
-				DamageHandler.damageEntity(Lentity, source, damage, CoreAbility.getAbilitiesByElement(Element.FIRE).get(0), false, true);
-			} else {
-				DamageHandler.damageEntity(Lentity, source, damage, ability, false, true);
-			}
+			DamageHandler.damageEntity(Lentity, source, damage, damageAbility, false, true);
 			
 			if (entity.getFireTicks() > MAX_TICKS) {
-				entity.setFireTicks(MAX_TICKS);
+				PhasedEntityEffectManager.setFireTicks(damageAbility, entity, MAX_TICKS);
 			}
 		}
 	}
@@ -92,6 +95,8 @@ public class FireDamageTimer {
 		for (final Entity entity : INSTANCES.keySet()) {
 			if (entity.getFireTicks() <= 0) {
 				INSTANCES.remove(entity);
+				ABILITIES.remove(entity);
+				TIMES.remove(entity);
 			}
 		}
 	}
@@ -102,7 +107,7 @@ public class FireDamageTimer {
 	 * @return Map from Entity to Player, entity on fire to player who set them
 	 * alight with firebending.
 	 */
-	public static Map<Entity, Player> getInstances() {
+	public static Map<Entity, LivingEntity> getInstances() {
 		return INSTANCES;
 	}
 }

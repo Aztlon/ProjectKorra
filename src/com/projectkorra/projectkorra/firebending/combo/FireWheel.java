@@ -1,6 +1,7 @@
 package com.projectkorra.projectkorra.firebending.combo;
 
 import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
 import com.projectkorra.projectkorra.ability.util.ComboUtil;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
@@ -13,6 +14,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.ComboAbility;
@@ -21,9 +23,18 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
+import com.projectkorra.projectkorra.util.TempBlock;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class FireWheel extends FireAbility implements ComboAbility {
 
 	private Location origin;
@@ -44,10 +55,10 @@ public class FireWheel extends FireAbility implements ComboAbility {
 	private double damage;
 	private ArrayList<LivingEntity> affectedEntities;
 
-	public FireWheel(final Player player) {
-		super(player);
+	public FireWheel(final LivingEntity caster) {
+		super(caster);
 
-		if (this.bPlayer.isOnCooldown("FireWheel") && !this.bPlayer.isAvatarState()) {
+		if (this.bender.isOnCooldown("FireWheel") && !this.bender.isAvatarState()) {
 			this.remove();
 			return;
 		}
@@ -59,20 +70,19 @@ public class FireWheel extends FireAbility implements ComboAbility {
 		this.fireTicks = getConfig().getDouble("Abilities.Fire.FireWheel.FireTicks");
 		this.height = applyModifiers(getConfig().getInt("Abilities.Fire.FireWheel.Height"));
 
-		this.bPlayer.addCooldown(this);
-		this.affectedEntities = new ArrayList<LivingEntity>();
+		this.affectedEntities = new ArrayList<>();
 
-		if (GeneralMethods.getTopBlock(player.getLocation(), 3, 3) == null) {
+		if (GeneralMethods.getTopBlock(caster.getLocation(), 3, 3) == null) {
 			this.remove();
 			return;
 		}
 
-		this.location = player.getLocation().clone();
+		this.location = caster.getLocation().clone();
 		this.location.setPitch(0);
 		this.direction = this.location.getDirection().clone().normalize();
 		this.direction.setY(0);
 
-		if (this.bPlayer.isAvatarState()) {
+		if (this.bender.isAvatarState()) {
 			this.cooldown = 0;
 			this.damage = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireWheel.Damage");
 			this.range = getConfig().getDouble("Abilities.Avatar.AvatarState.Fire.FireWheel.Range");
@@ -82,11 +92,15 @@ public class FireWheel extends FireAbility implements ComboAbility {
 		}
 
 		this.radius = this.height / 2;
-		this.origin = player.getLocation().clone().add(0, this.radius, 0);
+		this.origin = caster.getLocation().clone().add(0, this.radius, 0);
 
 		this.start();
+		if (!isRemoved()) {
+			this.bender.addCooldown(this);
+		}
 	}
 
+	@NotNull
 	@Override
 	public Object createNewComboInstance(final Player player) {
 		return new FireWheel(player);
@@ -99,7 +113,7 @@ public class FireWheel extends FireAbility implements ComboAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this) || GeneralMethods.isRegionProtectedFromBuild(this.player, this.location)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this) || RegionProtection.isRegionProtected(this.caster, this.location)) {
 			this.remove();
 			return;
 		}
@@ -110,7 +124,8 @@ public class FireWheel extends FireAbility implements ComboAbility {
 
 		Block topBlock = GeneralMethods.getTopBlock(this.location, (int) this.radius, (int)this.radius + 2);
 		if (topBlock.getType().equals(Material.SNOW)) {
-			topBlock.breakNaturally();
+			new TempBlock(topBlock, Material.AIR.createBlockData(), 60_000L + ThreadLocalRandom.current().nextLong(0, 1_000L), this);
+//			topBlock.breakNaturally();
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
 		}
 		if (isWater(topBlock)) {
@@ -118,10 +133,11 @@ public class FireWheel extends FireAbility implements ComboAbility {
 			return;
 		} else if (topBlock.getType() == Material.FIRE) {
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
-		} else if (ElementalAbility.isPlant(topBlock)) {
-			topBlock.breakNaturally();
+		} else if (isPlant(topBlock) && !isDecayablePlant(topBlock)) {
+			new TempBlock(topBlock, Material.AIR.createBlockData(), 60_000L + ThreadLocalRandom.current().nextLong(0, 1_000L), this);
+//			topBlock.breakNaturally();
 			topBlock = topBlock.getRelative(BlockFace.DOWN);
-		} else if (ElementalAbility.isAir(topBlock.getType())) {
+		} else if (isAir(topBlock.getType())) {
 			this.remove();
 			return;
 		} else if (GeneralMethods.isSolid(topBlock.getRelative(BlockFace.UP)) || isWater(topBlock.getRelative(BlockFace.UP))) {
@@ -139,18 +155,19 @@ public class FireWheel extends FireAbility implements ComboAbility {
 		}
 
 		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, this.radius + 0.5)) {
-			if (entity instanceof LivingEntity && !entity.equals(this.player)) {
+			if (entity instanceof LivingEntity && !entity.equals(this.caster)) {
 				if (!this.affectedEntities.contains(entity)) {
 					this.affectedEntities.add((LivingEntity) entity);
 					DamageHandler.damageEntity(entity, this.damage, this);
-					entity.setFireTicks((int) (this.fireTicks * 20));
-					new FireDamageTimer(entity, this.player, this);
+					if (PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.fireTicks * 20))) {
+						new FireDamageTimer(entity, this.caster, this);
+					}
 				}
 			}
 		}
 
 		this.location = this.location.add(this.direction.clone().multiply(this.speed));
-		this.location.getWorld().playSound(this.location, Sound.BLOCK_FIRE_AMBIENT, 1, 1);
+		PhasedSoundManager.playSound(this, this.location, Sound.BLOCK_FIRE_AMBIENT, 1, 1);
 	}
 
 	@Override
@@ -176,9 +193,5 @@ public class FireWheel extends FireAbility implements ComboAbility {
 	@Override
 	public boolean isHarmlessAbility() {
 		return false;
-	}
-
-	public ArrayList<LivingEntity> getAffectedEntities() {
-		return this.affectedEntities;
 	}
 }

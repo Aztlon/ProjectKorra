@@ -26,6 +26,7 @@ import com.projectkorra.projectkorra.ability.BloodAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
 import com.projectkorra.projectkorra.object.HorizontalVelocityTracker;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempPotionEffect;
 
@@ -89,7 +90,7 @@ public class Bloodbending extends BloodAbility {
 					if (entity instanceof Player) {
 						final Player enemyPlayer = (Player) entity;
 						final BendingPlayer enemyBPlayer = BendingPlayer.getBendingPlayer(enemyPlayer);
-						if (enemyBPlayer == null || GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || enemyBPlayer.isAvatarState() || entity.getEntityId() == player.getEntityId() || enemyBPlayer.canBendIgnoreBindsCooldowns(this)) {
+						if (enemyBPlayer == null || RegionProtection.isRegionProtected(this, entity.getLocation()) || enemyBPlayer.isAvatarState() || entity.getEntityId() == player.getEntityId() || enemyBPlayer.canBendIgnoreBindsCooldowns(this)) {
 							continue;
 						}
 					}
@@ -99,7 +100,7 @@ public class Bloodbending extends BloodAbility {
 				}
 			}
 		} else {
-			List<Entity> entities = new CopyOnWriteArrayList<Entity>();
+			List<Entity> entities = new CopyOnWriteArrayList<>();
 			for (int i = 0; i < this.range; i++) {
 				final Location location = GeneralMethods.getTargetedLocation(player, i, getTransparentMaterials());
 				entities = GeneralMethods.getEntitiesAroundPoint(location, 1.7);
@@ -116,7 +117,7 @@ public class Bloodbending extends BloodAbility {
 			}
 			this.target = entities.get(0);
 
-			if (this.target == null || !(this.target instanceof LivingEntity) || GeneralMethods.isRegionProtectedFromBuild(this, this.target.getLocation()) || this.target.getEntityId() == player.getEntityId() || BLOODLESS_ENTITIES.contains(this.target.getType())) {
+			if (this.target == null || !(this.target instanceof LivingEntity) || RegionProtection.isRegionProtected(this, this.target.getLocation()) || this.target.getEntityId() == player.getEntityId() || BLOODLESS_ENTITIES.contains(this.target.getType())) {
 				return;
 			} else if (this.target instanceof Player) {
 				final BendingPlayer targetBPlayer = BendingPlayer.getBendingPlayer((Player) this.target);
@@ -178,7 +179,7 @@ public class Bloodbending extends BloodAbility {
 
 	@Override
 	public void progress() {
-		final PotionEffect effect = new PotionEffect(PotionEffectType.SLOW, 60, 1);
+		final PotionEffect effect = new PotionEffect(PotionEffectType.SLOWNESS, 60, 1);
 
 		if (!this.player.isSneaking()) {
 			bPlayer.addCooldown(this);
@@ -213,7 +214,7 @@ public class Bloodbending extends BloodAbility {
 			final ArrayList<Entity> entities = new ArrayList<>();
 
 			for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.player.getLocation(), this.range)) {
-				if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation())) {
+				if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 					continue;
 				} else if (!(entity instanceof LivingEntity)) {
 					continue;
@@ -364,6 +365,14 @@ public class Bloodbending extends BloodAbility {
 
 		final Bloodbending bb = getAbility(TARGETED_ENTITIES.get(entity), Bloodbending.class);
 		return bb.vector;
+	}
+
+	public static Bloodbending getBloodbendingAbility(final Entity entity) {
+		if (!TARGETED_ENTITIES.containsKey(entity)) {
+			return null;
+		}
+
+		return getAbility(TARGETED_ENTITIES.get(entity), Bloodbending.class);
 	}
 
 	public static BendingPlayer getBloodbender(final Entity entity) {

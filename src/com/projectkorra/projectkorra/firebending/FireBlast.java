@@ -4,32 +4,32 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.BlastFurnace;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.data.type.Campfire;
 import org.bukkit.block.Furnace;
 import org.bukkit.block.Smoker;
+import org.bukkit.block.data.Lightable;
+import org.bukkit.block.data.Waterlogged;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BlockIterator;
 import org.bukkit.util.Vector;
 
+import com.projectkorra.projectkorra.Element.SubElement;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
-import com.projectkorra.projectkorra.Element.SubElement;
 import com.projectkorra.projectkorra.ability.AirAbility;
-import com.projectkorra.projectkorra.ability.BlueFireAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 
@@ -43,6 +43,7 @@ public class FireBlast extends FireAbility {
 	private boolean dissipate;
 	private boolean isFireBurst = false;
 	private boolean fireBurstIgnite;
+	public boolean selfHit;
 	private int ticks;
 	@Attribute(Attribute.COOLDOWN)
 	private long cooldown;
@@ -85,25 +86,27 @@ public class FireBlast extends FireAbility {
 		this.start();
 	}
 	
-	public FireBlast(final Player player) {
-		super(player);
+	public FireBlast(final LivingEntity caster) {
+		super(caster);
 
-		if (this.bPlayer.isOnCooldown("FireBlast")) {
+		if (this.bender.isOnCooldown("FireBlast")) {
 			return;
-		} else if (player.getEyeLocation().getBlock().isLiquid() || FireBlastCharged.isCharging(player)) {
+		} else if (caster.getEyeLocation().getBlock().isLiquid() || FireBlastCharged.isCharging(caster)) {
 			return;
 		}
 
 		this.setFields();
 		this.isFireBurst = false;
 		this.safeBlocks = new ArrayList<>();
-		this.location = player.getEyeLocation();
-		this.origin = player.getEyeLocation();
-		this.direction = player.getEyeLocation().getDirection().normalize();
+		this.location = caster.getEyeLocation();
+		this.origin = caster.getEyeLocation();
+		this.direction = caster.getEyeLocation().getDirection().normalize();
 		this.location = this.location.add(this.direction.clone());
 
 		this.start();
-		this.bPlayer.addCooldown("FireBlast", this.cooldown);
+		if (!this.isRemoved()) {
+			this.bender.addCooldown("FireBlast", this.cooldown);
+		}
 	}
 
 	private void setFields() {
@@ -132,6 +135,12 @@ public class FireBlast extends FireAbility {
 			playFirebendingParticles(this.location, 6, this.flameRadius, this.flameRadius, this.flameRadius);
 		}
 
+		if (GeneralMethods.checkDiagonalWall(this.location, this.direction)) {
+			this.remove();
+			return;
+		}
+
+		
 		BlockIterator blocks = new BlockIterator(this.getLocation().getWorld(), this.location.toVector(), this.direction, 0, (int) Math.ceil(this.direction.clone().multiply(speedFactor).length()));
 
 		while (blocks.hasNext() && checkLocation(blocks.next()));
@@ -161,12 +170,10 @@ public class FireBlast extends FireAbility {
 				final BlastFurnace blastF = (BlastFurnace) block.getState();
 				blastF.setBurnTime((short) 800);
 				blastF.update();
-			} else if (block instanceof Campfire) {
-				final Campfire campfire = (Campfire) block.getBlockData();
-				if(!campfire.isLit()) {
-					if(block.getType() != Material.SOUL_CAMPFIRE || bPlayer.canUseSubElement(SubElement.BLUE_FIRE)) {
-						campfire.setLit(true);
-					}
+			} else if (block.getBlockData() instanceof final Lightable lightable) {
+				if (!lightable.isLit() && !(block.getBlockData() instanceof final Waterlogged wl && wl.isWaterlogged()) && (block.getType() != Material.SOUL_CAMPFIRE || bender.canUseSubElement(SubElement.BLUE_FIRE))) {
+					lightable.setLit(true);
+					block.setBlockData(lightable);
 				}
 			} else if (isIgnitable(this.location.getBlock())) {
 				if (!this.isFireBurst || this.fireBurstIgnite) {
@@ -178,18 +185,21 @@ public class FireBlast extends FireAbility {
 		}
 		return true;
 	}
+
 	private void affect(final Entity entity) {
-		if (entity.getUniqueId() != this.player.getUniqueId() && !RegionProtection.isRegionProtected(this, entity.getLocation()) && !((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
-			if (this.bPlayer.isAvatarState()) {
+		if ((entity.getUniqueId() != this.caster.getUniqueId() || selfHit) && !RegionProtection.isRegionProtected(this, entity.getLocation()) && !((entity instanceof Player) && Commands.invincible.contains(entity.getName()))) {
+			if (this.bender.isAvatarState()) {
 				GeneralMethods.setVelocity(this, entity, this.direction.clone().multiply(AvatarState.getValue(this.knockback)));
 			} else {
 				GeneralMethods.setVelocity(this, entity, this.direction.clone().multiply(this.knockback));
 			}
 			if (entity instanceof LivingEntity) {
-				entity.setFireTicks((int) (this.fireTicks * 20));
+				final boolean ignited = PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.fireTicks * 20));
 				DamageHandler.damageEntity(entity, this.damage, this);
 				AirAbility.breakBreathbendingHold(entity);
-				new FireDamageTimer(entity, this.player, this);
+				if (ignited) {
+					new FireDamageTimer(entity, this.caster, this);
+				}
 				this.remove();
 			}
 		}
@@ -201,7 +211,7 @@ public class FireBlast extends FireAbility {
 				if (canFireGrief()) { //Regrow the plant or snow LATER since the fire destroys the block
 					if (isPlant(block) || isSnow(block)) {
 						block.setType(Material.AIR);
-						new PlantRegrowth(this.player, block);
+						new PlantRegrowth(this.caster, block);
 					}
 				}
 				createTempFire(block.getLocation());	
@@ -211,7 +221,7 @@ public class FireBlast extends FireAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this) || RegionProtection.isRegionProtected(this, this.location)) {
+		if (!this.bender.canBendIgnoreBindsCooldowns(this) || RegionProtection.isRegionProtected(this, this.location)) {
 			this.remove();
 			return;
 		}
@@ -229,7 +239,7 @@ public class FireBlast extends FireAbility {
 			return;
 		}
 
-		Entity entity = GeneralMethods.getClosestEntity(this.location, this.collisionRadius);
+		Entity entity = GeneralMethods.getClosestEntity(this, this.location, this.collisionRadius);
 		if (entity != null) {
 			this.affect(entity);
 		}
@@ -242,11 +252,11 @@ public class FireBlast extends FireAbility {
 	 * {@link Collision} for the new system.
 	 */
 	@Deprecated
-	public static boolean annihilateBlasts(final Location location, final double radius, final Player source) {
+	public static boolean annihilateBlasts(final Location location, final double radius, final LivingEntity source) {
 		boolean broke = false;
 		for (final FireBlast blast : getAbilities(FireBlast.class)) {
 			final Location fireBlastLocation = blast.location;
-			if (location.getWorld().equals(fireBlastLocation.getWorld()) && !blast.player.equals(source)) {
+			if (location.getWorld().equals(fireBlastLocation.getWorld()) && !blast.caster.equals(source)) {
 				if (location.distanceSquared(fireBlastLocation) <= radius * radius) {
 					blast.remove();
 					broke = true;
@@ -260,7 +270,7 @@ public class FireBlast extends FireAbility {
 	}
 
 	public static ArrayList<FireBlast> getAroundPoint(final Location location, final double radius) {
-		final ArrayList<FireBlast> list = new ArrayList<FireBlast>();
+		final ArrayList<FireBlast> list = new ArrayList<>();
 		for (final FireBlast fireBlast : getAbilities(FireBlast.class)) {
 			final Location fireblastlocation = fireBlast.location;
 			if (location.getWorld().equals(fireblastlocation.getWorld())) {

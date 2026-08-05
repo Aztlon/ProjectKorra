@@ -1,6 +1,7 @@
 package com.projectkorra.projectkorra.event;
 
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
@@ -43,10 +44,10 @@ public class EntityBendingDeathEvent extends Event {
 
 	/**
 	 *
-	 * @return the player who killed the entity
+	 * @return the caster who killed the entity
 	 */
-	public Player getAttacker() {
-		return this.ability.getPlayer();
+	public LivingEntity getAttacker() {
+		return this.ability.getCaster();
 	}
 
 	/**

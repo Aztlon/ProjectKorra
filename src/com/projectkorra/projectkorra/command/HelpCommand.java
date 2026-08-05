@@ -97,6 +97,7 @@ public class HelpCommand extends PKCommand {
 		}
 
 		final String arg = args.get(0).toLowerCase();
+		var ability = CoreAbility.getAbility(arg);
 
 		if (this.isNumeric(arg)) {
 			final List<String> strings = new ArrayList<>();
@@ -104,7 +105,7 @@ public class HelpCommand extends PKCommand {
 				strings.add(command.getProperUse());
 			}
 			
-			for (final String s : this.getPage(strings, ChatColor.GOLD + "Commands: <" + this.required + "> [" + this.optional + "]", Integer.valueOf(arg), true)) {
+			for (final String s : this.getPage(strings, ChatColor.GOLD + "Commands: <" + this.required + "> [" + this.optional + "]", Integer.parseInt(arg), true)) {
 				if (firstMessage) {
 					ChatUtil.sendBrandingMessage(sender, s);
 					firstMessage = false;
@@ -112,20 +113,19 @@ public class HelpCommand extends PKCommand {
 					sender.sendMessage(ChatColor.YELLOW + s);
 				}
 			}
-		} else if (instances.keySet().contains(arg)) {// bending help command.
+		} else if (instances.containsKey(arg)) {// bending help command.
 			instances.get(arg).help(sender, true);
 		} else if (Arrays.asList(Commands.comboaliases).contains(arg)) { // bending help elementcombo.
 			sender.sendMessage(ChatColor.GOLD + this.properUsage.replace("{command1}", ChatColor.RED + "/bending display " + arg + ChatColor.GOLD).replace("{command2}", ChatColor.RED + "/bending help <Combo Name>" + ChatColor.GOLD));
 		} else if (Arrays.asList(Commands.passivealiases).contains(arg)) { // bending help elementpassive.
 			sender.sendMessage(ChatColor.GOLD + this.properUsage.replace("{command1}", ChatColor.RED + "/bending display " + arg + ChatColor.GOLD).replace("{command2}", ChatColor.RED + "/bending help <Passive Name>" + ChatColor.RED));
-		} else if (CoreAbility.getAbility(arg) != null && !(CoreAbility.getAbility(arg) instanceof ComboAbility) && CoreAbility.getAbility(arg).isEnabled() && !CoreAbility.getAbility(arg).isHiddenAbility() || CoreAbility.getAbility(arg) instanceof PassiveAbility) { // bending help ability.
-			final CoreAbility ability = CoreAbility.getAbility(arg);
+		} else if (ability != null && !(ability instanceof ComboAbility) && ability.isEnabled() && !ability.isHiddenAbility() || ability instanceof PassiveAbility) { // bending help ability.
 			final ChatColor color = ability.getElement().getColor();
 			final boolean isAddonAbility = ability instanceof AddonAbility;
 			final boolean isPassiveAbility = ability instanceof PassiveAbility;
 			
 			
-			sender.sendMessage(color + (ChatColor.BOLD + ability.getName()) + ChatColor.WHITE + (isAddonAbility ? (isPassiveAbility ? "(Addon Passive)" : " (Addon)") : (isPassiveAbility ? "(Passive)" : "")));
+			sender.sendMessage(color + (ChatColor.BOLD + ability.getName()) + ChatColor.WHITE + (isAddonAbility ? (isPassiveAbility ? " (Addon Passive)" : " (Addon)") : (isPassiveAbility ? " (Passive)" : "")));
 			sender.sendMessage(color + ability.getDescription());
 			
 			if (!ability.getInstructions().isEmpty()) {
@@ -167,7 +167,7 @@ public class HelpCommand extends PKCommand {
 		} else if (Arrays.asList(Commands.firealiases).contains(arg)) {
 			sender.sendMessage(Element.FIRE.getColor() + this.elementHelp.get(Element.FIRE).replaceAll("(?i)/b display fire", Element.FIRE.getSubColor() + "/b display fire" + Element.FIRE.getColor()));
 		} else if (Arrays.asList(Commands.chialiases).contains(arg)) {
-			sender.sendMessage(Element.CHI.getColor() + this.elementHelp.get(Element.CHI).replaceAll("(?i)/b display chi", Element.CHI.getSubColor() + "/b display chi" + Element.CHI.getColor()));
+			sender.sendMessage(Element.NON.getColor() + this.elementHelp.get(Element.NON).replaceAll("(?i)/b display non", Element.NON.getSubColor() + "/b display fire" + Element.NON.getColor()));
 		} else if (Arrays.asList(Commands.avataraliases).contains(arg)) {
 			sender.sendMessage(Element.AVATAR.getColor() + this.elementHelp.get(Element.AVATAR).replaceAll("(?i)/b display avatar", Element.AVATAR.getSubColor() + "/b display avatar" + Element.AVATAR.getColor()));
 		} else if (Element.getElement(arg) != null && elementHelp.containsKey(Element.getElement(arg))) {
@@ -177,7 +177,7 @@ public class HelpCommand extends PKCommand {
 			// combos - handled differently because they're stored in CamelCase in ComboManager.
 			for (final String combo : ComboManager.getDescriptions().keySet()) {
 				if (combo.equalsIgnoreCase(arg)) {
-					final CoreAbility ability = CoreAbility.getAbility(combo);
+					ability = CoreAbility.getAbility(combo);
 					final ChatColor color = ability != null ? ability.getElement().getColor() : null;
 
 					if (ability instanceof AddonAbility) {

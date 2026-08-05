@@ -19,6 +19,7 @@ import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.event.AbilityExecutionEvidence;
 import com.projectkorra.projectkorra.util.TempBlock;
 
 public class WaterBubble extends WaterAbility {
@@ -33,6 +34,7 @@ public class WaterBubble extends WaterAbility {
 	private boolean requireAir;
 
 	private boolean isShift;
+	private boolean executionEvidencePublished;
 	private double radius;
 	private boolean removing = false; // Is true when the radius is shrinking.
 	private final Map<Block, BlockState> waterOrigins = new ConcurrentHashMap<>();
@@ -133,6 +135,11 @@ public class WaterBubble extends WaterAbility {
 											b.setBlockData(logged);
 										} else if (isWater(b.getType())) {
 											b.setType(Material.AIR);
+										}
+										if (!this.executionEvidencePublished) {
+											this.executionEvidencePublished = true;
+											AbilityExecutionEvidence.publishLocation(this,
+													AbilityExecutionEvidence.AIR_POCKET_CREATED, b.getLocation(), 1D);
 										}
 									}
 								}

@@ -3,7 +3,7 @@ author: ProjectKorra
 api-version: 1.16
 version: ${project.version}
 main: com.projectkorra.projectkorra.ProjectKorra
-softdepend: [GriefDefender, WorldGuard, WorldEdit, Factions, GriefPrevention, Towny, NoCheatPlus, LWC, Residence, RedProtect, PlaceholderAPI, Lands]
+softdepend: [GriefDefender, WorldGuard, WorldEdit, Factions, GriefPrevention, Towny, NoCheatPlus, LWC, Residence, Kingdoms, RedProtect, PlaceholderAPI, Lands, Floodgate, Geyser-Spigot, packetevents, PacketEvents]
 commands:
   projectkorra:
     aliases: [b,bending,mtla,tla,korra,pk,bend]
@@ -21,10 +21,13 @@ permissions:
       bending.command.rechoose: true
       bending.admin.choose: true
       bending.command.choose.ignorecooldown: true
+      bending.command.cooldown.set: true
       bending.ability.AvatarState: true
       bending.water.bloodbending.anytime: true
       bending.water.bloodbending: true
       bending.fire.bluefire: true
+      bending.fire.whitefire: true
+      bending.fire.blacksand: true
       bending.ability.Flight: true
       bending.ability.MetalClips.loot: true
       bending.ability.MetalClips.4clips: true
@@ -53,6 +56,7 @@ permissions:
       bending.command.version: true
       bending.command.help: true
       bending.command.clear: true
+      bending.command.cooldown.view: true
       bending.command.who: true
       bending.command.preset.list: true
       bending.command.preset.create.5: true
@@ -63,14 +67,14 @@ permissions:
       bending.water: true
       bending.earth: true
       bending.fire: true
-      bending.chi: true
+      bending.non: true
   bending.air:
     default: true
     description: Grants access to all airbending abilities.
     children:
       bending.command.add.air: true
       bending.command.choose.air: true
-      bending.ability.AirBlast: true 
+      bending.ability.AirBlast: true
       bending.ability.AirBurst: true
       bending.ability.AirScooter: true
       bending.ability.AirShield: true
@@ -164,12 +168,12 @@ permissions:
       bending.fire.passive: true
       bending.fire.lightningbending: true
       bending.fire.combustionbending: true
-  bending.chi:
+  bending.non:
     default: true
     description: Grants access to all ChiBlocking abilities.
     children:
-      bending.command.add.chi: true
-      bending.command.choose.chi: true
+      bending.command.add.non: true
+      bending.command.choose.non: true
       bending.ability.HighJump: true
       bending.ability.Paralyze: true
       bending.ability.RapidPunch: true
@@ -179,6 +183,10 @@ permissions:
       bending.ability.QuickStrike: true
       bending.ability.SwiftKick: true
       bending.ability.ChiCombo: true
+      bending.non.chiblocking: true
+      bending.non.archer: true
+      bending.non.warrior: true
+      bending.non.passive: true
       bending.chi.passive: true
   bending.avatar:
     default: op
@@ -234,32 +242,35 @@ permissions:
     children:
       bending.ability.Immobilize: true
   bending.air.passive:
-    default: false
+    default:  false
     description: Grants access to all air passives.
     children:
       bending.ability.AirAgility: true
       bending.ability.AirSaturation: true
       bending.ability.GracefulDescent: true
-  bending.chi.passive:
-    default: false
+  bending.non.passive:
+    default:  false
     description: Grants access to all chi passives.
     children:
       bending.ability.Acrobatics: true
       bending.ability.ChiAgility: true
       bending.ability.ChiSaturation: true
   bending.earth.passive:
-    default: false
+    default:  false
     description: Grants access to all earth passives.
     children:
       bending.ability.DensityShift: true
       bending.ability.SandAgility: true
   bending.fire.passive:
-    default: false
+    default:  false
     description: Grants access to all fire passives.
     children:
   bending.water.passive:
-    default: false
+    default:  false
     description: Grants access to all water passives.
     children:
       bending.ability.FastSwim: true
       bending.ability.HydroSink: true
+  bending.donor:
+    default: false
+    description: Grants the Donor tag.

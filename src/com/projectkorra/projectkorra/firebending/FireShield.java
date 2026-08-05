@@ -14,6 +14,8 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.util.FireDamageTimer;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.region.RegionProtection;
 
 public class FireShield extends FireAbility {
 
@@ -40,12 +42,12 @@ public class FireShield extends FireAbility {
 	private Random random;
 	private int increment = 20;
 
-	public FireShield(final Player player) {
-		this(player, false);
+	public FireShield(final LivingEntity caster) {
+		this(caster, false);
 	}
 
-	public FireShield(final Player player, final boolean shield) {
-		super(player);
+	public FireShield(final LivingEntity caster, final boolean shield) {
+		super(caster);
 
 		this.shield = shield;
 		this.ignite = true;
@@ -59,12 +61,12 @@ public class FireShield extends FireAbility {
 		this.shieldFireTicks = getConfig().getDouble("Abilities.Fire.FireShield.Shield.FireTicks");
 		this.random = new Random();
 
-		if (hasAbility(player, FireShield.class) || this.bPlayer.isOnCooldown("FireShield")) {
+		if (hasAbility(caster, FireShield.class) || this.bender.isOnCooldown("FireShield")) {
 			return;
-		} else if (!player.getEyeLocation().getBlock().isLiquid()) {
+		} else if (!caster.getEyeLocation().getBlock().isLiquid()) {
 			this.start();
 			if (!shield) {
-				this.bPlayer.addCooldown(this);
+				this.bender.addCooldown(this);
 			}
 		}
 	}
@@ -76,16 +78,16 @@ public class FireShield extends FireAbility {
 	@Deprecated
 	public static boolean isWithinShield(final Location loc) {
 		for (final FireShield fshield : getAbilities(FireShield.class)) {
-			final Location playerLoc = fshield.player.getLocation();
+			final Location casterLoc = fshield.caster.getLocation();
 
 			if (fshield.shield) {
-				if (!playerLoc.getWorld().equals(loc.getWorld())) {
+				if (!casterLoc.getWorld().equals(loc.getWorld())) {
 					return false;
-				} else if (playerLoc.distanceSquared(loc) <= fshield.shieldRadius * fshield.shieldRadius) {
+				} else if (casterLoc.distanceSquared(loc) <= fshield.shieldRadius * fshield.shieldRadius) {
 					return true;
 				}
 			} else {
-				final Location tempLoc = playerLoc.clone().add(playerLoc.multiply(fshield.discRadius));
+				final Location tempLoc = casterLoc.clone().add(casterLoc.multiply(fshield.discRadius));
 				if (!tempLoc.getWorld().equals(loc.getWorld())) {
 					return false;
 				} else if (tempLoc.getWorld().equals(loc.getWorld()) && tempLoc.distance(loc) <= fshield.discRadius * fshield.discRadius) {
@@ -98,22 +100,22 @@ public class FireShield extends FireAbility {
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreCooldowns(this)) {
-			this.bPlayer.addCooldown(this);
+		if (!this.bender.canBendIgnoreCooldowns(this)) {
+			this.bender.addCooldown(this);
 			this.remove();
 			return;
-		} else if ((!this.player.isSneaking() && this.shield) || (System.currentTimeMillis() > this.getStartTime() + this.shieldDuration && this.shield && this.shieldDuration > 0)) {
-			this.bPlayer.addCooldown(this);
+		} else if ((!this.bender.isSneaking() && this.shield) || (System.currentTimeMillis() > this.getStartTime() + this.shieldDuration && this.shield && this.shieldDuration > 0)) {
+			this.bender.addCooldown(this);
 			this.remove();
 			return;
 		} else if (System.currentTimeMillis() > this.getStartTime() + this.discDuration && !this.shield) {
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 			this.remove();
 			return;
 		}
 
 		if (this.shield) {
-			this.location = this.player.getEyeLocation().clone();
+			this.location = this.caster.getEyeLocation().clone();
 
 			for (double theta = 0; theta < 180; theta += this.increment) {
 				for (double phi = 0; phi < 360; phi += this.increment) {
@@ -136,40 +138,41 @@ public class FireShield extends FireAbility {
 			}
 
 			for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, this.shieldRadius)) {
-				if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation())) {
+				if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 					continue;
 				} else if (entity instanceof LivingEntity) {
-					if (this.player.getEntityId() != entity.getEntityId() && this.ignite) {
-						entity.setFireTicks((int) (this.shieldFireTicks * 20));
-						new FireDamageTimer(entity, this.player, this);
+					if (this.caster.getEntityId() != entity.getEntityId() && this.ignite) {
+						if (PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.shieldFireTicks * 20))) {
+							new FireDamageTimer(entity, this.caster, this);
+						}
 					}
 				} else if (entity instanceof Projectile) {
 					entity.remove();
 				}
 			}
 		} else {
-			this.location = this.player.getEyeLocation().clone();
+			this.location = this.caster.getEyeLocation().clone();
 			final Vector direction = this.location.getDirection();
 			this.location.add(direction.multiply(this.shieldRadius));
 			playFirebendingParticles(this.location, 3, 0.2, 0.2, 0.2);
 
 			for (double theta = 0; theta < 360; theta += 20) {
 				final Vector vector = GeneralMethods.getOrthogonalVector(direction, theta, this.discRadius / 1.5);
-				final Location display = this.location.add(vector);
+				final Location display = this.location.clone().add(vector);
 				playFirebendingParticles(display, 2, 0.3, 0.2, 0.3);
 				if (this.random.nextInt(4) == 0) {
 					playFirebendingSound(display);
 				}
-				this.location.subtract(vector);
 			}
 
 			for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(this.location, this.discRadius + 1)) {
-				if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation())) {
+				if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 					continue;
 				} else if (entity instanceof LivingEntity) {
-					if (this.player.getEntityId() != entity.getEntityId() && this.ignite) {
-						entity.setFireTicks((int) (this.discFireTicks * 20));
-						new FireDamageTimer(entity, this.player, this);
+					if (this.caster.getEntityId() != entity.getEntityId() && this.ignite) {
+						if (PhasedEntityEffectManager.setFireTicks(this, entity, (int) (this.discFireTicks * 20))) {
+							new FireDamageTimer(entity, this.caster, this);
+						}
 					}
 				} else if (entity instanceof Projectile) {
 					entity.remove();

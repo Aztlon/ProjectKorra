@@ -9,6 +9,7 @@ import org.bukkit.potion.PotionEffectType;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.ability.ChiAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 
 public class AcrobatStance extends ChiAbility {
 
@@ -47,12 +48,12 @@ public class AcrobatStance extends ChiAbility {
 		}
 		this.start();
 		this.bPlayer.setStance(this);
-		player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 0.5F, 2F);
+		PhasedSoundManager.playSoundToViewer(this, player, player.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, 0.5F, 2F);
 	}
 
 	@Override
 	public void progress() {
-		if (!this.bPlayer.canBendIgnoreBinds(this) || !this.bPlayer.hasElement(Element.CHI)) {
+		if (!this.bPlayer.canBendIgnoreBinds(this) || !this.bPlayer.hasElement(Element.NON)) {
 			this.remove();
 			return;
 		} else if (this.duration != 0 && System.currentTimeMillis() > this.getStartTime() + this.duration) {
@@ -63,8 +64,8 @@ public class AcrobatStance extends ChiAbility {
 		if (!this.player.hasPotionEffect(PotionEffectType.SPEED) || this.player.getPotionEffect(PotionEffectType.SPEED).getAmplifier() < this.speed || (this.player.getPotionEffect(PotionEffectType.SPEED).getAmplifier() == this.speed && this.player.getPotionEffect(PotionEffectType.SPEED).getDuration() == 1)) {
 			this.player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 10, this.speed, true, false), true);
 		}
-		if (!this.player.hasPotionEffect(PotionEffectType.JUMP) || this.player.getPotionEffect(PotionEffectType.JUMP).getAmplifier() < this.jump || (this.player.getPotionEffect(PotionEffectType.JUMP).getAmplifier() == this.jump && this.player.getPotionEffect(PotionEffectType.JUMP).getDuration() == 1)) {
-			this.player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 10, this.jump, true, false), true);
+		if (!this.player.hasPotionEffect(PotionEffectType.JUMP_BOOST) || this.player.getPotionEffect(PotionEffectType.JUMP_BOOST).getAmplifier() < this.jump || (this.player.getPotionEffect(PotionEffectType.JUMP_BOOST).getAmplifier() == this.jump && this.player.getPotionEffect(PotionEffectType.JUMP_BOOST).getDuration() == 1)) {
+			this.player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 10, this.jump, true, false), true);
 		}
 	}
 
@@ -73,9 +74,9 @@ public class AcrobatStance extends ChiAbility {
 		super.remove();
 		this.bPlayer.addCooldown(this);
 		this.bPlayer.setStance(null);
-		this.player.playSound(this.player.getLocation(), Sound.ENTITY_ENDER_DRAGON_SHOOT, 0.5F, 2F);
+		PhasedSoundManager.playSoundToViewer(this, this.player, this.player.getLocation(), Sound.ENTITY_ENDER_DRAGON_SHOOT, 0.5F, 2F);
 		this.player.removePotionEffect(PotionEffectType.SPEED);
-		this.player.removePotionEffect(PotionEffectType.JUMP);
+		this.player.removePotionEffect(PotionEffectType.JUMP_BOOST);
 	}
 
 	@Override

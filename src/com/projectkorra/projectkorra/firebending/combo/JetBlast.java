@@ -7,6 +7,7 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.ComboAbility;
@@ -14,6 +15,7 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager.AbilityInformation;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.firebending.FireJet;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 
@@ -51,6 +53,7 @@ public class JetBlast extends FireAbility implements ComboAbility {
 		this.start();
 	}
 
+	@NotNull
 	@Override
 	public Object createNewComboInstance(final Player player) {
 		return new JetBlast(player);
@@ -76,7 +79,7 @@ public class JetBlast extends FireAbility implements ComboAbility {
 				this.firstTime = false;
 				final float spread = 0F;
 				ParticleEffect.EXPLOSION_LARGE.display(this.player.getLocation(), 1, spread, spread, spread, 0);
-				this.player.getWorld().playSound(this.player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 15, 0F);
+				PhasedSoundManager.playSound(this, this.player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 15, 0F);
 			}
 			final FireJet fj = getAbility(this.player, FireJet.class);
 			fj.setSpeed(this.speed);

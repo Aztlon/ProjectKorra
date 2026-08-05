@@ -11,6 +11,11 @@ import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.chiblocking.passive.ChiPassive;
 import com.projectkorra.projectkorra.util.DamageHandler;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class RapidPunch extends ChiAbility {
 
 	@Attribute(Attribute.DAMAGE)
@@ -24,9 +29,13 @@ public class RapidPunch extends ChiAbility {
 	private final long last = 0;
 	private Entity target;
 
-	public RapidPunch(final Player sourceplayer, final Entity targetentity) {
-		super(sourceplayer);
-		if (!this.bPlayer.canBend(this)) {
+	public RapidPunch(final LivingEntity caster) {
+		this(caster, ChiPassive.findTarget(caster));
+	}
+
+	public RapidPunch(final LivingEntity caster, final Entity targetentity) {
+		super(caster);
+		if (!this.bender.canBend(this)) {
 			return;
 		}
 
@@ -37,28 +46,25 @@ public class RapidPunch extends ChiAbility {
 		this.target = targetentity;
 		this.start();
 		if (!isRemoved()) {
-			this.bPlayer.addCooldown(this);
+			this.bender.addCooldown(this);
 		}
 	}
 
 	@Override
 	public void progress() {
-		if (this.numPunches >= this.punches || this.target == null || !(this.target instanceof LivingEntity)) {
+		if (this.numPunches >= this.punches || this.target == null || !(this.target instanceof LivingEntity lt)) {
 			this.remove();
 			return;
 		}
 
 		if (System.currentTimeMillis() >= this.last + this.interval) {
-			final LivingEntity lt = (LivingEntity) this.target;
 			DamageHandler.damageEntity(this.target, this.damage, this);
 
-			if (this.target instanceof Player) {
-				if (ChiPassive.willChiBlock(this.player, (Player) this.target)) {
-					ChiPassive.blockChi((Player) this.target);
-				}
-				if (Suffocate.isChannelingSphere((Player) this.target)) {
-					Suffocate.remove((Player) this.target);
-				}
+			if (ChiPassive.willChiBlock(this.caster, lt)) {
+				ChiPassive.blockChi(lt);
+			}
+			if (Suffocate.isChannelingSphere(lt)) {
+				Suffocate.remove(lt);
 			}
 
 			lt.setNoDamageTicks(0);
@@ -89,42 +95,6 @@ public class RapidPunch extends ChiAbility {
 	@Override
 	public boolean isHarmlessAbility() {
 		return false;
-	}
-
-	public double getDamage() {
-		return this.damage;
-	}
-
-	public void setDamage(final double damage) {
-		this.damage = damage;
-	}
-
-	public int getPunches() {
-		return this.punches;
-	}
-
-	public void setPunches(final int punches) {
-		this.punches = punches;
-	}
-
-	public int getNumPunches() {
-		return this.numPunches;
-	}
-
-	public void setNumPunches(final int numPunches) {
-		this.numPunches = numPunches;
-	}
-
-	public Entity getTarget() {
-		return this.target;
-	}
-
-	public void setTarget(final Entity target) {
-		this.target = target;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
 	}
 
 }

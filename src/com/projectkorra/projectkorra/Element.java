@@ -19,7 +19,9 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 public class Element {
 
 	public enum ElementType {
-		BENDING("bending", "bender", "bend"), BLOCKING("blocking", "blocker", "block"), NO_SUFFIX("", "", "");
+		BENDING("bending", "bender", "bend"),
+		BLOCKING("blocking", "blocker", "block"),
+		NO_SUFFIX("", "", "");
 
 		private String bending;
 		private String bender;
@@ -50,24 +52,31 @@ public class Element {
 	public static final Element WATER = new Element("Water");
 	public static final Element EARTH = new Element("Earth");
 	public static final Element FIRE = new Element("Fire");
-	public static final Element CHI = new Element("Chi", ElementType.BLOCKING);
+	public static final Element NON = new Element("Non");
 	public static final Element AVATAR = new Element("Avatar", null);
 	public static final SubElement FLIGHT = new SubElement("Flight", AIR, ElementType.NO_SUFFIX);
 	public static final SubElement SPIRITUAL = new SubElement("Spiritual", AIR, ElementType.NO_SUFFIX);
+	public static final SubElement SUFFOCATION = new SubElement("Suffocation", AIR);
 	public static final SubElement BLOOD = new SubElement("Blood", WATER);
+	public static final SubElement DAY_BLOOD = new SubElement("DayBlood", BLOOD);
 	public static final SubElement HEALING = new SubElement("Healing", WATER, ElementType.NO_SUFFIX);
 	public static final SubElement ICE = new SubElement("Ice", WATER);
 	public static final SubElement PLANT = new SubElement("Plant", WATER);
 	public static final SubElement LAVA = new SubElement("Lava", EARTH);
 	public static final SubElement METAL = new SubElement("Metal", EARTH);
 	public static final SubElement SAND = new SubElement("Sand", EARTH);
+	public static final SubElement BLACK_SAND = new SubElement("BlackSand", EARTH);
 	public static final SubElement LIGHTNING = new SubElement("Lightning", FIRE);
 	public static final SubElement COMBUSTION = new SubElement("Combustion", FIRE);
 	public static final SubElement BLUE_FIRE = new SubElement("BlueFire", FIRE);
+	public static final SubElement WHITE_FIRE = new SubElement("WhiteFire", FIRE);
+	public static final SubElement CHI = new SubElement("Chi", NON, ElementType.BLOCKING);
+	public static final SubElement WARRIOR = new SubElement("Warrior", NON, ElementType.NO_SUFFIX);
+	public static final SubElement ARCHER = new SubElement("Archer", NON, ElementType.NO_SUFFIX);
 
-	private static final Element[] ELEMENTS = { AIR, WATER, EARTH, FIRE, CHI, FLIGHT, SPIRITUAL, BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, LIGHTNING, COMBUSTION, BLUE_FIRE };
-	private static final Element[] MAIN_ELEMENTS = { AIR, WATER, EARTH, FIRE, CHI };
-	private static final SubElement[] SUB_ELEMENTS = { FLIGHT, SPIRITUAL, BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, LIGHTNING, COMBUSTION, BLUE_FIRE };
+	private static final Element[] ELEMENTS = { AIR, WATER, EARTH, FIRE, NON, FLIGHT, SPIRITUAL, SUFFOCATION, BLOOD, DAY_BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, BLACK_SAND, LIGHTNING, COMBUSTION, BLUE_FIRE, WHITE_FIRE, CHI, WARRIOR, ARCHER };
+	private static final Element[] MAIN_ELEMENTS = { AIR, WATER, EARTH, FIRE, NON };
+	private static final SubElement[] SUB_ELEMENTS = { FLIGHT, SPIRITUAL, SUFFOCATION, BLOOD, DAY_BLOOD, HEALING, ICE, PLANT, LAVA, METAL, SAND, BLACK_SAND, LIGHTNING, COMBUSTION, BLUE_FIRE, WHITE_FIRE, CHI, WARRIOR, ARCHER };
 
 	protected final String name;
 	protected final ElementType type;
@@ -232,8 +241,7 @@ public class Element {
 	 * @return Array of all official and addon elements.
 	 */
 	public static Element[] getAllElements() {
-		final List<Element> ae = new ArrayList<Element>();
-		ae.addAll(Arrays.asList(getMainElements()));
+		final List<Element> ae = new ArrayList<>(Arrays.asList(getMainElements()));
 		for (final Element e : ALL_ELEMENTS.values()) {
 			if (!ae.contains(e) && !(e instanceof SubElement)) {
 				ae.add(e);
@@ -266,7 +274,7 @@ public class Element {
 	 * @return Array of all addon elements.
 	 */
 	public static Element[] getAddonElements() {
-		final List<Element> ae = new ArrayList<Element>();
+		final List<Element> ae = new ArrayList<>();
 		for (final Element e : getAllElements()) {
 			if (!Arrays.asList(getMainElements()).contains(e)) {
 				ae.add(e);
@@ -282,8 +290,7 @@ public class Element {
 	 * @return Array of all the subelements.
 	 */
 	public static SubElement[] getAllSubElements() {
-		final List<SubElement> se = new ArrayList<SubElement>();
-		se.addAll(Arrays.asList(getSubElements()));
+		final List<SubElement> se = new ArrayList<>(Arrays.asList(getSubElements()));
 		for (final Element e : ALL_ELEMENTS.values()) {
 			if (!se.contains(e) && e instanceof SubElement) {
 				se.add((SubElement) e);

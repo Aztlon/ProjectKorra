@@ -1,12 +1,11 @@
 package com.projectkorra.projectkorra.firebending;
 
 import org.bukkit.Location;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
-import com.projectkorra.projectkorra.avatar.AvatarState;
 
 public class Blaze extends FireAbility {
 
@@ -19,26 +18,26 @@ public class Blaze extends FireAbility {
 	@Attribute(Attribute.SPEED)
 	private double speed;
 
-	public Blaze(final Player player) {
-		super(player);
+	public Blaze(final LivingEntity caster) {
+		super(caster);
 
 		this.speed = 2;
 		this.cooldown = applyModifiersCooldown(getConfig().getLong("Abilities.Fire.Blaze.Cooldown"));
 		this.arc = (int) applyModifiers(getConfig().getInt("Abilities.Fire.Blaze.Arc"));
 		this.range = applyModifiersRange(getConfig().getDouble("Abilities.Fire.Blaze.Range"));
 
-		if (!this.bPlayer.canBend(this) || this.bPlayer.isOnCooldown("BlazeArc")) {
+		if (!this.bender.canBend(this) || this.bender.isOnCooldown("BlazeArc")) {
 			return;
 		}
 
 		//this.range = this.getDayFactor(this.range);
-		//this.range = AvatarState.getValue(this.range, player);
+		//this.range = AvatarState.getValue(this.range, caster);
 		//this.arc = (int) this.getDayFactor(this.arc);
-		final Location location = player.getLocation();
+		final Location location = caster.getLocation();
 
 		for (int i = -this.arc; i <= this.arc; i += this.speed) {
 			final double angle = Math.toRadians(i);
-			final Vector direction = player.getEyeLocation().getDirection().clone();
+			final Vector direction = caster.getEyeLocation().getDirection().clone();
 			double x, z, vx, vz;
 
 			x = direction.getX();
@@ -50,11 +49,11 @@ public class Blaze extends FireAbility {
 			direction.setX(vx);
 			direction.setZ(vz);
 
-			new BlazeArc(player, location, direction, this.range);
+			new BlazeArc(caster, location, direction, this.range);
 		}
 
 		this.start();
-		this.bPlayer.addCooldown("BlazeArc", this.cooldown);
+		this.bender.addCooldown("BlazeArc", this.cooldown);
 		this.remove();
 	}
 
@@ -68,7 +67,7 @@ public class Blaze extends FireAbility {
 
 	@Override
 	public Location getLocation() {
-		return this.player != null ? this.player.getLocation() : null;
+		return this.caster != null ? this.caster.getLocation() : null;
 	}
 
 	@Override

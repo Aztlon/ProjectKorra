@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Effect;
 import org.bukkit.Location;
@@ -17,6 +18,8 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Levelled;
+import org.bukkit.block.data.Lightable;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -27,8 +30,11 @@ import com.projectkorra.projectkorra.Element.SubElement;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.FireAbility;
+import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.earthbending.lava.LavaFlow;
+import com.projectkorra.projectkorra.phasing.PhasedEntityEffectManager;
+import com.projectkorra.projectkorra.phasing.PhasedSoundManager;
 import com.projectkorra.projectkorra.util.ParticleEffect;
 import com.projectkorra.projectkorra.util.TempBlock;
 import com.projectkorra.projectkorra.waterbending.SurgeWave;
@@ -94,8 +100,9 @@ public class HeatControl extends FireAbility {
 				new HeatControl(player, HeatControlType.SOLIDIFY);
 				return;
 			}
+			if (AbstractSkill.isLocked("HeatControlCooking", player))
+				return;
 			this.start();
-
 		} else if (this.heatControlType == HeatControlType.EXTINGUISH) {
 			if (this.bPlayer.isOnCooldown(this.getName() + "Extinguish")) {
 				this.remove();
@@ -103,16 +110,16 @@ public class HeatControl extends FireAbility {
 			}
 
 			this.start();
-
 		} else if (this.heatControlType == HeatControlType.MELT) {
+			if (AbstractSkill.isLocked("HeatControlCooking", player))
+				return;
 			this.meltLocation = GeneralMethods.getTargetedLocation(player, this.meltRange);
 			for (final Block block : GeneralMethods.getBlocksAroundPoint(this.meltLocation, this.meltRadius)) {
 
-				if (isMeltable(block)) {
+				if (isMeltable(block) && TempBlock.isTempBlock(block)) {
 					melt(player, block);
 				}
 			}
-
 		} else if (this.heatControlType == HeatControlType.SOLIDIFY) {
 			if (!this.bPlayer.canBend(this)) {
 				return;
@@ -125,7 +132,6 @@ public class HeatControl extends FireAbility {
 			this.solidifyLastBlockTime = System.currentTimeMillis();
 			this.start();
 		}
-
 	}
 
 	public void setFields() {
@@ -179,24 +185,40 @@ public class HeatControl extends FireAbility {
 			this.displayCookParticles();
 
 		} else if (this.heatControlType == HeatControlType.EXTINGUISH) {
-
 			if (!this.player.isSneaking()) {
 				this.bPlayer.addCooldown(this.getName() + "Extinguish", this.extinguishCooldown);
 				this.remove();
 				return;
 			}
 
-			final Set<Material> blocks = new HashSet<>();
-			for (final Material material : getTransparentMaterials()) {
-				blocks.add(material);
+			for (final Block block : GeneralMethods.getBlocksAroundPoint(this.player.getLocation(), this.extinguishRadius)) {
+				if (RegionProtection.isRegionProtected(this, block.getLocation())) continue;
+				final Material material = block.getType();
+				if (isFire(material)) {
+					TempBlock tb = TempBlock.get(block);
+					if (tb != null)
+						tb.revertBlock();
+					else
+						block.setType(Material.AIR);
+					block.getWorld().playEffect(block.getLocation(), Effect.EXTINGUISH, 0);
+				} else if (block.getBlockData() instanceof Lightable lightable && lightable.isLit()) {
+					lightable.setLit(false);
+					block.setBlockData(lightable);
+					block.getWorld().playEffect(block.getLocation(), Effect.EXTINGUISH, 0);
+				}
 			}
 
-			for (final Block block : GeneralMethods.getBlocksAroundPoint(this.player.getLocation(), this.extinguishRadius)) {
-				final Material material = block.getType();
-				if (isFire(material) && !GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
-
-					block.setType(Material.AIR);
-					block.getWorld().playEffect(block.getLocation(), Effect.EXTINGUISH, 0);
+			for (Entity e : GeneralMethods.getEntitiesAroundPoint(this.player.getLocation(), this.extinguishRadius)) {
+				if (e.getFireTicks() <= 0) continue;
+				final boolean extinguished;
+				if (e.getEntityId() == this.player.getEntityId()) {
+					e.setFireTicks(0);
+					extinguished = true;
+				} else {
+					extinguished = PhasedEntityEffectManager.setFireTicks(this, e, 0);
+				}
+				if (extinguished) {
+					e.getWorld().playEffect(e.getLocation(), Effect.EXTINGUISH, 0);
 				}
 			}
 
@@ -327,6 +349,8 @@ public class HeatControl extends FireAbility {
 			final TempBlock tb = TempBlock.get(block);
 			if (PhaseChange.getFrozenBlocksMap().containsKey(tb)) {
 				new PhaseChange(player, PhaseChange.PhaseChangeType.MELT).melt(tb.getBlock());
+			} else if (WaterAbility.isBendableWaterTempBlock(block)) {
+				tb.revertBlock();
 			}
 		}
 
@@ -338,7 +362,8 @@ public class HeatControl extends FireAbility {
 				block.setType(Material.AIR);
 				return;
 			} else {
-				final TempBlock tb = new TempBlock(block, Material.WATER);
+				final TempBlock tb = new TempBlock(block, Material.WATER, player, "HeatControl");
+				tb.setBendableSource(true);
 				MELTED_BLOCKS.put(block, tb);
 
 				new BukkitRunnable() {
@@ -382,7 +407,7 @@ public class HeatControl extends FireAbility {
 			tempBlock = TempBlock.get(b);
 			tempBlock.setType(tempRevertMaterial);
 		} else {
-			tempBlock = new TempBlock(b, tempRevertMaterial);
+			tempBlock = new TempBlock(b, tempRevertMaterial, this);
 		}
 
 		if (LavaFlow.isLavaFlowBlock(tempBlock.getBlock())) {
@@ -392,7 +417,7 @@ public class HeatControl extends FireAbility {
 					if (tempBlock != null) {
 						ParticleEffect.SMOKE_NORMAL.display(tempBlock.getBlock().getLocation().clone().add(0.5, 1, 0.5), 3, 0.1, 0.1, 0.1, 0.01);
 						if (HeatControl.this.randy.nextInt(3) == 0) {
-							tempBlock.getBlock().getWorld().playSound(tempBlock.getBlock().getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 0.5F, 1);
+							PhasedSoundManager.playSound(HeatControl.this, tempBlock.getBlock().getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 0.5F, 1);
 						}
 
 						LavaFlow.removeBlock(tempBlock.getBlock());
@@ -426,7 +451,7 @@ public class HeatControl extends FireAbility {
 
 					ParticleEffect.SMOKE_NORMAL.display(tempBlock.getBlock().getLocation().clone().add(0.5, 1, 0.5), 3, 0.1, 0.1, 0.1, 0.01);
 					if (HeatControl.this.randy.nextInt(3) == 0) {
-						tempBlock.getBlock().getWorld().playSound(tempBlock.getBlock().getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 0.5F, 1);
+						PhasedSoundManager.playSound(HeatControl.this, tempBlock.getBlock().getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 0.5F, 1);
 					}
 				}
 			}
@@ -480,7 +505,7 @@ public class HeatControl extends FireAbility {
 
 		for (double i = 0; i <= range; i++) {
 			final Block block = location.clone().add(vector.clone().multiply(i)).getBlock();
-			if (GeneralMethods.isRegionProtectedFromBuild(player, location)) {
+			if (RegionProtection.isRegionProtected(player, location)) {
 				continue;
 			}
 			if (isLava(block)) {

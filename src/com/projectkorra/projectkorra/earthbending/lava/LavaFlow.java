@@ -16,10 +16,12 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
+import com.projectkorra.projectkorra.ability.AbstractSkill;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.LavaAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.Information;
@@ -95,6 +97,8 @@ public class LavaFlow extends LavaAbility {
 			return;
 		}
 
+		if (type == AbilityType.SHIFT && AbstractSkill.isLocked("LavaFlowShift", player)) return;
+
 		this.world = player.getWorld();
 		this.time = System.currentTimeMillis();
 		this.type = type;
@@ -104,8 +108,8 @@ public class LavaFlow extends LavaAbility {
 		this.removing = false;
 		this.makeLava = true;
 		this.clickIsFinished = false;
-		this.affectedBlocks = new ArrayList<TempBlock>();
-		this.tasks = new ArrayList<BukkitRunnable>();
+		this.affectedBlocks = new ArrayList<>();
+		this.tasks = new ArrayList<>();
 		this.revertMaterial = Material.getMaterial(getConfig().getString("Abilities.Earth.LavaFlow.RevertMaterial"));
 
 		this.shiftCooldown = getConfig().getLong("Abilities.Earth.LavaFlow.ShiftCooldown");
@@ -229,7 +233,7 @@ public class LavaFlow extends LavaAbility {
 
 					final double dSquared = distanceSquaredXZ(block.getLocation(), this.origin);
 					if (dSquared > Math.pow(this.shiftPlatformRadius, 2)) {
-						if (dSquared < Math.pow(this.currentRadius, 2) && !GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+						if (dSquared < Math.pow(this.currentRadius, 2) && !RegionProtection.isRegionProtected(this, block.getLocation())) {
 							if (dSquared < this.shiftPlatformRadius * 4 || this.getAdjacentLavaBlocks(block.getLocation()).size() > 0) {
 								if (!isLava(block)) {
 									if (isPlant(block) || isSnow(block)) {
@@ -327,7 +331,7 @@ public class LavaFlow extends LavaAbility {
 						final Block tempBlock = GeneralMethods.getTopBlock(loc, this.upwardFlow, this.downwardFlow);
 
 						final double dSquared = distanceSquaredXZ(tempBlock.getLocation(), this.origin);
-						if (dSquared < Math.pow(radius, 2) && !GeneralMethods.isRegionProtectedFromBuild(this, loc)) {
+						if (dSquared < Math.pow(radius, 2) && !RegionProtection.isRegionProtected(this, loc)) {
 							if (this.makeLava && !isLava(tempBlock)) {
 								this.clickIsFinished = false;
 								if (Math.random() < this.lavaCreateSpeed) {
@@ -398,11 +402,11 @@ public class LavaFlow extends LavaAbility {
 				final Block above = block.getRelative(BlockFace.UP);
 				final Block above2 = above.getRelative(BlockFace.UP);
 				if (isPlant(above) || isSnow(above)) {
-					final TempBlock tb = new TempBlock(above, Material.AIR);
+					final TempBlock tb = new TempBlock(above, Material.AIR, this);
 					TEMP_AIR_BLOCKS.put(above, tb);
 					this.affectedBlocks.add(tb);
 					if (isPlant(above2) && above2.getType().equals(Material.TALL_GRASS)) {
-						final TempBlock tb2 = new TempBlock(above2, Material.AIR);
+						final TempBlock tb2 = new TempBlock(above2, Material.AIR, this);
 						TEMP_AIR_BLOCKS.put(above2, tb2);
 						this.affectedBlocks.add(tb);
 					}
@@ -439,7 +443,7 @@ public class LavaFlow extends LavaAbility {
 			return;
 		}
 
-		final TempBlock tblock = new TempBlock(testBlock, this.revertMaterial);
+		final TempBlock tblock = new TempBlock(testBlock, this.revertMaterial, this);
 		this.affectedBlocks.add(tblock);
 		TEMP_LAND_BLOCKS.put(testBlock, tblock);
 	}

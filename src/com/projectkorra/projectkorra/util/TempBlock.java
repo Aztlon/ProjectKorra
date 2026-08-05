@@ -1,10 +1,8 @@
 package com.projectkorra.projectkorra.util;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -13,9 +11,12 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
+import com.projectkorra.projectkorra.phasing.PhasedBlockSource;
+import com.projectkorra.projectkorra.phasing.PhasedBlockVisibilityManager;
+import com.projectkorra.projectkorra.phasing.GateStage;
+import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -26,6 +27,7 @@ import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.block.data.Snowable;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import com.projectkorra.projectkorra.GeneralMethods;
@@ -50,48 +52,88 @@ public class TempBlock {
 	private Set<TempBlock> attachedTempBlocks; //Temp Block states that should be reverted as well when the temp block expires (e.g. double blocks)
 	private long revertTime;
 	private boolean inRevertQueue;
+	private boolean droppable;
 	private boolean reverted;
 	private Runnable revertTask = null;
 	private Optional<CoreAbility> ability = Optional.empty(); // If we want this TempBlock to have an assigned ability created from it
+	private PhasedBlockSource blockSource = PhasedBlockSource.none();
+	private final boolean viewerOverlayOnly;
 	private boolean isBendableSource = false;
 	private boolean suffocate = true;
 
 	public TempBlock(final Block block, final Material newtype) {
-		this(block, newtype.createBlockData(), 0);
+		this(block, newtype.createBlockData(), 0, Optional.empty(), PhasedBlockSource.current(), true);
 	}
 
-	@Deprecated
+	public TempBlock(final Block block, final Material newtype, final CoreAbility ability) {
+		this(block, newtype.createBlockData(), 0, ability);
+	}
+
+	public TempBlock(final Block block, final Material newtype, final long revertTime, final CoreAbility ability) {
+		this(block, newtype.createBlockData(), revertTime, ability);
+	}
+
+	public TempBlock(final Block block, final Material newtype, final LivingEntity source, final String abilityId) {
+		this(block, newtype.createBlockData(), 0, source, abilityId);
+	}
+
+	public TempBlock(final Block block, final Material newtype, final long revertTime, final LivingEntity source, final String abilityId) {
+		this(block, newtype.createBlockData(), revertTime, source, abilityId);
+	}
+
 	/**
 	 * Deprecated. Using the newType here is pointless.
 	 */
+	@Deprecated
 	public TempBlock(final Block block, final Material newtype, final BlockData newData) {
-		this(block, newData, 0);
+		this(block, newData, 0, Optional.empty(), PhasedBlockSource.current(), true);
 	}
 	
 	public TempBlock(final Block block, final BlockData newData) {
-		this(block, newData, 0);
+		this(block, newData, 0, Optional.empty(), PhasedBlockSource.current(), true);
 	}
 	
 	public TempBlock(final Block block, final BlockData newData, final long revertTime, final CoreAbility ability) {
-		this(block, newData, revertTime);
-		this.ability = Optional.of(ability);
+		this(block, newData, revertTime, ability == null ? Optional.empty() : Optional.of(ability), PhasedBlockSource.fromAbility(ability), true);
 	}
 	
 	public TempBlock(final Block block, final BlockData newData, final CoreAbility ability) {
 		this(block, newData, 0, ability);
 	}
 
+	public TempBlock(final Block block, final BlockData newData, final LivingEntity source, final String abilityId) {
+		this(block, newData, 0, source, abilityId);
+	}
+
+	public TempBlock(final Block block, final BlockData newData, final long revertTime, final LivingEntity source, final String abilityId) {
+		this(block, newData, revertTime, Optional.empty(), PhasedBlockSource.fromEntity(source, abilityId), true);
+	}
+
 	public TempBlock(final Block block, BlockData newData, final long revertTime) {
+		this(block, newData, revertTime, Optional.empty(), PhasedBlockSource.current(), true);
+	}
+
+	private TempBlock(final Block block, BlockData newData, final long revertTime, final Optional<CoreAbility> sourceAbility,
+			final PhasedBlockSource blockSource, final boolean internalCtor) {
 		this.block = block;
 		this.newData = newData;
+		this.ability = sourceAbility;
+		this.blockSource = blockSource == null ? PhasedBlockSource.none() : blockSource;
 		this.attachedTempBlocks = new HashSet<>(0);
+		this.state = block.getState();
+		this.viewerOverlayOnly = this.shouldUseViewerOverlay(block.getLocation());
+
+		if (!this.viewerOverlayOnly && !this.shouldAllowBlockMutation(block.getLocation())) {
+			this.reverted = true;
+			return;
+		}
 
 		//Fire griefing will make the state update on its own, so we don't need to update it ourselves
-		if (!FireAbility.canFireGrief() && (newData.getMaterial() == Material.FIRE || newData.getMaterial() == Material.SOUL_FIRE)) {
-			newData = FireAbility.createFireState(block, newData.getMaterial() == Material.SOUL_FIRE); //Fix the blockstate looking incorrect
-		}
-		if (block.getType() == Material.SNOW){
-			if (newData.getMaterial() == Material.AIR){
+//		if (!FireAbility.canFireGrief() && (newData.getMaterial() == Material.FIRE || newData.getMaterial() == Material.SOUL_FIRE)) {
+//			newData = FireAbility.createFireState(block, newData.getMaterial() == Material.SOUL_FIRE ? "SOUL_FIRE" : "FIRE"); //Fix the blockstate looking incorrect
+//		}
+		if (block.getType() == Material.SNOW) {
+			if (newData.getMaterial() == Material.AIR) {
 				updateSnowableBlock(block.getRelative(BlockFace.DOWN),false);
 			}
 		}
@@ -99,21 +141,25 @@ public class TempBlock {
 		if (instances_.containsKey(block)) {
 			final TempBlock temp = instances_.get(block).getFirst();
 			this.state = temp.state; //Set the original blockstate of the tempblock
-			put(block, this);
-			block.setBlockData(newData, applyPhysics(newData.getMaterial()));
 		} else {
-			this.state = block.getState();
-
 			if (this.state instanceof Container || this.state.getType() == Material.JUKEBOX) {
 				return;
 			}
-
-			put(block, this);
-
-			block.setBlockData(newData, applyPhysics(newData.getMaterial()));
 		}
-		
+		put(block, this);
+		this.applyInitialState(newData);
+
 		this.setRevertTime(revertTime);
+	}
+
+	private void applyInitialState(final BlockData newBlockData) {
+		if (this.viewerOverlayOnly) {
+			PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), newBlockData, this.blockSource);
+			return;
+		}
+
+		PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
+		this.block.setBlockData(newBlockData, applyPhysics(newBlockData.getMaterial()));
 	}
 
 	/**
@@ -177,7 +223,11 @@ public class TempBlock {
 			revertBlock(block, Material.AIR);
 		}
 		for (final TempBlock tempblock : REVERT_QUEUE) {
-			tempblock.state.update(true, applyPhysics(tempblock.state.getType()));
+			if (tempblock.viewerOverlayOnly) {
+				PhasedBlockVisibilityManager.clearOverlay(tempblock.block.getLocation());
+			} else {
+				tempblock.state.update(true, applyPhysics(tempblock.state.getType()));
+			}
 			if (tempblock.revertTask != null) {
 				tempblock.revertTask.run();
 			}
@@ -190,7 +240,12 @@ public class TempBlock {
 	 * @param block The block location
 	 */
 	public static void removeBlock(final Block block) {
-		instances_.get(block).forEach(t -> {
+		if (!instances_.containsKey(block)) {
+			return;
+		}
+
+		final List<TempBlock> tempBlocks = new ArrayList<>(instances_.get(block));
+		tempBlocks.forEach(t -> {
 			REVERT_QUEUE.remove(t);
 			remove(t);
 		});
@@ -203,7 +258,7 @@ public class TempBlock {
 	private static void remove(TempBlock tempBlock) {
 		if (instances_.containsKey(tempBlock.block)) {
 			instances_.get(tempBlock.block).remove(tempBlock);
-			if (instances_.get(tempBlock.block).size() == 0) {
+			if (instances_.get(tempBlock.block).isEmpty()) {
 				instances_.remove(tempBlock.block);
 			}
 		}
@@ -216,12 +271,24 @@ public class TempBlock {
 	 */
 	public static void revertBlock(final Block block, final Material defaulttype) {
 		if (instances_.containsKey(block)) {
-			//We clone the list first, then remove before reverting. The tempblock list is cloned so we get no concurrent modification exceptions
-			List<TempBlock> tempBlocks = new ArrayList<>(instances_.get(block));
-			tempBlocks.forEach((b) -> {
-				TempBlock.remove(b);
-				b.trueRevertBlock();
-			});
+			final List<TempBlock> tempBlocks = new ArrayList<>(instances_.get(block));
+			final TempBlock finalTempBlock = tempBlocks.get(tempBlocks.size() - 1);
+			TempBlock finalPhysicalTempBlock = null;
+			boolean hadViewerOverlay = false;
+			for (final TempBlock tempBlock : tempBlocks) {
+				if (tempBlock.viewerOverlayOnly) {
+					hadViewerOverlay = true;
+				} else {
+					finalPhysicalTempBlock = tempBlock;
+				}
+			}
+
+			tempBlocks.forEach(TempBlock::remove);
+			tempBlocks.forEach(TempBlock::prepareForRevert);
+			final TempBlock physicalStateOwner = finalPhysicalTempBlock;
+			final TempBlock reversionCoordinator = physicalStateOwner == null ? finalTempBlock : physicalStateOwner;
+			reversionCoordinator.applyOriginalStateWhenReady(physicalStateOwner != null, hadViewerOverlay);
+			tempBlocks.forEach(TempBlock::runRevertActions);
 		} else {
 			if ((defaulttype == Material.LAVA) && GeneralMethods.isAdjacentToThreeOrMoreSources(block, true)) {
 				final BlockData data = Material.LAVA.createBlockData();
@@ -243,6 +310,14 @@ public class TempBlock {
 				block.setType(defaulttype, applyPhysics(defaulttype));
 			}
 		}
+	}
+
+	public boolean isDroppable() {
+		return this.droppable;
+	}
+
+	public void setDroppable(final boolean droppable) {
+		this.droppable = droppable;
 	}
 
 	public Block getBlock() {
@@ -270,14 +345,6 @@ public class TempBlock {
 	}
 
 	public void setRevertTask(final Runnable task) {
-		this.revertTask = task;
-	}
-
-	/**
-	 * Use {@link #setRevertTask(Runnable)} instead
-	 */
-	@Deprecated
-	public void setRevertTask(final RevertTask task) {
 		this.revertTask = task;
 	}
 
@@ -310,31 +377,97 @@ public class TempBlock {
 	public void revertBlock() {
 		if (!this.reverted) {
 			remove(this);
-			trueRevertBlock();
+			trueRevertBlock(get(this.block));
 		}
 	}
 
 	/**
 	 * This is used to revert the block without removing the instances from memory. Used when multiple tempblocks are to be reverted at once
 	 */
-	private void trueRevertBlock() {
-		this.reverted = true;
-		if (instances_.containsKey(this.block)) {
-			PaperLib.getChunkAtAsync(this.block.getLocation()).thenAccept(result -> {
-				TempBlock last = instances_.get(this.block).getLast();
-				this.block.setBlockData(last.newData); //Set the block to the next in line TempBlock
-			});
-		} else { //Set to the original blockstate
-			PaperLib.getChunkAtAsync(this.block.getLocation()).thenAccept(result -> revertState());
+	private void trueRevertBlock(final TempBlock nextTempBlock) {
+		prepareForRevert();
+		if (nextTempBlock != null) {
+			applyNextTempBlockWhenReady(nextTempBlock, getTopPhysicalTempBlock(this.block), !this.viewerOverlayOnly);
+		} else {
+			applyOriginalStateWhenReady(!this.viewerOverlayOnly, this.viewerOverlayOnly);
 		}
 
+		runRevertActions();
+	}
+
+	private void prepareForRevert() {
+		this.reverted = true;
+		this.inRevertQueue = false;
 		REVERT_QUEUE.remove(this);
+	}
+
+	private void runRevertActions() {
 		if (this.revertTask != null) {
 			this.revertTask.run();
 		}
 
-		for (TempBlock attached : attachedTempBlocks) {
+		for (final TempBlock attached : new HashSet<>(this.attachedTempBlocks)) {
 			attached.revertBlock();
+		}
+	}
+
+	private static TempBlock getTopPhysicalTempBlock(final Block block) {
+		final LinkedList<TempBlock> tempBlocks = instances_.get(block);
+		if (tempBlocks == null) {
+			return null;
+		}
+
+		for (int index = tempBlocks.size() - 1; index >= 0; index--) {
+			final TempBlock tempBlock = tempBlocks.get(index);
+			if (!tempBlock.viewerOverlayOnly) {
+				return tempBlock;
+			}
+		}
+		return null;
+	}
+
+	private void applyNextTempBlockWhenReady(final TempBlock nextTempBlock, final TempBlock nextPhysicalTempBlock,
+			final boolean restorePhysicalState) {
+		PaperLib.getChunkAtAsync(this.block.getLocation())
+				.thenAccept(result -> applyNextTempBlock(nextTempBlock, nextPhysicalTempBlock, restorePhysicalState));
+	}
+
+	private void applyNextTempBlock(final TempBlock nextTempBlock, final TempBlock nextPhysicalTempBlock,
+			final boolean restorePhysicalState) {
+		if (TempBlock.get(this.block) != nextTempBlock) {
+			return;
+		}
+
+		if (restorePhysicalState) {
+			if (nextPhysicalTempBlock == null) {
+				revertState();
+			} else if (getTopPhysicalTempBlock(this.block) == nextPhysicalTempBlock
+					&& !this.block.getBlockData().equals(nextPhysicalTempBlock.newData)) {
+				this.block.setBlockData(nextPhysicalTempBlock.newData, applyPhysics(nextPhysicalTempBlock.newData.getMaterial()));
+			}
+		}
+
+		if (nextTempBlock.viewerOverlayOnly) {
+			PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), nextTempBlock.newData, nextTempBlock.blockSource);
+		} else {
+			PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
+		}
+	}
+
+	private void applyOriginalStateWhenReady(final boolean restorePhysicalState, final boolean clearViewerOverlay) {
+		PaperLib.getChunkAtAsync(this.block.getLocation())
+				.thenAccept(result -> applyOriginalState(restorePhysicalState, clearViewerOverlay));
+	}
+
+	private void applyOriginalState(final boolean restorePhysicalState, final boolean clearViewerOverlay) {
+		if (instances_.containsKey(this.block)) {
+			return;
+		}
+		if (restorePhysicalState) {
+			revertState();
+		}
+		if (clearViewerOverlay) {
+			PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
 		}
 	}
 
@@ -342,6 +475,11 @@ public class TempBlock {
 	 * Revert the TempBlock to the proper BlockState it should be
 	 */
 	private void revertState() {
+		if (this.viewerOverlayOnly) {
+			PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
+			return;
+		}
+
 		Block block = this.state.getBlock();
 		//If the block has been changed by the time we revert (e.g. block place). Also, we ignore fire since it isn't worth the time
 		if (block.getType() != this.newData.getMaterial() && block.getType() != Material.FIRE && block.getType() != Material.SOUL_FIRE) {
@@ -427,8 +565,24 @@ public class TempBlock {
 	public void setType(final BlockData data) {
 		if (isReverted())
 			return;
+		if (!this.viewerOverlayOnly && !this.shouldAllowBlockMutation(this.block.getLocation())) {
+			return;
+		}
 		this.newData = data;
-		this.block.setBlockData(data, applyPhysics(data.getMaterial()));
+		if (this.viewerOverlayOnly) {
+			PhasedBlockVisibilityManager.applyOverlay(this.block.getLocation(), data, this.blockSource);
+		} else {
+			PhasedBlockVisibilityManager.clearOverlay(this.block.getLocation());
+			this.block.setBlockData(data, applyPhysics(data.getMaterial()));
+		}
+	}
+
+	private boolean shouldUseViewerOverlay(final Location location) {
+		return PhasedBlockVisibilityManager.shouldUseViewerOverlay(this.blockSource, location);
+	}
+
+	private boolean shouldAllowBlockMutation(final Location location) {
+		return PhasedIntegrationManager.shouldAllow(this.blockSource.request(GateStage.BLOCK, location, null));
 	}
 
 	public static void startReversion() {
@@ -457,7 +611,8 @@ public class TempBlock {
 	}
 
 	public TempBlock setAbility(CoreAbility ability) {
-		this.ability = Optional.of(ability);
+		this.ability = ability == null ? Optional.empty() : Optional.of(ability);
+		this.blockSource = PhasedBlockSource.fromAbility(ability);
 		return this;
 	}
 

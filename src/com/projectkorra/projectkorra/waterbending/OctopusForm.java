@@ -21,6 +21,7 @@ import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.ability.WaterAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
+import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.util.BlockSource;
 import com.projectkorra.projectkorra.util.ClickType;
 import com.projectkorra.projectkorra.util.DamageHandler;
@@ -30,6 +31,7 @@ import com.projectkorra.projectkorra.waterbending.ice.PhaseChange;
 import com.projectkorra.projectkorra.waterbending.ice.PhaseChange.PhaseChangeType;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 import com.projectkorra.projectkorra.waterbending.util.WaterReturn;
+import com.projectkorra.projectkorra.waterbending.util.carry.CarriedWaterManager;
 
 public class OctopusForm extends WaterAbility {
 
@@ -163,7 +165,9 @@ public class OctopusForm extends WaterAbility {
 				form.form();
 
 				if (form.formed || form.forming || form.settingUp) {
-					WaterReturn.emptyWaterBottle(player);
+					if (!CarriedWaterManager.consumeForAbility(form, form.getCarriedWaterCost(), form.getName() + ".Consume")) {
+						form.remove();
+					}
 				} else {
 					block.setType(Material.AIR);
 				}
@@ -173,7 +177,9 @@ public class OctopusForm extends WaterAbility {
 
 	private void form() {
 		this.incrementStep();
-		if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
+		if (isDecayablePlant(this.sourceBlock)) {
+			new PlantRegrowth(this.player, this.sourceBlock, 3);
+		} else if (isPlant(this.sourceBlock) || isSnow(this.sourceBlock)) {
 			new PlantRegrowth(this.player, this.sourceBlock);
 			this.sourceBlock.setType(Material.AIR);
 		} else if (!GeneralMethods.isAdjacentToThreeOrMoreSources(this.sourceBlock) && this.sourceBlock != null && !isCauldron(this.sourceBlock)) {
@@ -181,7 +187,11 @@ public class OctopusForm extends WaterAbility {
 		} else if (isCauldron(this.sourceBlock)) {
 			GeneralMethods.setCauldronData(this.sourceBlock, ((Levelled) this.sourceBlock.getBlockData()).getLevel() - 1);
 		}
-		this.source = new TempBlock(this.sourceBlock, isCauldron(this.sourceBlock) ? this.sourceBlock.getBlockData() : GeneralMethods.getWaterData(0));
+		if (TempBlock.isTempBlock(this.sourceBlock) && PlantRegrowth.getDecayedBlocks().contains(TempBlock.get(this.sourceBlock))) {
+			this.source = new TempBlock(this.sourceBlock.getRelative(BlockFace.UP), GeneralMethods.getWaterData(0), this);
+		} else {
+			this.source = new TempBlock(this.sourceBlock, GeneralMethods.getWaterData(0), this);
+		}
 	}
 
 	private void attack() {
@@ -201,7 +211,7 @@ public class OctopusForm extends WaterAbility {
 		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(location, this.attackRange)) {
 			if (entity.getEntityId() == this.player.getEntityId()) {
 				continue;
-			} else if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation())) {
+			} else if (RegionProtection.isRegionProtected(this, entity.getLocation())) {
 				continue;
 			} else if (GeneralMethods.isObstructed(location, entity.getLocation())) {
 				continue;
@@ -258,7 +268,7 @@ public class OctopusForm extends WaterAbility {
 					this.sourceLocation = newBlock.getLocation();
 
 					if (!GeneralMethods.isSolid(newBlock)) {
-						this.source = new TempBlock(newBlock, GeneralMethods.getWaterData(0));
+						this.source = new TempBlock(newBlock, GeneralMethods.getWaterData(0), this);
 						this.sourceBlock = newBlock;
 					} else {
 						this.remove();
@@ -271,7 +281,7 @@ public class OctopusForm extends WaterAbility {
 					this.sourceLocation = newBlock.getLocation();
 
 					if (!GeneralMethods.isSolid(newBlock)) {
-						this.source = new TempBlock(newBlock, GeneralMethods.getWaterData(0));
+						this.source = new TempBlock(newBlock, GeneralMethods.getWaterData(0), this);
 						this.sourceBlock = newBlock;
 					} else {
 						this.remove();
@@ -287,7 +297,7 @@ public class OctopusForm extends WaterAbility {
 							this.source.revertBlock();
 						}
 						if (!GeneralMethods.isSolid(newBlock)) {
-							this.source = new TempBlock(newBlock, GeneralMethods.getWaterData(0));
+							this.source = new TempBlock(newBlock, GeneralMethods.getWaterData(0), this);
 							this.sourceBlock = newBlock;
 						}
 					}
@@ -421,7 +431,7 @@ public class OctopusForm extends WaterAbility {
 	}
 
 	private void addWater(final Block block) {
-		if (GeneralMethods.isRegionProtectedFromBuild(this, block.getLocation())) {
+		if (RegionProtection.isRegionProtected(this, block.getLocation())) {
 			return;
 		}
 
@@ -440,7 +450,7 @@ public class OctopusForm extends WaterAbility {
 			if (isWater(block) && !TempBlock.isTempBlock(block)) {
 				ParticleEffect.WATER_BUBBLE.display(block.getLocation().clone().add(0.5, 0.5, 0.5), 5, Math.random(), Math.random(), Math.random(), 0);
 			}
-			this.newBlocks.add(new TempBlock(block, GeneralMethods.getWaterData(0)));
+			this.newBlocks.add(new TempBlock(block, GeneralMethods.getWaterData(0), this));
 		}
 	}
 
@@ -473,6 +483,10 @@ public class OctopusForm extends WaterAbility {
 		super.remove();
 		this.returnWater();
 
+		if (formed) {
+			bPlayer.addCooldown(this);
+		}
+
 		if (this.source != null) {
 			this.source.revertBlock();
 		}
@@ -490,15 +504,21 @@ public class OctopusForm extends WaterAbility {
 	}
 
 	private void returnWater() {
+		final int returnAmount = this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this));
+		final Player consumer = CarriedWaterManager.getConsumerForAbility(this);
+		final String cause = this.getName() + ".Return";
+		final Block block;
 		if (this.source != null) {
 			this.source.revertBlock();
-			new WaterReturn(this.player, this.source.getLocation().getBlock());
+			block = this.source.getLocation().getBlock();
 			this.source = null;
 		} else {
 			final Location location = this.player.getLocation();
 			final double rtheta = Math.toRadians(this.startAngle);
-			final Block block = location.clone().add(new Vector(this.radius * Math.cos(rtheta), 0, this.radius * Math.sin(rtheta))).getBlock();
-			new WaterReturn(this.player, block);
+			block = location.clone().add(new Vector(this.radius * Math.cos(rtheta), 0, this.radius * Math.sin(rtheta))).getBlock();
+		}
+		if (CarriedWaterManager.returnForAbility(this, returnAmount, cause) && consumer != null) {
+			new WaterReturn(consumer, block, 0, cause + ".Cosmetic");
 		}
 	}
 

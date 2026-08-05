@@ -3,17 +3,17 @@ package com.projectkorra.projectkorra.earthbending;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.Server;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.type.Slab;
 import org.bukkit.entity.Player;
 
 import com.projectkorra.projectkorra.BendingPlayer;
-import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.ability.EarthAbility;
 import com.projectkorra.projectkorra.ability.ElementalAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.region.RegionProtection;
 
 public class Tremorsense extends EarthAbility {
 
@@ -65,7 +65,7 @@ public class Tremorsense extends EarthAbility {
 
 				for (int k = 0; k <= this.maxDepth; k++) {
 					final Block blocki = block.getRelative(BlockFace.EAST, i).getRelative(BlockFace.NORTH, j).getRelative(BlockFace.DOWN, k);
-					if (GeneralMethods.isRegionProtectedFromBuild(this, blocki.getLocation())) {
+					if (RegionProtection.isRegionProtected(this, blocki.getLocation())) {
 						continue;
 					}
 					if (this.isEarthbendable(blocki) && !earth) {
@@ -170,23 +170,12 @@ public class Tremorsense extends EarthAbility {
 		}
 	}
 
-	public static void manage(final Server server) {
-		for (final Player player : server.getOnlinePlayers()) {
-
-			if (canTremorSense(player) && !hasAbility(player, Tremorsense.class)) {
-				new Tremorsense(player, false);
+	public static void manage() {
+		for (final BendingPlayer bPlayer : BendingPlayer.getPlayers().values()) {
+			if (bPlayer.hasElement(Element.EARTH) && !hasAbility(bPlayer.getPlayer(), Tremorsense.class) && bPlayer.canBendIgnoreBindsCooldowns(getAbility(Tremorsense.class))) {
+				new Tremorsense(bPlayer.getPlayer(), false);
 			}
 		}
-	}
-
-	public static boolean canTremorSense(final Player player) {
-		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-
-		if (bPlayer != null && bPlayer.canBendIgnoreBindsCooldowns(getAbility("Tremorsense"))) {
-			return true;
-		}
-
-		return false;
 	}
 
 	@Override

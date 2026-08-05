@@ -30,6 +30,7 @@ import com.projectkorra.projectkorra.Element.SubElement;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.util.logging.PkLang;
 
 /**
  * Executor for /bending who. Extends {@link PKCommand}.
@@ -38,7 +39,7 @@ public class WhoCommand extends PKCommand {
 	/**
 	 * Map storage of all ProjectKorra staffs' UUIDs and titles
 	 */
-	final Map<String, String> staff = new HashMap<String, String>(), playerInfoWords = new HashMap<String, String>();
+	final Map<String, String> staff = new HashMap<>(), playerInfoWords = new HashMap<>();
 
 	private final String databaseOverload, noPlayersOnline, playerOffline, playerUnknown;
 
@@ -53,7 +54,7 @@ public class WhoCommand extends PKCommand {
 		new BukkitRunnable() {
 			@Override
 			public void run() {
-				final Map<String, String> updatedstaff = new HashMap<String, String>();
+				final Map<String, String> updatedstaff = new HashMap<>();
 				try {
 
 					// Create a URL for the desired page.
@@ -73,7 +74,7 @@ public class WhoCommand extends PKCommand {
 					WhoCommand.this.staff.clear();
 					WhoCommand.this.staff.putAll(updatedstaff);
 				} catch (final SocketException e) {
-					ProjectKorra.log.info("Could not update staff list.");
+					PkLang.info("Could not update staff list.");
 				} catch (final IOException e) {
 					e.printStackTrace();
 				}
@@ -92,34 +93,34 @@ public class WhoCommand extends PKCommand {
 			if (args.size() == 1 && this.isNumeric(args.get(0))) {
 				page = Integer.valueOf(args.get(0));
 			}
-			final List<String> players = new ArrayList<String>();
+			final List<String> players = new ArrayList<>();
 			for (final Player player : Bukkit.getOnlinePlayers()) {
 				if (sender instanceof Player && !((Player) sender).canSee(player)) {
 					continue;
 				}
 				
 				final String playerName = player.getName();
-				String result = "";
+				StringBuilder result = new StringBuilder();
 				BendingPlayer bp = BendingPlayer.getBendingPlayer(playerName);
 
 				for (final Element element : bp.getElements()) {
-					if (result == "") {
-						result = ChatColor.WHITE + playerName + " - " + (((!bp.isElementToggled(element) || !bp.isToggled()) ? element.getColor() + "" + ChatColor.STRIKETHROUGH : element.getColor()) + element.getName().substring(0, 1));
+					if (result.toString().equals("")) {
+						result = new StringBuilder(ChatColor.WHITE + playerName + " - " + (((!bp.isElementToggled(element) || !bp.isToggled()) ? element.getColor() + "" + ChatColor.STRIKETHROUGH : element.getColor()) + element.getName().substring(0, 1)));
 					} else {
-						result = result + ChatColor.WHITE + " | " + (((!bp.isElementToggled(element) || !bp.isToggled()) ? element.getColor() + "" + ChatColor.STRIKETHROUGH : element.getColor()) + element.getName().substring(0, 1));
+						result.append(ChatColor.WHITE).append(" | ").append((!bp.isElementToggled(element) || !bp.isToggled()) ? element.getColor() + "" + ChatColor.STRIKETHROUGH : element.getColor()).append(element.getName().substring(0, 1));
 					}
 				}
 				if (this.staff.containsKey(player.getUniqueId().toString())) {
-					if (result == "") {
-						result = ChatColor.WHITE + playerName + " | " + this.staff.get(player.getUniqueId().toString());
+					if (result.toString().equals("")) {
+						result = new StringBuilder(ChatColor.WHITE + playerName + " | " + this.staff.get(player.getUniqueId().toString()));
 					} else {
-						result = result + ChatColor.WHITE + " | " + this.staff.get(player.getUniqueId().toString());
+						result.append(ChatColor.WHITE).append(" | ").append(this.staff.get(player.getUniqueId().toString()));
 					}
 				}
-				if (result == "") {
-					result = ChatColor.WHITE + playerName;
+				if (result.toString().equals("")) {
+					result = new StringBuilder(ChatColor.WHITE + playerName);
 				}
-				players.add(result);
+				players.add(result.toString());
 			}
 			if (players.isEmpty()) {
 				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.noPlayersOnline);
@@ -170,15 +171,18 @@ public class WhoCommand extends PKCommand {
 					sender.sendMessage(Element.AIR.getColor() + "" + ChatColor.STRIKETHROUGH + "- Airbender");
 				}
 
-				if (bPlayer.canUseFlight()) {
-					sender.sendMessage(Element.FLIGHT.getColor() + "    Can Fly");
+				if (bPlayer.hasSubElement(Element.FLIGHT)) {
+					sender.sendMessage(bPlayer.canUseFlight() ? Element.FLIGHT.getColor() + "    Can Fly" : Element.FLIGHT.getColor() + "    Learning Flight");
 				}
-				if (bPlayer.canUseSpiritualProjection()) {
-					sender.sendMessage(Element.SPIRITUAL.getColor() + "    Can use Spiritual Projection");
+				if (bPlayer.hasSubElement(Element.SPIRITUAL)) {
+					sender.sendMessage(bPlayer.canUseSpiritualProjection() ? Element.SPIRITUAL.getColor() + "    Can use Spiritual Projection" : Element.SPIRITUAL.getColor() + "    Learning Spiritual Projection");
+				}
+				if (bPlayer.hasSubElement(Element.SUFFOCATION)) {
+					sender.sendMessage(bPlayer.canUseSuffocation() ? Element.SUFFOCATION.getColor() + "    Can Suffocate" : Element.SUFFOCATION.getColor() + "    Learning Suffocation");
 				}
 				for (final SubElement se : Element.getAddonSubElements(Element.AIR)) {
-					if (bPlayer.canUseSubElement(se)) {
-						sender.sendMessage(se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend());
+					if (bPlayer.hasSubElement(se)) {
+						sender.sendMessage(bPlayer.canUseSubElement(se) ? se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend() : se.getColor() + "    Learning " + se.getName() + se.getType().getBend());
 					}
 				}
 			}
@@ -190,25 +194,25 @@ public class WhoCommand extends PKCommand {
 					sender.sendMessage(Element.WATER.getColor() + "" + ChatColor.STRIKETHROUGH + "- Waterbender");
 				}
 
-				if (bPlayer.canPlantbend()) {
-					sender.sendMessage(Element.PLANT.getColor() + "    Can Plantbend");
+				if (bPlayer.hasSubElement(Element.PLANT)) {
+					sender.sendMessage(bPlayer.canPlantbend() ? Element.PLANT.getColor() + "    Can Plantbend" : Element.PLANT.getColor() + "    Learning Plantbending");
 				}
-				if (bPlayer.canBloodbend()) {
-					if (bPlayer.canBloodbendAtAnytime()) {
-						sender.sendMessage(Element.BLOOD.getColor() + "    Can Bloodbend anytime, on any day");
+				if (bPlayer.hasSubElement(Element.BLOOD)) {
+					if (bPlayer.hasSubElement(Element.DAY_BLOOD)) {
+						sender.sendMessage(bPlayer.canBloodbendAtAnytime() ? Element.BLOOD.getColor() + "    Can Bloodbend anytime" : Element.BLOOD.getColor() + "    Learning Daytime Bloodbending");
 					} else {
-						sender.sendMessage(Element.BLOOD.getColor() + "    Can Bloodbend");
+						sender.sendMessage(bPlayer.canBloodbend() ? Element.BLOOD.getColor() + "    Can Bloodbend" : Element.BLOOD.getColor() + "    Learning Bloodbending");
 					}
 				}
-				if (bPlayer.canIcebend()) {
-					sender.sendMessage(Element.ICE.getColor() + "    Can Icebend");
+				if (bPlayer.hasSubElement(Element.ICE)) {
+					sender.sendMessage(bPlayer.canIcebend() ? Element.ICE.getColor() + "    Can Icebend" : Element.ICE.getColor() + "    Learning Icebending");
 				}
-				if (bPlayer.canWaterHeal()) {
-					sender.sendMessage(Element.HEALING.getColor() + "    Can Heal");
+				if (bPlayer.hasSubElement(Element.HEALING)) {
+					sender.sendMessage(bPlayer.canWaterHeal() ? Element.HEALING.getColor() + "    Can Heal" : Element.HEALING.getColor() + "    Learning Healing");
 				}
 				for (final SubElement se : Element.getAddonSubElements(Element.WATER)) {
-					if (bPlayer.canUseSubElement(se)) {
-						sender.sendMessage(se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend());
+					if (bPlayer.hasSubElement(se)) {
+						sender.sendMessage(bPlayer.canUseSubElement(se) ? se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend() : se.getColor() + "    Learning " + se.getName() + se.getType().getBend());
 					}
 				}
 			}
@@ -220,18 +224,18 @@ public class WhoCommand extends PKCommand {
 					sender.sendMessage(Element.EARTH.getColor() + "" + ChatColor.STRIKETHROUGH + "- Earthbender");
 				}
 
-				if (bPlayer.canMetalbend()) {
-					sender.sendMessage(Element.METAL.getColor() + "    Can Metalbend");
+				if (bPlayer.hasSubElement(Element.METAL)) {
+					sender.sendMessage(bPlayer.canMetalbend() ? Element.METAL.getColor() + "    Can Metalbend" : Element.METAL.getColor() + "    Learning Metalbending");
 				}
-				if (bPlayer.canLavabend()) {
-					sender.sendMessage(Element.LAVA.getColor() + "    Can Lavabend");
+				if (bPlayer.hasSubElement(Element.LAVA)) {
+					sender.sendMessage(bPlayer.canLavabend() ? Element.LAVA.getColor() + "    Can Lavabend" : Element.LAVA.getColor() + "    Learning Lavabending");
 				}
-				if (bPlayer.canSandbend()) {
-					sender.sendMessage(Element.SAND.getColor() + "    Can Sandbend");
+				if (bPlayer.hasSubElement(Element.SAND)) {
+					sender.sendMessage(bPlayer.canSandbend() ? Element.SAND.getColor() + "    Can Sandbend" : Element.SAND.getColor() + "    Learning Sandbending");
 				}
 				for (final SubElement se : Element.getAddonSubElements(Element.EARTH)) {
-					if (bPlayer.canUseSubElement(se)) {
-						sender.sendMessage(se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend());
+					if (bPlayer.hasSubElement(se)) {
+						sender.sendMessage(bPlayer.canUseSubElement(se) ? se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend() : se.getColor() + "    Learning " + se.getName() + se.getType().getBend());
 					}
 				}
 			}
@@ -243,32 +247,41 @@ public class WhoCommand extends PKCommand {
 					sender.sendMessage(Element.FIRE.getColor() + "" + ChatColor.STRIKETHROUGH + "- Firebender");
 				}
 
-				if (bPlayer.canCombustionbend()) {
-					sender.sendMessage(Element.COMBUSTION.getColor() + "    Can Combustionbend");
+				if (bPlayer.hasSubElement(Element.COMBUSTION)) {
+					sender.sendMessage(bPlayer.canCombustionbend() ? Element.COMBUSTION.getColor() + "    Can Combustionbend" : Element.COMBUSTION.getColor() + "    Learning Combustionbending");
 				}
-				if (bPlayer.canLightningbend()) {
-					sender.sendMessage(Element.LIGHTNING.getColor() + "    Can Lightningbend");
+				if (bPlayer.hasSubElement(Element.LIGHTNING)) {
+					sender.sendMessage(bPlayer.canLightningbend() ? Element.LIGHTNING.getColor() + "    Can Lightningbend" : Element.LIGHTNING.getColor() + "    Learning Lightningbending");
 				}
 				if (bPlayer.hasSubElement(Element.BLUE_FIRE)) {
-					sender.sendMessage(Element.BLUE_FIRE.getColor() + "    Can use Blue Fire");
+					sender.sendMessage(bPlayer.canUseBlueFire() ? Element.BLUE_FIRE.getColor() + "    Can use Blue Fire" : Element.BLUE_FIRE.getColor() + "    Learning Blue Fire");
 				}
 				for (final SubElement se : Element.getAddonSubElements(Element.FIRE)) {
-					if (bPlayer.canUseSubElement(se)) {
-						sender.sendMessage(se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend());
+					if (bPlayer.hasSubElement(se)) {
+						sender.sendMessage(bPlayer.canUseSubElement(se) ? se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend() : se.getColor() + "    Learning " + se.getName() + se.getType().getBend());
 					}
 				}
 			}
 
-			if (bPlayer.hasElement(Element.CHI)) {
-				if (bPlayer.isElementToggled(Element.CHI)) {
-					sender.sendMessage(Element.CHI.getColor() + "- Chiblocker");
+			if (bPlayer.hasElement(Element.NON)) {
+				if (bPlayer.isElementToggled(Element.NON)) {
+					sender.sendMessage(Element.NON.getColor() + "- Nonbender");
 				} else {
-					sender.sendMessage(Element.CHI.getColor() + "" + ChatColor.STRIKETHROUGH + "- Chiblocker");
+					sender.sendMessage(Element.NON.getColor() + "" + ChatColor.STRIKETHROUGH + "- Nonbender");
 				}
 
+				if (bPlayer.hasSubElement(Element.CHI)) {
+					sender.sendMessage(bPlayer.canUseSubElement(Element.CHI) ? Element.CHI.getColor() + "    Chiblocker" : Element.CHI.getColor() + "    Learning Chiblocking");
+				}
+				if (bPlayer.hasSubElement(Element.WARRIOR)) {
+					sender.sendMessage(bPlayer.canUseSubElement(Element.WARRIOR) ? Element.WARRIOR.getColor() + "    Warrior" : Element.WARRIOR.getColor() + "    Learning Warriorship");
+				}
+				if (bPlayer.hasSubElement(Element.ARCHER)) {
+					sender.sendMessage(bPlayer.canUseSubElement(Element.ARCHER) ? Element.ARCHER.getColor() + "    Archer" : Element.ARCHER.getColor() + "    Learning Archery");
+				}
 				for (final SubElement se : Element.getAddonSubElements(Element.CHI)) {
-					if (bPlayer.canUseSubElement(se)) {
-						sender.sendMessage(se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend());
+					if (bPlayer.hasSubElement(se)) {
+						sender.sendMessage(bPlayer.canUseSubElement(se) ? se.getColor() + "    Can " + (!se.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + se.getName() + se.getType().getBend() : se.getColor() + "    Learning " + se.getName() + se.getType().getBend());
 					}
 				}
 			}
@@ -278,8 +291,8 @@ public class WhoCommand extends PKCommand {
 					sender.sendMessage(element.getColor() + "" + (bPlayer.isElementToggled(element) ? "" : ChatColor.STRIKETHROUGH) + "- " + element.getName() + (element.getType() != null ? element.getType().getBender() : ""));
 
 					for (final SubElement subelement : Element.getSubElements(element)) {
-						if (bPlayer.canUseSubElement(subelement)) {
-							sender.sendMessage(subelement.getColor() + "    Can " + (!subelement.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + subelement.getName() + subelement.getType().getBend());
+						if (bPlayer.hasSubElement(subelement)) {
+							sender.sendMessage(bPlayer.canUseSubElement(subelement) ? subelement.getColor() + "    Can " + (!subelement.getType().equals(ElementType.NO_SUFFIX) ? "" : "use ") + subelement.getName() + subelement.getType().getBend() : subelement.getColor() + "    Learning " + subelement.getName() + subelement.getType().getBend());
 						}
 					}
 				}
@@ -297,6 +310,9 @@ public class WhoCommand extends PKCommand {
 
 			}
 
+			if (playerName.equalsIgnoreCase("Aztl")) {
+				sender.sendMessage(ChatColor.BLUE + "Avatarverse Owner");
+			}
 			if (this.staff.containsKey(uuid.toString())) {
 				sender.sendMessage(this.staff.get(uuid.toString()));
 			}
