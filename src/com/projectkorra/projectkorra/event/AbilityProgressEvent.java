@@ -6,7 +6,11 @@ import org.bukkit.event.HandlerList;
 import com.projectkorra.projectkorra.ability.Ability;
 
 /**
- * Called when an ability starts
+ * Called after an ability receives a lifecycle progress update.
+ * <p>
+ * This signal does not imply that the update produced a successful effect.
+ * Explicit post-commit outcomes are represented by
+ * {@link AbilityExecutionEvidenceEvent}.
  *
  * @author Philip
  *

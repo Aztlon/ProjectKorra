@@ -18,6 +18,7 @@ import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.command.Commands;
 import com.projectkorra.projectkorra.event.AbilityDamageEntityEvent;
+import com.projectkorra.projectkorra.event.AbilityExecutionEvidence;
 import com.projectkorra.projectkorra.event.EntityBendingDeathEvent;
 import com.projectkorra.projectkorra.phasing.GateStage;
 import com.projectkorra.projectkorra.phasing.PhasedIntegrationManager;
@@ -206,6 +207,7 @@ public class DamageHandler {
 			}
 
 			final double prevHealth = lent.getHealth();
+			final double prevAbsorption = lent.getAbsorptionAmount();
 
 			BEING_DAMAGED.add(lent); //Stops StackOverflows
 			if (doSourcelessDamage) {
@@ -216,7 +218,15 @@ public class DamageHandler {
 			BEING_DAMAGED.remove(lent);
 
 			final double nextHealth = lent.getHealth();
+			final double nextAbsorption = lent.getAbsorptionAmount();
 			entity.setLastDamageCause(finalEvent);
+
+			final double appliedDamage = Math.max(0D,
+					(prevHealth + prevAbsorption) - (nextHealth + nextAbsorption));
+			if (Double.isFinite(appliedDamage) && appliedDamage > 0D) {
+				AbilityExecutionEvidence.publishEntity(ability, AbilityExecutionEvidence.ENTITY_DAMAGE, entity,
+						appliedDamage);
+			}
 
 			if (prevHealth != nextHealth) {
 				if (prevHealth - damage <= 0) {

@@ -147,7 +147,6 @@ public class IceSpikeBlast extends IceAbility {
 		} else if (this.caster.getEyeLocation().distanceSquared(this.location) >= this.range * this.range) {
 			if (this.progressing) {
 				this.remove();
-				this.returnWater();
 			} else {
 				this.remove();
 			}
@@ -171,7 +170,6 @@ public class IceSpikeBlast extends IceAbility {
 
 			if (this.location.distanceSquared(this.destination) <= 4) {
 				this.remove();
-				this.returnWater();
 				return;
 			}
 
@@ -191,13 +189,11 @@ public class IceSpikeBlast extends IceAbility {
 				GeneralMethods.breakBlock(block);
 			} else if (!isWater(block)) {
 				this.remove();
-				this.returnWater();
 				return;
 			}
 
 			if (RegionProtection.isRegionProtected(this, this.location)) {
 				this.remove();
-				this.returnWater();
 				return;
 			}
 
@@ -205,7 +201,6 @@ public class IceSpikeBlast extends IceAbility {
 				if (entity.getEntityId() != this.caster.getEntityId() && entity instanceof LivingEntity) {
 					this.affect((LivingEntity) entity);
 					this.progressing = false;
-					this.returnWater();
 				}
 			}
 
@@ -235,16 +230,23 @@ public class IceSpikeBlast extends IceAbility {
 
 	@Override
 	public void remove() {
+		Player consumer = null;
+		String cause = null;
+		boolean returned = false;
+		if (!this.isRemoved()) {
+			final int returnAmount = this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this));
+			consumer = CarriedWaterManager.getConsumerForAbility(this);
+			cause = this.getName() + ".Return";
+			returned = CarriedWaterManager.returnForAbility(this, returnAmount, cause);
+		}
 		super.remove();
 		if (this.source != null) {
 			this.source.revertBlock();
 		}
 		this.progressing = false;
-	}
-
-	private void returnWater() {
-		if (this.bPlayer != null)
-			new WaterReturn(this.player, this.location.getBlock(), this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
+		if (returned && consumer != null && this.location != null) {
+			new WaterReturn(consumer, this.location.getBlock(), 0, cause + ".Cosmetic");
+		}
 	}
 
 	private void throwIce() {

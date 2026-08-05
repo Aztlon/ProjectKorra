@@ -505,15 +505,20 @@ public class OctopusForm extends WaterAbility {
 
 	private void returnWater() {
 		final int returnAmount = this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this));
+		final Player consumer = CarriedWaterManager.getConsumerForAbility(this);
+		final String cause = this.getName() + ".Return";
+		final Block block;
 		if (this.source != null) {
 			this.source.revertBlock();
-			new WaterReturn(this.player, this.source.getLocation().getBlock(), returnAmount, this.getName() + ".Return");
+			block = this.source.getLocation().getBlock();
 			this.source = null;
 		} else {
 			final Location location = this.player.getLocation();
 			final double rtheta = Math.toRadians(this.startAngle);
-			final Block block = location.clone().add(new Vector(this.radius * Math.cos(rtheta), 0, this.radius * Math.sin(rtheta))).getBlock();
-			new WaterReturn(this.player, block, returnAmount, this.getName() + ".Return");
+			block = location.clone().add(new Vector(this.radius * Math.cos(rtheta), 0, this.radius * Math.sin(rtheta))).getBlock();
+		}
+		if (CarriedWaterManager.returnForAbility(this, returnAmount, cause) && consumer != null) {
+			new WaterReturn(consumer, block, 0, cause + ".Cosmetic");
 		}
 	}
 

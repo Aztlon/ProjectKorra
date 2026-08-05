@@ -568,8 +568,14 @@ public class Torrent extends WaterAbility {
 	}
 
 	private void returnWater(final Location location) {
-		if (bPlayer != null)
-			new WaterReturn(this.player, location.getBlock(), this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
+		if (bPlayer != null) {
+			final int returnAmount = this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this));
+			final Player consumer = CarriedWaterManager.getConsumerForAbility(this);
+			final String cause = this.getName() + ".Return";
+			if (CarriedWaterManager.returnForAbility(this, returnAmount, cause) && consumer != null) {
+				new WaterReturn(consumer, location.getBlock(), 0, cause + ".Cosmetic");
+			}
+		}
 	}
 
 	public static void create(final Player player) {

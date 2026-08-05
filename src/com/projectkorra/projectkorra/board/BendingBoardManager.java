@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.ExternalPersistenceCoordinator;
@@ -41,6 +43,8 @@ public final class BendingBoardManager {
 	private static final Set<UUID> disabledPlayers = Collections.synchronizedSet(new HashSet<>());
 	private static final Map<Player, BoardHolder> scoreboardPlayers = new ConcurrentHashMap<>();
 	private static AbilityBoardResolver boardResolver = new ConfiguredAbilityBoardResolver();
+	private static BiFunction<BendingPlayer, BoardType, AbilityBoard> boardFactory = BendingBoardManager::newBoard;
+	private static Function<Player, BendingPlayer> bendingPlayerResolver = BendingPlayer::getBendingPlayer;
 
 	private static boolean enabled;
 
@@ -216,7 +220,7 @@ public final class BendingBoardManager {
 	}
 
 	private static BoardHolder ensureBoard(final Player player) {
-		final BendingPlayer bendingPlayer = BendingPlayer.getBendingPlayer(player);
+		final BendingPlayer bendingPlayer = bendingPlayerResolver.apply(player);
 		if (bendingPlayer == null) {
 			return null;
 		}
@@ -244,6 +248,10 @@ public final class BendingBoardManager {
 	}
 
 	private static AbilityBoard createBoard(final BendingPlayer bendingPlayer, final BoardType type) {
+		return boardFactory.apply(bendingPlayer, type);
+	}
+
+	private static AbilityBoard newBoard(final BendingPlayer bendingPlayer, final BoardType type) {
 		if (type == BoardType.RPG) {
 			return new RpgAbilityBoard(bendingPlayer);
 		}
@@ -328,6 +336,7 @@ public final class BendingBoardManager {
 		} else {
 			// UNSPECIFIED uses ProjectKorra's normal per-player default: visible.
 			disabledPlayers.remove(player.getUniqueId());
+			getBoard(player).ifPresent(AbilityBoard::show);
 		}
 	}
 

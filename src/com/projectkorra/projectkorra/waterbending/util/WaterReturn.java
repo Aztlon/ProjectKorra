@@ -29,6 +29,7 @@ public class WaterReturn extends WaterAbility {
 	private TempBlock block;
 	private int returnAmount;
 	private String returnCause;
+	private boolean cosmeticOnly;
 
 	public WaterReturn(final Player player, final Block block) {
 		this(player, block, 1, "WaterReturn");
@@ -39,7 +40,7 @@ public class WaterReturn extends WaterAbility {
 		if (this.bPlayer == null) {
 			return;
 		}
-		if (returnAmount <= 0) {
+		if (returnAmount < 0) {
 			return;
 		}
 		if (hasAbility(player, WaterReturn.class)) {
@@ -51,11 +52,14 @@ public class WaterReturn extends WaterAbility {
 		this.interval = 50;
 		this.returnAmount = returnAmount;
 		this.returnCause = returnCause;
+		this.cosmeticOnly = returnAmount == 0;
 
 		this.range = this.getNightFactor(this.range);
 
 		if (this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
-			if (isTransparent(player, block) && ((TempBlock.isTempBlock(block) && block.isLiquid()) || !block.isLiquid()) && this.hasEmptyWaterBottle()) {
+			if (isTransparent(player, block)
+					&& (this.cosmeticOnly || (TempBlock.isTempBlock(block) && block.isLiquid()) || !block.isLiquid())
+					&& (this.cosmeticOnly || this.hasEmptyWaterBottle())) {
 				this.block = new TempBlock(block, Material.WATER, this);
 			}
 		}
@@ -67,7 +71,7 @@ public class WaterReturn extends WaterAbility {
 		if (!this.bPlayer.canBendIgnoreBindsCooldowns(this)) {
 			this.remove();
 			return;
-		} else if (!this.hasEmptyWaterBottle()) {
+		} else if (!this.cosmeticOnly && !this.hasEmptyWaterBottle()) {
 			this.remove();
 			return;
 		} else if (System.currentTimeMillis() < this.time + this.interval) {
@@ -121,7 +125,9 @@ public class WaterReturn extends WaterAbility {
 	}
 
 	private void fillBottle() {
-		CarriedWaterManager.returnCarriedWater(this.player, this.returnAmount, this.returnCause);
+		if (!this.cosmeticOnly) {
+			CarriedWaterManager.returnCarriedWater(this.player, this.returnAmount, this.returnCause);
+		}
 		this.remove();
 	}
 

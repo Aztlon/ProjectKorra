@@ -12,6 +12,7 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.GeneralMethods;
@@ -21,6 +22,7 @@ import com.projectkorra.projectkorra.ability.util.Collision;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.avatar.AvatarState;
 import com.projectkorra.projectkorra.command.Commands;
+import com.projectkorra.projectkorra.event.AbilityExecutionEvidence;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -169,7 +171,13 @@ public class AirShield extends AirAbility {
 				}
 
 				velocity.multiply(0.5);
-				GeneralMethods.setVelocity(this, entity, velocity);
+				final boolean velocityApplied = GeneralMethods.trySetVelocity(this, entity, velocity);
+				final double appliedMagnitude = velocity.length();
+				if ((entity instanceof LivingEntity || entity instanceof Projectile)
+						&& velocityApplied && Double.isFinite(appliedMagnitude) && appliedMagnitude > 0D) {
+					AbilityExecutionEvidence.publishEntity(this, AbilityExecutionEvidence.AIR_SHIELD_DEFLECTED,
+							entity, appliedMagnitude);
+				}
 				entity.setFallDistance(0);
 			}
 		}

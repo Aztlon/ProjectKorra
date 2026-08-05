@@ -9,7 +9,11 @@ import com.projectkorra.projectkorra.ability.Ability;
 import com.projectkorra.projectkorra.util.logging.PkLang;
 
 /**
- * Called when an ability starts
+ * Called when an ability begins its startup lifecycle.
+ * <p>
+ * This cancellable lifecycle signal is not evidence that the ability produced
+ * a successful effect. Explicit post-commit outcomes are represented by
+ * {@link AbilityExecutionEvidenceEvent}.
  *
  * @author Philip
  *

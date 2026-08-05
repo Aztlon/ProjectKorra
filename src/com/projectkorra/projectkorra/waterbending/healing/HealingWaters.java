@@ -1,16 +1,11 @@
 package com.projectkorra.projectkorra.waterbending.healing;
 
-import java.util.HashMap;
-
 import com.projectkorra.projectkorra.region.RegionProtection;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
@@ -314,31 +309,12 @@ public class HealingWaters extends HealingAbility {
 		GeneralMethods.displayColoredParticle(this.hex, this.location);
 	}
 
-	private void fillBottle() {
-		final PlayerInventory inventory = this.player.getInventory();
-		if (inventory.contains(Material.GLASS_BOTTLE)) {
-			final int index = inventory.first(Material.GLASS_BOTTLE);
-			final ItemStack item = inventory.getItem(index);
-
-			final ItemStack water = WaterReturn.waterBottleItem();
-
-			if (item.getAmount() == 1) {
-				inventory.setItem(index, water);
-			} else {
-				item.setAmount(item.getAmount() - 1);
-				inventory.setItem(index, item);
-				final HashMap<Integer, ItemStack> leftover = inventory.addItem(water);
-				for (final int left : leftover.keySet()) {
-					this.player.getWorld().dropItemNaturally(this.player.getLocation(), leftover.get(left));
-				}
-			}
-		}
-	}
-
 	@Override
 	public void remove() {
 		if (this.bottle && this.charged) {
-			this.fillBottle();
+			CarriedWaterManager.returnForAbility(this,
+					this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)),
+					this.getName() + ".Return");
 		}
 		super.remove();
 	}

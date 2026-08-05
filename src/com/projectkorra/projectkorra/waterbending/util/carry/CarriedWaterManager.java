@@ -2,6 +2,7 @@ package com.projectkorra.projectkorra.waterbending.util.carry;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 import java.util.WeakHashMap;
 
 import org.bukkit.Bukkit;
@@ -11,9 +12,12 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 
 public final class CarriedWaterManager {
 
-	private static final Map<CoreAbility, Integer> CONSUMED = Collections.synchronizedMap(new WeakHashMap<>());
+	private static final Map<CoreAbility, Consumption> CONSUMED = Collections.synchronizedMap(new WeakHashMap<>());
 	private static volatile long lastLookup;
 	private static volatile CarriedWaterService cachedService;
+
+	private record Consumption(UUID owner, int amount) {
+	}
 
 	private CarriedWaterManager() {
 	}
@@ -81,7 +85,8 @@ public final class CarriedWaterManager {
 		if (player == null || !consumeCarriedWater(player, amount, cause)) {
 			return false;
 		}
-		CONSUMED.merge(ability, amount, Integer::sum);
+		CONSUMED.merge(ability, new Consumption(player.getUniqueId(), amount),
+				(existing, added) -> new Consumption(existing.owner(), existing.amount() + added.amount()));
 		return true;
 	}
 
@@ -89,19 +94,33 @@ public final class CarriedWaterManager {
 		if (ability == null) {
 			return 0;
 		}
-		return CONSUMED.getOrDefault(ability, 0);
+		final Consumption consumption = CONSUMED.get(ability);
+		return consumption == null ? 0 : consumption.amount();
+	}
+
+	public static Player getConsumerForAbility(final CoreAbility ability) {
+		if (ability == null) {
+			return null;
+		}
+		final Consumption consumption = CONSUMED.get(ability);
+		return consumption == null ? null : Bukkit.getPlayer(consumption.owner());
 	}
 
 	public static boolean returnForAbility(final CoreAbility ability, final int amount, final String cause) {
 		if (ability == null || amount <= 0) {
 			return false;
 		}
-		final Player player = ability.getPlayer();
+		final Consumption consumption = CONSUMED.get(ability);
+		if (consumption == null) {
+			return false;
+		}
+
+		final Player player = getConsumerForAbility(ability);
 		if (player == null) {
 			return false;
 		}
 
-		final int consumed = getConsumedForAbility(ability);
+		final int consumed = consumption.amount();
 		final int toReturn = Math.min(amount, consumed);
 		if (toReturn <= 0) {
 			return false;
@@ -113,7 +132,7 @@ public final class CarriedWaterManager {
 		if (consumed == toReturn) {
 			CONSUMED.remove(ability);
 		} else {
-			CONSUMED.put(ability, consumed - toReturn);
+			CONSUMED.put(ability, new Consumption(consumption.owner(), consumed - toReturn));
 		}
 		return true;
 	}

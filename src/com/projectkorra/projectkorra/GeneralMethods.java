@@ -84,6 +84,7 @@ import com.projectkorra.projectkorra.earthbending.EarthTunnel;
 import com.projectkorra.projectkorra.earthbending.passive.EarthPassive;
 import com.projectkorra.projectkorra.earthbending.util.EarthbendingManager;
 import com.projectkorra.projectkorra.event.AbilityVelocityAffectEntityEvent;
+import com.projectkorra.projectkorra.event.AbilityExecutionEvidence;
 import com.projectkorra.projectkorra.event.BendingReloadEvent;
 import com.projectkorra.projectkorra.firebending.FireBlast;
 import com.projectkorra.projectkorra.firebending.FireShield;
@@ -2224,20 +2225,28 @@ public class GeneralMethods {
 	}
 	
 	public static void setVelocity(Ability ability, Entity entity, Vector vector) {
+		trySetVelocity(ability, entity, vector);
+	}
+
+	/**
+	 * Applies ability velocity and reports whether the final vector reached the entity.
+	 * Existing {@link #setVelocity(Ability, Entity, Vector)} callers retain their void contract.
+	 */
+	public static boolean trySetVelocity(Ability ability, Entity entity, Vector vector) {
 		final Ability sourceAbility = ability == null ? PhasedIntegrationManager.getCurrentAbilityContext() : ability;
 		if (!PhasedIntegrationManager.shouldAllow(
 				PhasedIntegrationManager.requestFromAbility(sourceAbility, entity.getUniqueId(), GateStage.COLLISION, entity.getLocation(), null))) {
-			return;
+			return false;
 		}
 
 		final AbilityVelocityAffectEntityEvent event = new AbilityVelocityAffectEntityEvent(sourceAbility, entity, vector);
 		Bukkit.getServer().getPluginManager().callEvent(event);
-		if (event.isCancelled()) 
-			return;
-		
+		if (event.isCancelled())
+			return false;
+
 		Vector velocity = event.getVelocity();
 		if (velocity == null || Double.isNaN(velocity.length()))
-		    return;
+		    return false;
 		
 		if (entity instanceof TNTPrimed) {
 			if (ConfigManager.defaultConfig.get().getBoolean("Properties.BendingAffectFallingSand.TNT")) {
@@ -2249,7 +2258,7 @@ public class GeneralMethods {
 			}
 		}
 
-		if (entity.hasMetadata("bending-immune")) return;
+		if (entity.hasMetadata("bending-immune")) return false;
 
 		// Attempt to stop velocity from going over the packet cap.
 		if (velocity.getX() > 4) {
@@ -2270,6 +2279,12 @@ public class GeneralMethods {
 			velocity.setZ(-4);
 		}
 		event.getAffected().setVelocity(velocity);
+		final double appliedMagnitude = velocity.length();
+		if (sourceAbility != null && Double.isFinite(appliedMagnitude) && appliedMagnitude > 0D) {
+			AbilityExecutionEvidence.publishEntity(sourceAbility, AbilityExecutionEvidence.VELOCITY_APPLIED,
+					event.getAffected(), appliedMagnitude);
+		}
+		return true;
 	}
 
 	public static int getMCVersion() {

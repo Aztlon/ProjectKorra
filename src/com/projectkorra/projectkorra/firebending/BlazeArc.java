@@ -8,6 +8,7 @@ import org.bukkit.util.Vector;
 
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.attribute.Attribute;
+import com.projectkorra.projectkorra.event.AbilityExecutionEvidence;
 import com.projectkorra.projectkorra.region.RegionProtection;
 import com.projectkorra.projectkorra.waterbending.plant.PlantRegrowth;
 
@@ -58,6 +59,7 @@ public class BlazeArc extends FireAbility {
 
 		if (isIgnitable(block)) {
 			createTempFire(block.getLocation(), DISSIPATE_REMOVE_TIME);
+			AbilityExecutionEvidence.publishBlock(this, AbilityExecutionEvidence.BLOCK_IGNITED, block, 1D);
 		}
 	}
 

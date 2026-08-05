@@ -407,7 +407,6 @@ public class SurgeWall extends WaterAbility {
 	@Override
 	public void remove() {
 		super.remove();
-		this.returnWater();
 		this.finalRemoveWater(this.sourceBlock);
 
 		for (final Block block : WALL_BLOCKS.keySet()) {
@@ -415,7 +414,7 @@ public class SurgeWall extends WaterAbility {
 				this.finalRemoveWater(block);
 			}
 		}
-
+		this.returnWater();
 	}
 
 	private void removeWater(final Block block) {
@@ -578,7 +577,12 @@ public class SurgeWall extends WaterAbility {
 				this.thaw();
 			}
 			if (bPlayer != null) {
-				new WaterReturn(this.player, this.location.getBlock(), this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
+				final int returnAmount = this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this));
+				final Player consumer = CarriedWaterManager.getConsumerForAbility(this);
+				final String cause = this.getName() + ".Return";
+				if (CarriedWaterManager.returnForAbility(this, returnAmount, cause) && consumer != null) {
+					new WaterReturn(consumer, this.location.getBlock(), 0, cause + ".Cosmetic");
+				}
 			}
 		}
 	}

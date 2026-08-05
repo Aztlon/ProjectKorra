@@ -222,8 +222,6 @@ public class WaterManipulation extends WaterAbility {
 
 			if (this.falling) {
 				this.remove();
-				if (this.player != null)
-					new WaterReturn(this.player, this.sourceBlock, this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 			} else {
 				if (!this.progressing) {
 					if (!(isWater(this.sourceBlock.getType()) || isCauldron(this.sourceBlock) || (isIce(this.sourceBlock) && this.bender.canIcebend()) || (isSnow(this.sourceBlock) && this.bender.canIcebend()) || (isPlant(this.sourceBlock) && this.bender.canPlantbend()))) {
@@ -292,8 +290,6 @@ public class WaterManipulation extends WaterAbility {
 					GeneralMethods.breakBlock(block);
 				} else if (block.getType() != Material.AIR && !isWater(block)) {
 					this.remove();
-					if (this.bPlayer != null)
-						new WaterReturn(this.player, this.sourceBlock, this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 					return;
 				}
 
@@ -320,8 +316,6 @@ public class WaterManipulation extends WaterAbility {
 
 				if (!this.progressing) {
 					this.remove();
-					if (this.bPlayer != null)
-						new WaterReturn(this.player, this.sourceBlock, this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
 					return;
 				}
 
@@ -561,8 +555,20 @@ public class WaterManipulation extends WaterAbility {
 
 	@Override
 	public void remove() {
+		Player consumer = null;
+		String cause = null;
+		boolean returned = false;
+		if (!this.isRemoved()) {
+			final int returnAmount = this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this));
+			consumer = CarriedWaterManager.getConsumerForAbility(this);
+			cause = this.getName() + ".Return";
+			returned = CarriedWaterManager.returnForAbility(this, returnAmount, cause);
+		}
 		super.remove();
 		this.finalRemoveWater(this.sourceBlock);
+		if (returned && consumer != null && this.sourceBlock != null) {
+			new WaterReturn(consumer, this.sourceBlock, 0, cause + ".Cosmetic");
+		}
 	}
 
 	public static void removeAroundPoint(final Location location, final double radius) {
@@ -613,14 +619,6 @@ public class WaterManipulation extends WaterAbility {
 	@Override
 	public double getCollisionRadius() {
 		return this.collisionRadius;
-	}
-
-	@Override
-	public void handleCollision(final Collision collision) {
-		super.handleCollision(collision);
-		if (collision.isRemovingFirst() && this.player != null) {
-			new WaterReturn(this.player, this.sourceBlock, this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".CollisionReturn");
-		}
 	}
 
 	public double getPushFactor() {

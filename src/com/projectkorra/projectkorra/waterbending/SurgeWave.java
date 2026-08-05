@@ -418,17 +418,22 @@ public class SurgeWave extends WaterAbility {
 	public void remove() {
 		super.remove();
 		this.thaw();
-		this.returnWater();
 		if (this.waveBlocks != null) {
 			for (final Block block : this.waveBlocks.keySet()) {
 				this.finalRemoveWater(block);
 			}
 		}
+		this.returnWater();
 	}
 
 	public void returnWater() {
 		if (this.location != null && this.bPlayer != null) {
-			new WaterReturn(this.player, this.location.getBlock(), this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this)), this.getName() + ".Return");
+			final int returnAmount = this.getDeterministicReturnAmount(CarriedWaterManager.getConsumedForAbility(this));
+			final Player consumer = CarriedWaterManager.getConsumerForAbility(this);
+			final String cause = this.getName() + ".Return";
+			if (CarriedWaterManager.returnForAbility(this, returnAmount, cause) && consumer != null) {
+				new WaterReturn(consumer, this.location.getBlock(), 0, cause + ".Cosmetic");
+			}
 		}
 	}
 
